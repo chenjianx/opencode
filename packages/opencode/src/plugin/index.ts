@@ -18,6 +18,8 @@ import { gitlabAuthPlugin as GitlabAuthPlugin } from "opencode-gitlab-auth"
 import { PoeAuthPlugin } from "opencode-poe-auth"
 import { CloudflareAIGatewayAuthPlugin, CloudflareWorkersAuthPlugin } from "./cloudflare"
 import { AzureAuthPlugin } from "./azure"
+import { DigitalOceanAuthPlugin } from "./digitalocean"
+import { XaiAuthPlugin } from "./xai"
 import { Effect, Layer, Context, Stream } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
@@ -61,15 +63,23 @@ export function experimentalWebSocketsEnabled(input: { enabled: boolean; channel
 }
 
 // Built-in plugins that are directly imported (not installed from npm)
-const INTERNAL_PLUGINS: PluginInstance[] = [
-  CodexAuthPlugin,
-  CopilotAuthPlugin,
-  GitlabAuthPlugin,
-  PoeAuthPlugin,
-  CloudflareWorkersAuthPlugin,
-  CloudflareAIGatewayAuthPlugin,
-  AzureAuthPlugin,
-]
+function internalPlugins(flags: RuntimeFlags.Info): PluginInstance[] {
+  return [
+    // Temporary rollout: pre-release builds use WebSockets by default; releases require explicit opt-in.
+    (input) =>
+      CodexAuthPlugin(input, {
+        experimentalWebSockets: experimentalWebSocketsEnabled({ enabled: flags.experimentalWebSockets }),
+      }),
+    CopilotAuthPlugin,
+    GitlabAuthPlugin,
+    PoeAuthPlugin,
+    CloudflareWorkersAuthPlugin,
+    CloudflareAIGatewayAuthPlugin,
+    AzureAuthPlugin,
+    DigitalOceanAuthPlugin,
+    XaiAuthPlugin,
+  ]
+}
 
 function isServerPlugin(value: unknown): value is PluginInstance {
   return typeof value === "function"
@@ -152,7 +162,7 @@ export const layer = Layer.effect(
           $: typeof Bun === "undefined" ? undefined : Bun.$,
         }
 
-        for (const plugin of flags.disableDefaultPlugins ? [] : INTERNAL_PLUGINS) {
+        for (const plugin of flags.disableDefaultPlugins ? [] : internalPlugins(flags)) {
           log.info("loading internal plugin", { name: plugin.name })
           const init = yield* Effect.tryPromise({
             try: () => plugin(input),
