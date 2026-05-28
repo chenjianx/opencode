@@ -366,13 +366,16 @@ export const ProvidersLoginCommand = effectCmd({
     const hooks = yield* pluginSvc.list()
 
     const priority: Record<string, number> = {
-      opencode: 0,
-      openai: 1,
-      "github-copilot": 2,
-      google: 3,
-      anthropic: 4,
-      openrouter: 5,
-      vercel: 6,
+      // raccoon_change start - prefer Raccoon as the default provider login
+      raccoon: 0,
+      opencode: 1,
+      openai: 2,
+      "github-copilot": 3,
+      google: 4,
+      anthropic: 5,
+      openrouter: 6,
+      vercel: 7,
+      // raccoon_change end
     }
     const pluginProviders = resolvePluginProviders({
       hooks,
@@ -393,7 +396,7 @@ export const ProvidersLoginCommand = effectCmd({
           label: x.name,
           value: x.id,
           hint: {
-            opencode: "recommended",
+            raccoon: "recommended", // raccoon_change - mark Raccoon as the recommended login
             openai: "ChatGPT Plus/Pro or API key",
           }[x.id],
         })),

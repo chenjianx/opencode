@@ -975,7 +975,9 @@ export const layer = Layer.effect(
 
               if (mime === "application/x-directory") {
                 const args = { filePath: filepath }
-                const exit = yield* execRead(args).pipe(Effect.exit)
+                // raccoon_change start - inline folder files for directory mentions
+                const exit = yield* execRead(args, { includeDirectoryFiles: true }).pipe(Effect.exit)
+                // raccoon_change end
                 if (Exit.isFailure(exit)) {
                   const error = Cause.squash(exit.cause)
                   log.error("failed to read directory", { error })

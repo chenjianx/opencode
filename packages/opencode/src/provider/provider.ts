@@ -129,8 +129,9 @@ const BUNDLED_PROVIDERS: Record<string, () => Promise<(opts: any) => BundledSDK>
   "@ai-sdk/vercel": () => import("@ai-sdk/vercel").then((m) => m.createVercel),
   "@ai-sdk/alibaba": () => import("@ai-sdk/alibaba").then((m) => m.createAlibaba),
   "gitlab-ai-provider": () => import("gitlab-ai-provider").then((m) => m.createGitLab),
-  "@ai-sdk/github-copilot": () =>
-    import("@opencode-ai/core/github-copilot/copilot-provider").then((m) => m.createOpenaiCompatible),
+  "@ai-sdk/github-copilot": () => import("@opencode-ai/core/github-copilot/copilot-provider").then((m) => m.createOpenaiCompatible),
+  "@opencode-ai/raccoon-provider": () =>
+    import("@opencode-ai/core/raccoon/raccoon-provider").then((m) => m.createRaccoonProvider),
   "venice-ai-sdk-provider": () => import("venice-ai-sdk-provider").then((m) => m.createVenice),
 }
 
@@ -1265,33 +1266,6 @@ export const layer = Layer.effect(
           return true
         }
 
-        for (const hook of plugins) {
-          const p = hook.provider
-          const models = p?.models
-          if (!p || !models) continue
-
-          const providerID = ProviderID.make(p.id)
-          if (disabled.has(providerID)) continue
-
-          const provider = database[providerID]
-          if (!provider) continue
-          const pluginAuth = yield* auth.get(providerID).pipe(Effect.orDie)
-
-          provider.models = yield* Effect.promise(async () => {
-            const next = await models(toPublicInfo(provider), { auth: pluginAuth })
-            return Object.fromEntries(
-              Object.entries(next).map(([id, model]) => [
-                id,
-                {
-                  ...model,
-                  id: ModelID.make(id),
-                  providerID,
-                },
-              ]),
-            )
-          })
-        }
-
         // extend database from config
         for (const [providerID, provider] of configProviders) {
           const existing = database[providerID]
@@ -1386,6 +1360,33 @@ export const layer = Layer.effect(
           database[providerID] = parsed
         }
 
+        for (const hook of plugins) {
+          const p = hook.provider
+          const models = p?.models
+          if (!p || !models) continue
+
+          const providerID = ProviderID.make(p.id)
+          if (disabled.has(providerID)) continue
+
+          const provider = database[providerID]
+          if (!provider) continue
+          const pluginAuth = yield* auth.get(providerID).pipe(Effect.orDie)
+
+          provider.models = yield* Effect.promise(async () => {
+            const next = await models(toPublicInfo(provider), { auth: pluginAuth })
+            return Object.fromEntries(
+              Object.entries(next).map(([id, model]) => [
+                id,
+                {
+                  ...model,
+                  id: ModelID.make(id),
+                  providerID,
+                },
+              ]),
+            )
+          })
+        }
+
         // load env
         const envs = yield* env.all()
         for (const [id, provider] of Object.entries(database)) {
@@ -1421,6 +1422,7 @@ export const layer = Layer.effect(
           const stored = yield* auth.get(providerID).pipe(Effect.orDie)
           if (!stored) continue
           if (!plugin.auth.loader) continue
+          if (!database[plugin.auth.provider]) continue
 
           const options = yield* Effect.promise(() =>
             plugin.auth!.loader!(

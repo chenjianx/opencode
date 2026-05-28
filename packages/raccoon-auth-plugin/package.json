@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@opencode-ai/raccoon-auth-plugin",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsgo --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@opencode-ai/core": "workspace:*",
+    "@opencode-ai/plugin": "workspace:*",
+    "open": "10.1.2"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:"
+  }
+}

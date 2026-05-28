@@ -1,0 +1,119 @@
+{
+  "name": "raccoon-vscode",
+  "displayName": "Raccoon",
+  "description": "Raccoon VS Code client for opencode",
+  "version": "0.0.0",
+  "publisher": "raccoon",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.94.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onView:raccoon.chat",
+    "onCommand:raccoon.openChat",
+    "onCommand:raccoon.newSession",
+    "onCommand:raccoon.pickSession",
+    "onCommand:raccoon.openSettings"
+  ],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "raccoon.openChat",
+        "title": "Raccoon: Open Chat"
+      },
+      {
+        "command": "raccoon.newSession",
+        "title": "Raccoon: New Session",
+        "icon": "$(add)"
+      },
+      {
+        "command": "raccoon.pickSession",
+        "title": "Raccoon: History",
+        "icon": "$(history)"
+      },
+      {
+        "command": "raccoon.openSettings",
+        "title": "Raccoon: Settings",
+        "icon": "$(gear)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "raccoon.newSession",
+          "when": "view == raccoon.chat",
+          "group": "navigation@1"
+        },
+        {
+          "command": "raccoon.pickSession",
+          "when": "view == raccoon.chat",
+          "group": "navigation@2"
+        },
+        {
+          "command": "raccoon.openSettings",
+          "when": "view == raccoon.chat",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "raccoon",
+          "title": "Raccoon",
+          "icon": "images/raccoon.svg"
+        }
+      ]
+    },
+    "views": {
+      "raccoon": [
+        {
+          "type": "webview",
+          "id": "raccoon.chat",
+          "name": "Chat"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Raccoon",
+      "properties": {
+        "raccoon.serverUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Existing opencode server URL. When empty, Raccoon starts `opencode serve` locally."
+        },
+        "raccoon.opencodeCommand": {
+          "type": "string",
+          "default": "opencode",
+          "description": "Command used to start opencode."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build:cli": "bun run script/local-bin.ts",
+    "build:webview": "bun run --cwd ../raccoon-webview build",
+    "dev": "bun run build:cli && bun run build:webview && bun run watch",
+    "compile": "bun run build:cli && bun run build:webview && bun run check-types && bun run lint && node esbuild.cjs",
+    "package": "bun run build:cli && bun run build:webview && bun run check-types && bun run lint && node esbuild.cjs --production",
+    "watch": "node esbuild.cjs --watch",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "@opencode-ai/raccoon-webview": "workspace:*",
+    "@opencode-ai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/vscode": "^1.94.0",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
+  }
+}

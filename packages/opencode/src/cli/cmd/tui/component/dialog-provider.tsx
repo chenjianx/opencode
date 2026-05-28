@@ -17,12 +17,15 @@ import { useConnected } from "./use-connected"
 import { useBindings } from "../keymap"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
-  opencode: 0,
-  "opencode-go": 1,
-  openai: 2,
-  "github-copilot": 3,
-  anthropic: 4,
-  google: 5,
+  // raccoon_change start - prefer Raccoon as the default provider login
+  raccoon: 0,
+  opencode: 1,
+  "opencode-go": 2,
+  openai: 3,
+  "github-copilot": 4,
+  anthropic: 5,
+  google: 6,
+  // raccoon_change end
 }
 
 const CUSTOM_PROVIDER_OPTION_VALUE = "__opencode_custom_provider__"
@@ -55,7 +58,7 @@ export function providerOptions(list: { id: string; name: string }[]): ProviderO
         value: provider.id,
         providerID: provider.id,
         description: {
-          opencode: "(Recommended)",
+          raccoon: "(Recommended)", // raccoon_change - mark Raccoon as the recommended login
           anthropic: "(API key)",
           openai: "(ChatGPT Plus/Pro or API key)",
           "opencode-go": "Low cost subscription for everyone",

@@ -2,6 +2,21 @@ import { describe, expect, test } from "bun:test"
 import { normalizeCustomProviderID, providerOptions } from "../../../../src/cli/cmd/tui/component/dialog-provider"
 
 describe("providerOptions", () => {
+  // raccoon_change start - lock Raccoon as the default provider login
+  test("prioritizes Raccoon as the default provider", () => {
+    expect(
+      providerOptions([
+        { id: "openai", name: "OpenAI" },
+        { id: "raccoon", name: "Raccoon" },
+        { id: "opencode", name: "opencode" },
+      ])[0],
+    ).toMatchObject({
+      value: "raccoon",
+      description: "(Recommended)",
+    })
+  })
+  // raccoon_change end
+
   test("includes a synthetic Other option for custom providers", () => {
     expect(providerOptions([{ id: "openai", name: "OpenAI" }]).at(-1)).toMatchObject({
       title: "Other",
