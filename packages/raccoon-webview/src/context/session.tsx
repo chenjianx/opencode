@@ -5,6 +5,7 @@ import type {
   RaccoonFileAttachment,
   RaccoonMessage,
   RaccoonModel,
+  RaccoonQuestionRequest,
   RaccoonSession,
   RaccoonSlashCommand,
   RaccoonState,
@@ -38,6 +39,8 @@ type SessionContextValue = {
   canSend: (text: string) => boolean
   visibleMessages: RaccoonMessage[]
   revertedMessages: RaccoonMessage[]
+  questions: RaccoonQuestionRequest[]
+  questionErrors: Set<string>
   createSession: () => void
   openHistory: () => void
   openSettings: () => void
@@ -73,6 +76,8 @@ type SessionContextValue = {
     editing?: boolean
   }) => void
   sendMessage: (text: string, files?: RaccoonFileAttachment[]) => void
+  replyToQuestion: (requestID: string, answers: string[][]) => void
+  rejectQuestion: (requestID: string) => void
   openFile: (filePath: string, line?: number, column?: number) => void
   stopSession: () => void
 }
@@ -98,6 +103,8 @@ function normalizeState(state: RaccoonState): RaccoonState {
 export function SessionProvider(props: { children: ReactNode }) {
   const vscode = useVSCode()
   const [state, setState] = useState<RaccoonState>(() => normalizeState(vscode.getState<RaccoonState>() ?? initialState))
+  const [questions, setQuestions] = useState<RaccoonQuestionRequest[]>([])
+  const [questionErrors, setQuestionErrors] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     const unsubscribe = vscode.onMessage((message) => {
@@ -137,6 +144,34 @@ export function SessionProvider(props: { children: ReactNode }) {
           vscode.setState(next)
           return next
         })
+        return
+      }
+      if (message.type === "questionRequest") {
+        setQuestions((current) => {
+          const index = current.findIndex((item) => item.id === message.question.id)
+          if (index === -1) return [...current, message.question]
+          return current.map((item) => (item.id === message.question.id ? message.question : item))
+        })
+        setQuestionErrors((current) => {
+          if (!current.has(message.question.id)) return current
+          const next = new Set(current)
+          next.delete(message.question.id)
+          return next
+        })
+        return
+      }
+      if (message.type === "questionResolved") {
+        setQuestions((current) => current.filter((item) => item.id !== message.requestID))
+        setQuestionErrors((current) => {
+          if (!current.has(message.requestID)) return current
+          const next = new Set(current)
+          next.delete(message.requestID)
+          return next
+        })
+        return
+      }
+      if (message.type === "questionError") {
+        setQuestionErrors((current) => new Set(current).add(message.requestID))
         return
       }
       if (message.type === "error") {
@@ -193,6 +228,8 @@ export function SessionProvider(props: { children: ReactNode }) {
       latestAssistantMessage,
       visibleMessages,
       revertedMessages,
+      questions,
+      questionErrors,
       canSend: (text) => text.trim().length > 0 && !!state.activeSessionID && !state.busy,
       createSession: () => vscode.postMessage({ type: "createSession", mode: state.mode }),
       openHistory: () => vscode.postMessage({ type: "openHistory" }),
@@ -262,10 +299,37 @@ export function SessionProvider(props: { children: ReactNode }) {
         if (!trimmed) return
         vscode.postMessage({ type: "sendMessage", text: trimmed, mode: state.mode, model: state.selectedModel, files })
       },
+      replyToQuestion: (requestID, answers) => {
+        setQuestionErrors((current) => {
+          if (!current.has(requestID)) return current
+          const next = new Set(current)
+          next.delete(requestID)
+          return next
+        })
+        vscode.postMessage({
+          type: "questionReply",
+          requestID,
+          sessionID: questions.find((item) => item.id === requestID)?.sessionID ?? state.activeSessionID,
+          answers,
+        })
+      },
+      rejectQuestion: (requestID) => {
+        setQuestionErrors((current) => {
+          if (!current.has(requestID)) return current
+          const next = new Set(current)
+          next.delete(requestID)
+          return next
+        })
+        vscode.postMessage({
+          type: "questionReject",
+          requestID,
+          sessionID: questions.find((item) => item.id === requestID)?.sessionID ?? state.activeSessionID,
+        })
+      },
       openFile: (filePath, line, column) => vscode.postMessage({ type: "openFile", filePath, line, column }),
       stopSession: () => vscode.postMessage({ type: "stopSession" }),
     }
-  }, [state, vscode])
+  }, [questionErrors, questions, state, vscode])
 
   return <SessionContext.Provider value={value}>{props.children}</SessionContext.Provider>
 }

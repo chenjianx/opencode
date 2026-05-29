@@ -123,6 +123,19 @@ export const dict = {
   "tool.section.input": "Input",
   "tool.section.output": "Output",
   "tool.section.error": "Error",
+  "question.header": "Question",
+  "question.body": "Select an answer",
+  "question.summary": "Question {{n}} of {{total}}",
+  "question.singleHint": "Choose one answer.",
+  "question.multiHint": "Choose one or more answers.",
+  "question.custom": "Type your own answer",
+  "question.customPlaceholder": "Type a custom answer",
+  "question.review": "Review answers",
+  "question.previous": "Previous",
+  "question.back": "Back to edit",
+  "question.submit": "Submit",
+  "question.clear": "Clear and cancel",
+  "question.notAnswered": "Not answered",
 } as const
 
 export type I18nKey = keyof typeof dict

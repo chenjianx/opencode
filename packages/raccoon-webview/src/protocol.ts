@@ -134,6 +134,33 @@ export type RaccoonMessagePart = {
   ignored?: boolean
 }
 
+export type RaccoonQuestionOption = {
+  label: string
+  description: string
+  labelKey?: string
+  descriptionKey?: string
+}
+
+export type RaccoonQuestionInfo = {
+  question: string
+  header: string
+  options: RaccoonQuestionOption[]
+  multiple?: boolean
+  custom?: boolean
+  questionKey?: string
+  headerKey?: string
+}
+
+export type RaccoonQuestionRequest = {
+  id: string
+  sessionID: string
+  questions: RaccoonQuestionInfo[]
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
 export type RaccoonPartDelta = {
   type: "text-delta"
   textDelta: string
@@ -206,6 +233,8 @@ export type WebviewToExtension =
   | { type: "openFile"; filePath: string; line?: number; column?: number }
   | { type: "requestTerminalContext"; requestID: string; sessionID?: string }
   | { type: "requestGitChangesContext"; requestID: string; sessionID?: string }
+  | { type: "questionReply"; requestID: string; sessionID?: string; answers: string[][] }
+  | { type: "questionReject"; requestID: string; sessionID?: string }
   | {
       type: "configureCustomProvider"
       providerID: string
@@ -243,6 +272,9 @@ export type ExtensionToWebview =
       items: RaccoonFileSearchItem[]
       workspaceDir?: string
     }
+  | { type: "questionRequest"; question: RaccoonQuestionRequest }
+  | { type: "questionResolved"; requestID: string }
+  | { type: "questionError"; requestID: string }
   | { type: "terminalContextResult"; requestID: string; content: string }
   | { type: "terminalContextError"; requestID: string; error: string }
   | { type: "gitChangesContextResult"; requestID: string; content: string }

@@ -1,5 +1,5 @@
 import type { Event, GlobalEvent, Part, Message, Session } from "@opencode-ai/sdk/v2/client"
-import type { RaccoonState } from "@opencode-ai/raccoon-webview"
+import type { ExtensionToWebview, RaccoonState } from "@opencode-ai/raccoon-webview"
 
 function isEvent(payload: GlobalEvent["payload"]): payload is Event {
   return "properties" in payload
@@ -19,7 +19,10 @@ function eventSessionID(event: Event) {
     event.type === "session.status" ||
     event.type === "session.idle" ||
     event.type === "session.error" ||
-    event.type === "session.diff"
+    event.type === "session.diff" ||
+    event.type === "question.asked" ||
+    event.type === "question.replied" ||
+    event.type === "question.rejected"
     ? event.properties.sessionID
     : undefined
 }
@@ -42,6 +45,7 @@ type EventHandlerDeps = {
   stopPromptRefresh: (sessionID: string) => void
   clearPromptRefresh: (sessionID: string) => void
   scheduleEventRefresh: () => void
+  postMessage: (message: ExtensionToWebview) => void
 }
 
 export class RaccoonEventHandler {
@@ -115,6 +119,25 @@ export class RaccoonEventHandler {
     if (event.type === "session.idle") {
       this.deps.clearPromptRefresh(event.properties.sessionID)
       this.setBusy(false)
+      this.deps.scheduleEventRefresh()
+      return
+    }
+    if (event.type === "question.asked") {
+      this.deps.stopPromptRefresh(event.properties.sessionID)
+      this.deps.postMessage({
+        type: "questionRequest",
+        question: {
+          id: event.properties.id,
+          sessionID: event.properties.sessionID,
+          questions: event.properties.questions,
+          tool: event.properties.tool,
+        },
+      })
+      this.setState({ loading: true, busy: true })
+      return
+    }
+    if (event.type === "question.replied" || event.type === "question.rejected") {
+      this.deps.postMessage({ type: "questionResolved", requestID: event.properties.requestID })
       this.deps.scheduleEventRefresh()
       return
     }

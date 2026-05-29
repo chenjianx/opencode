@@ -131,6 +131,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       stopPromptRefresh: (sessionID) => this.sessions.stopPromptRefresh(sessionID),
       clearPromptRefresh: (sessionID) => this.sessions.clearPromptRefresh(sessionID),
       scheduleEventRefresh: () => this.scheduleEventRefresh(),
+      postMessage: (message) => this.webviewHost.post("chat", message),
     })
     this.eventStream = new RaccoonEventStream(() => this.client(), (event) => this.eventHandler.handleGlobal(event), (message) =>
       this.output.appendLine(message),
@@ -165,6 +166,8 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       openFile: (filePath, line, column) => this.openFile(filePath, line, column),
       requestTerminalContext: (requestID, source) => this.requestTerminalContext(requestID, source),
       requestGitChangesContext: (requestID, source) => this.requestGitChangesContext(requestID, source),
+      questionReply: (message) => this.sessions.questionReply(message),
+      questionReject: (message) => this.sessions.questionReject(message),
       deleteCustomProvider: (providerID) => this.config.deleteCustomProvider(providerID),
       stopSession: () => this.sessions.stopSession(),
       sendMessage: (text, mode, model, files) => this.sessions.sendMessage(text, mode, model, files),

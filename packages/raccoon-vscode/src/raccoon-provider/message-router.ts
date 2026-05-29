@@ -33,6 +33,8 @@ type MessageRouterDeps = {
   openFile: (filePath: string, line?: number, column?: number) => void
   requestTerminalContext: (requestID: string, source: RaccoonWebviewSource) => Promise<void>
   requestGitChangesContext: (requestID: string, source: RaccoonWebviewSource) => Promise<void>
+  questionReply: (message: Extract<WebviewToExtension, { type: "questionReply" }>) => Promise<void>
+  questionReject: (message: Extract<WebviewToExtension, { type: "questionReject" }>) => Promise<void>
   deleteCustomProvider: (providerID: string) => Promise<void>
   stopSession: () => Promise<void>
   sendMessage: (
@@ -162,6 +164,14 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "requestGitChangesContext") {
       await this.deps.requestGitChangesContext(message.requestID, source)
+      return
+    }
+    if (message.type === "questionReply") {
+      await this.deps.questionReply(message)
+      return
+    }
+    if (message.type === "questionReject") {
+      await this.deps.questionReject(message)
       return
     }
     if (message.type === "deleteCustomProvider") {

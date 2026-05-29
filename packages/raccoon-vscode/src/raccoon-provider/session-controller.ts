@@ -1,6 +1,12 @@
 import * as vscode from "vscode"
 import type { FilePartInput, OpencodeClient } from "@opencode-ai/sdk/v2/client"
-import type { ChatMode, ExtensionToWebview, RaccoonMessagePart, RaccoonState } from "@opencode-ai/raccoon-webview"
+import type {
+  ChatMode,
+  ExtensionToWebview,
+  RaccoonMessagePart,
+  RaccoonState,
+  WebviewToExtension,
+} from "@opencode-ai/raccoon-webview"
 import { uiSlashCommands } from "./commands.js"
 import { contextMentionAttachments } from "./context-mentions.js"
 import { exportMarkdown } from "./export-markdown.js"
@@ -243,6 +249,28 @@ export class RaccoonSessionController {
       error: undefined,
     })
     this.deps.post()
+    await this.recoverPendingQuestions(sessionID)
+  }
+
+  async recoverPendingQuestions(sessionID = this.deps.getState().activeSessionID) {
+    if (!sessionID) return
+    try {
+      const response = await (await this.deps.client()).question.list({ directory: this.deps.directory() })
+      for (const question of response.data ?? []) {
+        if (question.sessionID !== sessionID) continue
+        this.deps.webviewHost.post("chat", {
+          type: "questionRequest",
+          question: {
+            id: question.id,
+            sessionID: question.sessionID,
+            questions: question.questions,
+            tool: question.tool,
+          },
+        } satisfies ExtensionToWebview)
+      }
+    } catch (error) {
+      this.deps.log(`pending question recovery failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   async sendMessage(
@@ -343,6 +371,45 @@ export class RaccoonSessionController {
         if (this.activePromptMessageID === messageID) this.activePromptMessageID = undefined
         this.deps.report(error)
       })
+  }
+
+  async questionReply(message: Extract<WebviewToExtension, { type: "questionReply" }>) {
+    try {
+      const client = await this.deps.client()
+      await client.question.reply(
+        {
+          requestID: message.requestID,
+          answers: message.answers,
+          directory: this.deps.directory(),
+        },
+        { throwOnError: true },
+      )
+      this.deps.webviewHost.post("chat", { type: "questionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
+      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
+      if (sessionID) await this.loadMessages(sessionID)
+    } catch (error) {
+      this.deps.webviewHost.post("chat", { type: "questionError", requestID: message.requestID } satisfies ExtensionToWebview)
+      this.deps.report(error)
+    }
+  }
+
+  async questionReject(message: Extract<WebviewToExtension, { type: "questionReject" }>) {
+    try {
+      const client = await this.deps.client()
+      await client.question.reject(
+        {
+          requestID: message.requestID,
+          directory: this.deps.directory(),
+        },
+        { throwOnError: true },
+      )
+      this.deps.webviewHost.post("chat", { type: "questionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
+      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
+      if (sessionID) await this.loadMessages(sessionID)
+    } catch (error) {
+      this.deps.webviewHost.post("chat", { type: "questionError", requestID: message.requestID } satisfies ExtensionToWebview)
+      this.deps.report(error)
+    }
   }
 
   async runSlashCommand(name: string, source: RaccoonWebviewSource) {

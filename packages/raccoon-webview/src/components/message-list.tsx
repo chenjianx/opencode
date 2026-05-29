@@ -1,9 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
-import { ArrowClockwiseIcon, ArrowDownIcon, ArrowUUpLeftIcon } from "@phosphor-icons/react"
+import { ArrowClockwiseIcon, ArrowDownIcon, ArrowUUpLeftIcon, CopyIcon, CheckIcon } from "@phosphor-icons/react"
 import { useLanguage } from "../context/language"
 import { useSession } from "../context/session"
 import type { RaccoonMessage, RaccoonMessagePart } from "../protocol"
 import { MarkdownLite } from "./markdown-lite"
+import { QuestionDock } from "./question-dock"
 
 type Turn = {
   user?: RaccoonMessage
@@ -310,11 +311,13 @@ function toolInfo(part: RaccoonMessagePart, t: ReturnType<typeof useLanguage>["t
 
 function ToolPart(props: { part: RaccoonMessagePart }) {
   const language = useLanguage()
+  const session = useSession()
   const lines = inputLines(props.part)
   const output = props.part.error ?? props.part.output
   const todos = isTodoTool(props.part) ? todosFromPart(props.part) : []
   const hasDetails = lines.length > 0 || !!output || !!props.part.metadata
   const info = toolInfo(props.part, language.t)
+  const activeQuestion = props.part.tool === "question" ? session.questions.find((request) => request.tool?.messageID === props.part.id) : undefined
 
   if (todos.length > 0) {
     return (
@@ -370,7 +373,7 @@ function ToolPart(props: { part: RaccoonMessagePart }) {
               ))}
             </div>
           ) : null}
-          {output ? (
+          {output && !activeQuestion ? (
             <div className="tool-section">
               <div className="tool-section-title">
                 {props.part.error ? language.t("tool.section.error") : language.t("tool.section.output")}
@@ -378,6 +381,7 @@ function ToolPart(props: { part: RaccoonMessagePart }) {
               <ToolOutput part={props.part} output={output} />
             </div>
           ) : null}
+          {activeQuestion ? <QuestionDock key={activeQuestion.id} request={activeQuestion} /> : null}
         </div>
       ) : null}
     </details>
@@ -386,20 +390,45 @@ function ToolPart(props: { part: RaccoonMessagePart }) {
 
 function UserMessage(props: { message: RaccoonMessage; disabled?: boolean; onRevert?: () => void }) {
   const text = props.message.parts.filter((part) => part.type === "text" && !part.synthetic).map((part) => part.text ?? "").join("\n\n").trim()
+  const [copied, setCopied] = useState(false)
+
+  const copy = () => {
+    if (!navigator.clipboard?.writeText) return
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1500)
+      },
+      () => {},
+    )
+  }
+
   if (!text) return null
 
   return (
     <div className="user-message-row">
-      {props.onRevert ? (
-        <button type="button" className="user-revert-button" onClick={props.onRevert} disabled={props.disabled} aria-label="Revert message">
-          <ArrowUUpLeftIcon size={14} />
+      <div className="user-message-content">
+        <p>
+          {text.split(/(@\S+)/g).map((part, index) =>
+            part.startsWith("@") ? <span className="user-mention" key={index}>{part}</span> : part,
+          )}
+        </p>
+      </div>
+      <div className="user-message-actions">
+        {props.onRevert ? (
+          <button type="button" className="user-message-icon-button" onClick={props.onRevert} disabled={props.disabled} aria-label="Revert message">
+            <ArrowUUpLeftIcon size={14} />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="user-message-icon-button"
+          onClick={() => void copy()}
+          aria-label={copied ? "Copied" : "Copy message"}
+        >
+          {copied ? <CheckIcon size={14} weight="bold" /> : <CopyIcon size={14} weight="bold" />}
         </button>
-      ) : null}
-      <p>
-        {text.split(/(@\S+)/g).map((part, index) =>
-          part.startsWith("@") ? <span className="user-mention" key={index}>{part}</span> : part,
-        )}
-      </p>
+      </div>
     </div>
   )
 }
@@ -481,6 +510,9 @@ export function MessageList() {
     followBottomRef.current = true
   }
 
+  const inlineQuestions = session.questions.filter((request) => !!request.tool?.messageID)
+  const floatingQuestions = session.questions.filter((request) => !request.tool?.messageID)
+
   return (
     <div className="message-list-shell">
       <div className="message-list" ref={rootRef} onScroll={updateScrollButton}>
@@ -553,9 +585,21 @@ export function MessageList() {
                     {!(message.parts ?? []).some((part) => part.type === "text" && part.text?.trim()) && message.text.trim() ? (
                       <AssistantText id={message.id} text={message.text} onOpenFile={session.openFile} />
                     ) : null}
+                    {inlineQuestions
+                      .filter((request) => request.tool?.messageID === message.id)
+                      .map((request) => (
+                        <QuestionDock key={request.id} request={request} />
+                      ))}
                   </div>
                 ) : (
-                  <AssistantText id={message.id} text={message.text} onOpenFile={session.openFile} />
+                  <div className="assistant-parts">
+                    <AssistantText id={message.id} text={message.text} onOpenFile={session.openFile} />
+                    {inlineQuestions
+                      .filter((request) => request.tool?.messageID === message.id)
+                      .map((request) => (
+                        <QuestionDock key={request.id} request={request} />
+                      ))}
+                  </div>
                 )}
               </div>
             ))}
@@ -568,6 +612,9 @@ export function MessageList() {
             <span>Raccoon is working...</span>
           </div>
         ) : null}
+        {floatingQuestions.map((request) => (
+          <QuestionDock key={request.id} request={request} />
+        ))}
       </div>
       {showScrollBottom ? (
         <button
