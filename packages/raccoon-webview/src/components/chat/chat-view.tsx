@@ -1,24 +1,14 @@
-import { useEffect, useState } from "react"
-import { MessageList } from "./message-list"
+import { MessageList } from "./message-list/message-list"
 import { PromptInput } from "./prompt-input"
-import { HistoryView } from "./history-view"
-import { SettingsView } from "./settings/settings-view"
-import { useVSCode } from "../context/vscode"
-import { useSession } from "../context/session"
+import { HistoryView } from "../history/history-view"
+import { SettingsView } from "../settings/settings-view"
+import { useSession } from "../../context/session"
 
 export function ChatView() {
-  const vscode = useVSCode()
   const session = useSession()
-  const [view, setView] = useState<"chat" | "history">("chat")
 
-  useEffect(() => {
-    return vscode.onMessage((message) => {
-      if (message.type === "showHistory") setView("history")
-    })
-  }, [vscode])
-
-  if (session.state.view === "settings") return <SettingsView onClose={() => vscode.postMessage({ type: "closeSettings" })} />
-  if (view === "history") return <HistoryView onClose={() => setView("chat")} />
+  if (session.state.view === "settings") return <SettingsView />
+  if (session.state.view === "history") return <HistoryView onClose={() => session.showChat()} />
 
   const activeSession = session.state.sessions.find((item) => item.id === session.state.activeSessionID) ?? session.activeSession
   const title =

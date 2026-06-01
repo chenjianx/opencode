@@ -1,10 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import type {
   ChatMode,
   RaccoonCommand,
   RaccoonFileAttachment,
   RaccoonMessage,
   RaccoonModel,
+  RaccoonPluginLanguage,
+  RaccoonPluginLanguageMode,
   RaccoonQuestionRequest,
   RaccoonSession,
   RaccoonSlashCommand,
@@ -25,7 +27,7 @@ const initialState: RaccoonState = {
   loading: true,
 }
 
-type SessionContextValue = {
+type SessionStateContextValue = {
   state: RaccoonState
   sessions: RaccoonSession[]
   messages: RaccoonMessage[]
@@ -36,11 +38,15 @@ type SessionContextValue = {
   activeSession?: RaccoonSession
   latestUserMessage?: RaccoonMessage
   latestAssistantMessage?: RaccoonMessage
-  canSend: (text: string) => boolean
   visibleMessages: RaccoonMessage[]
   revertedMessages: RaccoonMessage[]
   questions: RaccoonQuestionRequest[]
   questionErrors: Set<string>
+}
+
+type SessionActionsContextValue = {
+  canSend: (text: string, files?: RaccoonFileAttachment[]) => boolean
+  showChat: () => void
   createSession: () => void
   openHistory: () => void
   openSettings: () => void
@@ -53,6 +59,7 @@ type SessionContextValue = {
   restoreRevertedMessage: (messageID: string) => void
   runSlashCommand: (name: string) => void
   setMode: (mode: ChatMode) => void
+  setPluginLanguage: (language: RaccoonPluginLanguageMode) => void
   setModel: (model: { providerID: string; modelID: string }) => void
   setModeModel: (mode: ChatMode, model: { providerID: string; modelID: string }) => void
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
@@ -79,10 +86,14 @@ type SessionContextValue = {
   replyToQuestion: (requestID: string, answers: string[][]) => void
   rejectQuestion: (requestID: string) => void
   openFile: (filePath: string, line?: number, column?: number) => void
+  openImage: (input: { url: string; filename?: string; mime?: string }) => void
   stopSession: () => void
 }
 
-const SessionContext = createContext<SessionContextValue | undefined>(undefined)
+type SessionContextValue = SessionStateContextValue & SessionActionsContextValue
+
+const SessionStateContext = createContext<SessionStateContextValue | undefined>(undefined)
+const SessionActionsContext = createContext<SessionActionsContextValue | undefined>(undefined)
 
 function normalizeState(state: RaccoonState): RaccoonState {
   return {
@@ -105,6 +116,16 @@ export function SessionProvider(props: { children: ReactNode }) {
   const [state, setState] = useState<RaccoonState>(() => normalizeState(vscode.getState<RaccoonState>() ?? initialState))
   const [questions, setQuestions] = useState<RaccoonQuestionRequest[]>([])
   const [questionErrors, setQuestionErrors] = useState<Set<string>>(() => new Set())
+  const stateRef = useRef(state)
+  const questionsRef = useRef(questions)
+
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
+
+  useEffect(() => {
+    questionsRef.current = questions
+  }, [questions])
 
   useEffect(() => {
     const unsubscribe = vscode.onMessage((message) => {
@@ -182,6 +203,14 @@ export function SessionProvider(props: { children: ReactNode }) {
         })
         return
       }
+      if (message.type === "showHistory") {
+        setState((current) => {
+          const next = { ...current, view: "history" as const }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
       if (message.type === "terminalContextResult" || message.type === "terminalContextError") return
       if (message.type === "gitChangesContextResult" || message.type === "gitChangesContextError") return
     })
@@ -190,7 +219,7 @@ export function SessionProvider(props: { children: ReactNode }) {
     return unsubscribe
   }, [vscode])
 
-  const value = useMemo<SessionContextValue>(() => {
+  const sessionState = useMemo<SessionStateContextValue>(() => {
     const sessions = state.sessions
     const messages = state.messages
     const models = state.models
@@ -230,8 +259,20 @@ export function SessionProvider(props: { children: ReactNode }) {
       revertedMessages,
       questions,
       questionErrors,
-      canSend: (text) => text.trim().length > 0 && !!state.activeSessionID && !state.busy,
-      createSession: () => vscode.postMessage({ type: "createSession", mode: state.mode }),
+    }
+  }, [questionErrors, questions, state])
+
+  const sessionActions = useMemo<SessionActionsContextValue>(() => {
+    return {
+      canSend: (text, files = []) => (text.trim().length > 0 || files.length > 0) && !!stateRef.current.activeSessionID && !stateRef.current.busy,
+      showChat: () => {
+        setState((current) => {
+          const next = { ...current, view: "chat" as const }
+          vscode.setState(next)
+          return next
+        })
+      },
+      createSession: () => vscode.postMessage({ type: "createSession", mode: stateRef.current.mode }),
       openHistory: () => vscode.postMessage({ type: "openHistory" }),
       openSettings: () => vscode.postMessage({ type: "openSettings" }),
       refresh: () => vscode.postMessage({ type: "refresh" }),
@@ -240,22 +281,29 @@ export function SessionProvider(props: { children: ReactNode }) {
       deleteSession: (sessionID) => vscode.postMessage({ type: "deleteSession", sessionID }),
       exportSession: (sessionID) => vscode.postMessage({ type: "exportSession", sessionID }),
       revertSession: (messageID) => {
-        if (!state.activeSessionID || state.busy) return
-        vscode.postMessage({ type: "revertSession", sessionID: state.activeSessionID, messageID })
+        if (!stateRef.current.activeSessionID || stateRef.current.busy) return
+        vscode.postMessage({ type: "revertSession", sessionID: stateRef.current.activeSessionID, messageID })
       },
       restoreRevertedMessage: (messageID) => {
-        if (!state.activeSessionID || state.busy) return
-        const next = messages.find((item) => item.role === "user" && item.id > messageID)
+        if (!stateRef.current.activeSessionID || stateRef.current.busy) return
+        const next = stateRef.current.messages.find((item) => item.role === "user" && item.id > messageID)
         if (next) {
-          vscode.postMessage({ type: "revertSession", sessionID: state.activeSessionID, messageID: next.id })
+          vscode.postMessage({ type: "revertSession", sessionID: stateRef.current.activeSessionID, messageID: next.id })
           return
         }
-        vscode.postMessage({ type: "unrevertSession", sessionID: state.activeSessionID })
+        vscode.postMessage({ type: "unrevertSession", sessionID: stateRef.current.activeSessionID })
       },
       runSlashCommand: (name) => vscode.postMessage({ type: "runSlashCommand", name }),
       setMode: (mode) => {
         setState((current) => ({ ...current, mode, selectedModel: current.modeModels?.[mode] ?? current.selectedModel }))
         vscode.postMessage({ type: "setMode", mode })
+      },
+      setPluginLanguage: (language) => {
+        setState((current) => {
+          if (language === "auto") return { ...current, pluginLanguageMode: language }
+          return { ...current, pluginLanguageMode: language, pluginLanguage: language }
+        })
+        vscode.postMessage({ type: "setPluginLanguage", language })
       },
       setModel: (model) => {
         setState((current) => ({ ...current, selectedModel: model }))
@@ -296,8 +344,8 @@ export function SessionProvider(props: { children: ReactNode }) {
       configureCustomProvider: (input) => vscode.postMessage({ type: "configureCustomProvider", ...input }),
       sendMessage: (text, files) => {
         const trimmed = text.trim()
-        if (!trimmed) return
-        vscode.postMessage({ type: "sendMessage", text: trimmed, mode: state.mode, model: state.selectedModel, files })
+        if (!trimmed && !(files?.length ?? 0)) return
+        vscode.postMessage({ type: "sendMessage", text: trimmed, mode: stateRef.current.mode, model: stateRef.current.selectedModel, files })
       },
       replyToQuestion: (requestID, answers) => {
         setQuestionErrors((current) => {
@@ -309,7 +357,7 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({
           type: "questionReply",
           requestID,
-          sessionID: questions.find((item) => item.id === requestID)?.sessionID ?? state.activeSessionID,
+          sessionID: questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
           answers,
         })
       },
@@ -323,19 +371,36 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({
           type: "questionReject",
           requestID,
-          sessionID: questions.find((item) => item.id === requestID)?.sessionID ?? state.activeSessionID,
+          sessionID: questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
         })
       },
       openFile: (filePath, line, column) => vscode.postMessage({ type: "openFile", filePath, line, column }),
+      openImage: (input) => vscode.postMessage({ type: "openImage", ...input }),
       stopSession: () => vscode.postMessage({ type: "stopSession" }),
     }
-  }, [questionErrors, questions, state, vscode])
+  }, [vscode])
 
-  return <SessionContext.Provider value={value}>{props.children}</SessionContext.Provider>
+  return (
+    <SessionStateContext.Provider value={sessionState}>
+      <SessionActionsContext.Provider value={sessionActions}>{props.children}</SessionActionsContext.Provider>
+    </SessionStateContext.Provider>
+  )
+}
+
+export function useSessionState() {
+  const context = useContext(SessionStateContext)
+  if (!context) throw new Error("useSessionState must be used within a SessionProvider")
+  return context
+}
+
+export function useSessionActions() {
+  const context = useContext(SessionActionsContext)
+  if (!context) throw new Error("useSessionActions must be used within a SessionProvider")
+  return context
 }
 
 export function useSession() {
-  const context = useContext(SessionContext)
-  if (!context) throw new Error("useSession must be used within a SessionProvider")
-  return context
+  const state = useSessionState()
+  const actions = useSessionActions()
+  return { ...state, ...actions }
 }

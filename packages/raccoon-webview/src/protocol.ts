@@ -1,4 +1,6 @@
 export type ChatMode = "build" | "plan"
+export type RaccoonPluginLanguage = "en" | "zh-Hans" | "zh-Hant"
+export type RaccoonPluginLanguageMode = "auto" | RaccoonPluginLanguage
 
 export type RaccoonModel = {
   providerID: string
@@ -56,7 +58,7 @@ export type RaccoonCustomProvider = {
   providerID: string
   name: string
   baseURL: string
-  models: Array<{ id: string; name: string }>
+  models: Array<{ id: string; name: string; supportsImage?: boolean }>
 }
 
 export type RaccoonCommand = {
@@ -122,6 +124,9 @@ export type RaccoonMessagePart = {
   id: string
   type: "text" | "reasoning" | "tool" | "file" | "step-start" | "step-finish" | "snapshot" | "patch" | "agent" | "subtask" | "other"
   text?: string
+  mime?: string
+  filename?: string
+  url?: string
   tool?: string
   status?: string
   title?: string
@@ -172,10 +177,14 @@ export type RaccoonPartUpdate = {
   delta?: RaccoonPartDelta
 }
 
+export type RaccoonView = "chat" | "history" | "settings"
+
 export type RaccoonState = {
-  view?: "chat" | "settings"
+  view?: RaccoonView
   serverUrl?: string
   directory?: string
+  pluginLanguageMode?: RaccoonPluginLanguageMode
+  pluginLanguage?: RaccoonPluginLanguage
   activeSessionID?: string
   activeSession?: RaccoonSession
   sessions: RaccoonSession[]
@@ -213,6 +222,7 @@ export type WebviewToExtension =
   | { type: "unrevertSession"; sessionID: string }
   | { type: "runSlashCommand"; name: string }
   | { type: "setMode"; mode: ChatMode }
+  | { type: "setPluginLanguage"; language: RaccoonPluginLanguageMode }
   | { type: "setModel"; model: { providerID: string; modelID: string } }
   | { type: "setModeModel"; mode: ChatMode; model: { providerID: string; modelID: string } }
   | { type: "setModelEnabled"; model: { providerID: string; modelID: string }; enabled: boolean }
@@ -231,6 +241,7 @@ export type WebviewToExtension =
   | { type: "fetchCustomProviderModels"; requestID: string; baseURL: string; apiKey?: string }
   | { type: "requestFileSearch"; requestID: string; query: string; kind?: "file" | "folder" }
   | { type: "openFile"; filePath: string; line?: number; column?: number }
+  | { type: "openImage"; url: string; filename?: string; mime?: string }
   | { type: "requestTerminalContext"; requestID: string; sessionID?: string }
   | { type: "requestGitChangesContext"; requestID: string; sessionID?: string }
   | { type: "questionReply"; requestID: string; sessionID?: string; answers: string[][] }
@@ -241,7 +252,7 @@ export type WebviewToExtension =
       name: string
       baseURL: string
       apiKey: string
-      models: Array<{ id: string; name: string }>
+      models: Array<{ id: string; name: string; supportsImage?: boolean }>
     }
   | { type: "deleteCustomProvider"; providerID: string }
   | {
@@ -262,7 +273,7 @@ export type ExtensionToWebview =
   | {
       type: "customProviderModelsFetched"
       requestID: string
-      models?: Array<{ id: string; name: string }>
+      models?: Array<{ id: string; name: string; supportsImage?: boolean }>
       error?: string
       auth?: boolean
     }
@@ -275,6 +286,7 @@ export type ExtensionToWebview =
   | { type: "questionRequest"; question: RaccoonQuestionRequest }
   | { type: "questionResolved"; requestID: string }
   | { type: "questionError"; requestID: string }
+  | { type: "appendPrompt"; text: string; replace?: boolean }
   | { type: "terminalContextResult"; requestID: string; content: string }
   | { type: "terminalContextError"; requestID: string; error: string }
   | { type: "gitChangesContextResult"; requestID: string; content: string }

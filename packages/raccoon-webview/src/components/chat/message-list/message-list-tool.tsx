@@ -1,0 +1,291 @@
+import { useLanguage } from "../../../context/language"
+import { useSession } from "../../../context/session"
+import type { RaccoonMessagePart } from "../../../protocol"
+import { DiffPanel, diffFiles } from "./message-list-diff"
+import { filename, firstString, inputLines, stripAnsi } from "./message-list-format"
+import { QuestionDock } from "./question-dock"
+
+type TodoItem = {
+  content: string
+  status: string
+}
+
+function formatToolOutput(part: RaccoonMessagePart, output: string) {
+  const tool = part.tool ?? ""
+  const text = stripAnsi(output).trim()
+  if (tool === "bash") {
+    const command = firstString(part.input, ["command", "cmd"])
+    return command && !text.startsWith("$ ") ? `$ ${command}${text ? `\n\n${text}` : ""}` : text
+  }
+  return text
+}
+
+function looksLikeTableLine(value: string) {
+  return /^\s*\|.*\|\s*$/.test(value) || /\S+\s{2,}\S+/.test(value)
+}
+
+function MarkdownOutput(props: { text: string }) {
+  const lines = props.text.split("\n")
+  return (
+    <div className="tool-markdown">
+      {lines.map((line, index) => {
+        if (!line.trim()) return <div className="tool-md-space" key={index} />
+        if (/^#{1,6}\s+/.test(line)) return <div className="tool-md-heading" key={index}>{line.replace(/^#{1,6}\s+/, "")}</div>
+        if (/^\s*[-*]\s+/.test(line)) return <div className="tool-md-list" key={index}>{line.replace(/^\s*[-*]\s+/, "")}</div>
+        if (/^\s*\d+\.\s+/.test(line)) return <div className="tool-md-list" key={index}>{line.replace(/^\s*\d+\.\s+/, "")}</div>
+        if (looksLikeTableLine(line)) return <pre className="tool-md-code" key={index}>{line}</pre>
+        return <div className="tool-md-line" key={index}>{line}</div>
+      })}
+    </div>
+  )
+}
+
+function ToolOutput(props: { part: RaccoonMessagePart; output: string }) {
+  const text = formatToolOutput(props.part, props.output)
+  if (props.part.tool === "bash") {
+    return (
+      <div data-component="bash-output" className="tool-output-shell">
+        <div data-slot="bash-scroll">
+          <pre data-slot="bash-pre">
+            <code>{text}</code>
+          </pre>
+        </div>
+      </div>
+    )
+  }
+  if (props.part.tool === "list" || props.part.tool === "glob" || props.part.tool === "grep") {
+    return (
+      <div data-component="tool-output" data-scrollable className="tool-output-markdown">
+        <MarkdownOutput text={text} />
+      </div>
+    )
+  }
+  return (
+    <div data-component="tool-output" data-scrollable>
+      <pre className="tool-output-plain">{text}</pre>
+    </div>
+  )
+}
+
+function todoStatus(value: unknown) {
+  if (typeof value !== "string") return "pending"
+  const normalized = value.toLowerCase().replace(/[\s-]+/g, "_")
+  if (normalized === "completed" || normalized === "complete" || normalized === "done") return "completed"
+  if (normalized === "in_progress" || normalized === "inprogress" || normalized === "running") return "in_progress"
+  if (normalized === "cancelled" || normalized === "canceled" || normalized === "skipped") return "completed"
+  return "pending"
+}
+
+function todoItems(value: unknown) {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return
+      const record = item as Record<string, unknown>
+      const content = typeof record.content === "string" ? record.content.trim() : typeof record.text === "string" ? record.text.trim() : ""
+      if (!content) return
+      return { content, status: todoStatus(record.status) }
+    })
+    .filter((item): item is TodoItem => !!item)
+}
+
+function parseTodoJson(text: string) {
+  try {
+    const value = JSON.parse(text)
+    return todoItems(Array.isArray(value) ? value : value && typeof value === "object" ? (value as Record<string, unknown>).todos : undefined)
+  } catch {
+    return []
+  }
+}
+
+function parseTodoMarkdown(text: string) {
+  return text
+    .split("\n")
+    .map((line) => {
+      const match = line.match(/^\s*(?:[-*]|\d+\.)\s*(?:\[( |x|X|✓|✔|•|~|-)\]\s*)?(.+?)\s*$/)
+      if (!match) return
+      const mark = match[1]
+      const content = match[2]?.trim()
+      if (!content) return
+      return {
+        content,
+        status: mark?.toLowerCase() === "x" || mark === "✓" || mark === "✔" ? "completed" : mark === "•" ? "in_progress" : "pending",
+      }
+    })
+    .filter((item): item is TodoItem => !!item)
+}
+
+function todosFromPart(part: RaccoonMessagePart) {
+  const inputTodos = todoItems(part.input?.todos)
+  if (inputTodos.length > 0) return inputTodos
+  const output = part.output ?? part.error
+  if (!output) return []
+  const text = stripAnsi(output).trim()
+  const jsonTodos = parseTodoJson(text)
+  return jsonTodos.length > 0 ? jsonTodos : parseTodoMarkdown(text)
+}
+
+function isTodoTool(part: RaccoonMessagePart) {
+  return part.tool === "todowrite" || part.tool === "todoread" || part.tool === "task"
+}
+
+function TodoOutput(props: { todos: TodoItem[] }) {
+  const active = props.todos.filter((item) => item.status !== "completed")
+  const completed = props.todos.filter((item) => item.status === "completed")
+  const sections = [
+    { key: "active", title: "待办", items: active },
+    { key: "completed", title: "已完成", items: completed },
+  ].filter((section) => section.items.length > 0)
+
+  return (
+    <div className="todo-output">
+      {sections.map((section) => (
+        <section className="todo-section" key={section.key}>
+          <div className="todo-section-header">
+            <span>{section.title}</span>
+            <span>{section.items.length}</span>
+          </div>
+          <div className="todo-list">
+            {section.items.map((item, index) => (
+              <div className={`todo-row ${item.status}`} key={`${section.key}-${index}-${item.content}`}>
+                <span className="todo-mark">{item.status === "completed" ? "✓" : item.status === "in_progress" ? "•" : ""}</span>
+                <span className="todo-content">{item.content}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function toolLabel(tool: string, t: ReturnType<typeof useLanguage>["t"]) {
+  const keys = {
+    read: "tool.read",
+    list: "tool.list",
+    glob: "tool.glob",
+    grep: "tool.grep",
+    webfetch: "tool.webfetch",
+    websearch: "tool.websearch",
+    bash: "tool.shell",
+    edit: "tool.edit",
+    write: "tool.write",
+    apply_patch: "tool.patch",
+    patch: "tool.patch",
+    todoread: "tool.loaded",
+    todowrite: "tool.todos",
+    question: "tool.questions",
+    task: "tool.task",
+    skill: "tool.skill",
+  } as const
+  return tool in keys ? t(keys[tool as keyof typeof keys]) : tool
+}
+
+function toolInfo(part: RaccoonMessagePart, t: ReturnType<typeof useLanguage>["t"]) {
+  const tool = part.tool ?? "tool"
+  const label = toolLabel(tool, t)
+  const file = firstString(part.input, ["filePath", "filepath", "file", "target_file"])
+  if (file && (tool === "read" || tool === "edit" || tool === "write")) {
+    return { title: label, subtitle: filename(file) }
+  }
+  if (file) return { title: label, subtitle: filename(file) }
+  if (tool === "list") return { title: label, subtitle: firstString(part.input, ["path", "directory", "cwd"]) }
+  if (tool === "glob" || tool === "grep") return { title: label, subtitle: firstString(part.input, ["pattern", "query", "regex"]) }
+  if (tool === "bash") return { title: label, subtitle: firstString(part.input, ["description"]) ?? firstString(part.input, ["command", "cmd"]) }
+  return {
+    title: label,
+    subtitle: firstString(part.input, ["description", "prompt", "query", "url"]) ?? part.title,
+  }
+}
+
+function ToolSummary(props: { info: ReturnType<typeof toolInfo>; status?: string }) {
+  return (
+    <summary data-component="tool-trigger">
+      <span data-slot="basic-tool-tool-trigger-content">
+        <span className="tool-dot" />
+        <span data-slot="basic-tool-tool-info">
+          <span data-slot="basic-tool-tool-info-structured">
+            <span data-slot="basic-tool-tool-info-main">
+              <span data-slot="basic-tool-tool-title">{props.info.title}</span>
+              {props.info.subtitle ? <span data-slot="basic-tool-tool-subtitle">{props.info.subtitle}</span> : null}
+            </span>
+            {props.status ? <span data-slot="basic-tool-tool-arg">{props.status}</span> : null}
+          </span>
+        </span>
+      </span>
+    </summary>
+  )
+}
+
+export function ToolPart(props: { part: RaccoonMessagePart }) {
+  const language = useLanguage()
+  const session = useSession()
+  const diffs = props.part.tool === "edit" || props.part.tool === "apply_patch" || props.part.tool === "patch" ? diffFiles(props.part) : []
+  const onlyDiff = diffs.length > 0
+  const lines = onlyDiff ? [] : inputLines(props.part)
+  const output = props.part.error ?? props.part.output
+  const todos = isTodoTool(props.part) ? todosFromPart(props.part) : []
+  const hasDetails = onlyDiff || lines.length > 0 || !!output || !!props.part.metadata
+  const info = toolInfo(props.part, language.t)
+  const activeQuestion = props.part.tool === "question" ? session.questions.find((request) => request.tool?.messageID === props.part.id) : undefined
+
+  if (todos.length > 0) {
+    return (
+      <details className={`tool-part todo-part ${props.part.error ? "errored" : ""}`} open>
+        <ToolSummary info={info} status={props.part.status} />
+        <div data-slot="collapsible-content" className="tool-details">
+          <TodoOutput todos={todos} />
+        </div>
+      </details>
+    )
+  }
+
+  return (
+    <details className={`tool-part ${props.part.error ? "errored" : ""}`} open={props.part.status === "running"}>
+      <summary data-component="tool-trigger">
+        <span data-slot="basic-tool-tool-trigger-content">
+          <span className="tool-dot" />
+          <span data-slot="basic-tool-tool-info">
+            <span data-slot="basic-tool-tool-info-structured">
+              <span data-slot="basic-tool-tool-info-main">
+                <span data-slot="basic-tool-tool-title">{info.title}</span>
+                {info.subtitle ? <span data-slot="basic-tool-tool-subtitle">{info.subtitle}</span> : null}
+              </span>
+              {props.part.status ? <span data-slot="basic-tool-tool-arg">{props.part.status}</span> : null}
+            </span>
+          </span>
+        </span>
+        {hasDetails ? <span className="tool-arrow">⌄</span> : null}
+      </summary>
+      {hasDetails ? (
+        <div data-slot="collapsible-content" className="tool-details">
+          {diffs.length > 0 ? (
+            <div className="tool-section">
+              <DiffPanel files={diffs} />
+            </div>
+          ) : null}
+          {lines.length > 0 ? (
+            <div className="tool-section">
+              <div className="tool-section-title">{language.t("tool.section.input")}</div>
+              {lines.map((line) => (
+                <div className="tool-kv" key={line.key}>
+                  <span>{line.key}</span>
+                  <code>{line.value}</code>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {output && !activeQuestion && !onlyDiff ? (
+            <div className="tool-section">
+              <div className="tool-section-title">
+                {props.part.error ? language.t("tool.section.error") : language.t("tool.section.output")}
+              </div>
+              <ToolOutput part={props.part} output={output} />
+            </div>
+          ) : null}
+          {activeQuestion ? <QuestionDock key={activeQuestion.id} request={activeQuestion} /> : null}
+        </div>
+      ) : null}
+    </details>
+  )
+}

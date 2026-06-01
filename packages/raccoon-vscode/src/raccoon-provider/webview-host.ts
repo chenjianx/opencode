@@ -10,6 +10,7 @@ export class RaccoonWebviewHost {
   private settingsPanel?: vscode.WebviewPanel
   private ready = false
   private settingsReady = false
+  private readonly pendingChatMessages: ExtensionToWebview[] = []
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -55,11 +56,22 @@ export class RaccoonWebviewHost {
 
   markReady(source: RaccoonWebviewSource) {
     if (source === "settings") this.settingsReady = true
-    if (source === "chat") this.ready = true
+    if (source === "chat") {
+      this.ready = true
+      while (this.pendingChatMessages.length > 0) {
+        this.view?.webview.postMessage(this.pendingChatMessages.shift()!)
+      }
+    }
   }
 
   post(source: RaccoonWebviewSource, message: ExtensionToWebview) {
-    this.target(source)?.postMessage(message)
+    const target = this.target(source)
+    if (source === "chat" && !this.ready) {
+      this.pendingChatMessages.push(message)
+      return
+    }
+    if (source === "settings" && !this.settingsReady) return
+    target?.postMessage(message)
   }
 
   postState(state: RaccoonState) {

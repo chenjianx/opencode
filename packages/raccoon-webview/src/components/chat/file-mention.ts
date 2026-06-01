@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import type { RaccoonFileAttachment, RaccoonFileSearchItem } from "../protocol"
-import { useVSCode } from "../context/vscode"
+import type { RaccoonFileAttachment, RaccoonFileSearchItem } from "../../protocol"
+import { useVSCode } from "../../context/vscode"
 
 export const AT_PATTERN = /(?:^|\s)@(\S*)$/
 const AT_GROUP_PATTERN = /(?:^|\s)@(file|folder)\s+(\S*)$/

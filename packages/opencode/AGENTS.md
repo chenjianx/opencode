@@ -47,6 +47,15 @@ Namespace-private helpers stay as non-exported top-level declarations in the
 same file — they remain inaccessible to consumers (they are not projected by
 `export * as`) but are usable by the file's own code.
 
+# raccoon_change markers
+
+- When editing files under `packages/opencode`, mark any changed lines with
+  `// raccoon_change` comments.
+- Use a single-line `// raccoon_change - ...` comment for a one-line change.
+- Use `// raccoon_change start - ...` and `// raccoon_change end` around a
+  multi-line change block.
+- Keep the note short and specific about what changed.
+
 ## When the file is an `index.ts`
 
 If the module is `foo/index.ts` (single-namespace directory), use `"."` for

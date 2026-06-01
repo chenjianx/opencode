@@ -6,6 +6,8 @@ import type {
   RaccoonCommand,
   RaccoonModel,
   RaccoonProviderAuthMethod,
+  RaccoonPluginLanguage,
+  RaccoonPluginLanguageMode,
   RaccoonSlashCommand,
   RaccoonState,
   WebviewToExtension,
@@ -26,6 +28,7 @@ type ProviderConfigDeps = {
   withLoading: (run: () => Promise<void>) => Promise<void>
   storage?: vscode.Memento
   webviewHost: RaccoonWebviewHost
+  pluginLanguage: () => RaccoonPluginLanguage
 }
 
 export class RaccoonProviderConfig {
@@ -33,6 +36,7 @@ export class RaccoonProviderConfig {
   private selectedModel?: ModelSelection
   private modeModels: Partial<Record<ChatMode, ModelSelection>> = {}
   private providerAuthMethods: Record<string, RaccoonProviderAuthMethod[]> = {}
+  private pluginLanguageMode: RaccoonPluginLanguageMode
   private readonly raccoonLoginTokens = new ActionTokenStore()
   private readonly providerConnectTokens = new ActionTokenStore()
   private readonly modelState: ModelStateStore
@@ -40,11 +44,17 @@ export class RaccoonProviderConfig {
   constructor(private readonly deps: ProviderConfigDeps) {
     this.disabledModels = new Set(deps.storage?.get<string[]>("raccoon.disabledModels", []) ?? [])
     this.modeModels = modeModelSelections(deps.storage?.get("raccoon.modeModels"))
+    this.pluginLanguageMode = normalizePluginLanguageMode(deps.storage?.get<string>("raccoon.pluginLanguage"))
     this.modelState = new ModelStateStore(() => this.deps.directory())
   }
 
   initialState() {
-    return { selectedModel: this.selectedModel, modeModels: this.modeModels }
+    return {
+      selectedModel: this.selectedModel,
+      modeModels: this.modeModels,
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
+    }
   }
 
   modeModel(mode: ChatMode) {
@@ -92,6 +102,7 @@ export class RaccoonProviderConfig {
         models: Object.values(provider.models).map((model) => ({
           id: model.id,
           name: model.name,
+          supportsImage: model.capabilities.input.image,
         })),
       }))
     const commands = commandResponse.data.map((command): RaccoonCommand => ({
@@ -118,6 +129,8 @@ export class RaccoonProviderConfig {
       customProviders,
       selectedModel: this.selectModel(models, configResponse.data.default),
       modeModels: this.modeModels,
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
     })
   }
 
@@ -136,6 +149,8 @@ export class RaccoonProviderConfig {
       providers: recountProviders(this.deps.getState().providers, models),
       selectedModel: this.selectModel(models, {}, this.deps.getState().mode),
       modeModels: this.modeModels,
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
     })
     this.deps.post()
   }
@@ -159,6 +174,8 @@ export class RaccoonProviderConfig {
       models,
       providers: recountProviders(this.deps.getState().providers, models),
       selectedModel: this.selectModel(models, {}, this.deps.getState().mode),
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
     })
     this.deps.post()
   }
@@ -370,7 +387,9 @@ export class RaccoonProviderConfig {
     const providerID = message.providerID.trim()
     const name = message.name.trim()
     const baseURL = message.baseURL.trim()
-    const models = message.models.map((model) => ({ id: model.id.trim(), name: model.name.trim() })).filter((model) => model.id && model.name)
+    const models = message.models
+      .map((model) => ({ id: model.id.trim(), name: model.name.trim(), supportsImage: model.supportsImage ?? false }))
+      .filter((model) => model.id && model.name)
     if (!providerID || !name || !baseURL || models.length === 0) throw new Error("Custom provider fields are required")
     if (!/^https?:\/\//.test(baseURL)) throw new Error("Custom provider base URL must start with http:// or https://")
     const client = await this.deps.client()
@@ -394,7 +413,15 @@ export class RaccoonProviderConfig {
               npm: "@ai-sdk/openai-compatible",
               name,
               options: { baseURL },
-              models: Object.fromEntries(models.map((model) => [model.id, { name: model.name }])),
+              models: Object.fromEntries(
+                models.map((model) => [
+                  model.id,
+                  {
+                    name: model.name,
+                    ...(model.supportsImage ? { modalities: { input: ["text", "image"], output: ["text"] } } : {}),
+                  },
+                ]),
+              ),
             },
           },
         },
@@ -431,23 +458,58 @@ export class RaccoonProviderConfig {
     this.modeModels = { ...this.modeModels, [mode]: model }
     await this.modelState.write(await this.deps.client(), { selected: this.selectedModel, model: this.modeModels })
     await this.deps.storage?.update("raccoon.modeModels", undefined)
-    this.deps.setState({
-      ...this.deps.getState(),
-      modeModels: this.modeModels,
-      selectedModel: mode === this.deps.getState().mode ? model : this.deps.getState().selectedModel,
-    })
+      this.deps.setState({
+        ...this.deps.getState(),
+        modeModels: this.modeModels,
+        selectedModel: mode === this.deps.getState().mode ? model : this.deps.getState().selectedModel,
+        pluginLanguageMode: this.pluginLanguageMode,
+        pluginLanguage: this.resolvePluginLanguage(),
+      })
     this.deps.post()
   }
 
   setMode(mode: ChatMode) {
-    this.deps.setState({ ...this.deps.getState(), mode, selectedModel: this.selectModel(this.deps.getState().models, {}, mode) })
+    this.deps.setState({
+      ...this.deps.getState(),
+      mode,
+      selectedModel: this.selectModel(this.deps.getState().models, {}, mode),
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
+    })
     this.deps.post()
   }
 
   async setModel(model: ModelSelection | undefined) {
     this.selectedModel = model
     await this.modelState.write(await this.deps.client(), { selected: this.selectedModel, model: this.modeModels })
-    this.deps.setState({ ...this.deps.getState(), selectedModel: model, modeModels: this.modeModels })
+    this.deps.setState({
+      ...this.deps.getState(),
+      selectedModel: model,
+      modeModels: this.modeModels,
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
+    })
     this.deps.post()
   }
+
+  async setPluginLanguage(language: RaccoonPluginLanguageMode) {
+    this.pluginLanguageMode = language
+    await this.deps.storage?.update("raccoon.pluginLanguage", language === "auto" ? undefined : language)
+    this.deps.setState({
+      ...this.deps.getState(),
+      pluginLanguageMode: language,
+      pluginLanguage: this.resolvePluginLanguage(),
+    })
+    this.deps.post()
+  }
+
+  private resolvePluginLanguage() {
+    if (this.pluginLanguageMode === "auto") return this.deps.pluginLanguage()
+    return this.pluginLanguageMode
+  }
+}
+
+function normalizePluginLanguageMode(value: string | undefined): RaccoonPluginLanguageMode {
+  if (value === "auto" || value === "en" || value === "zh-Hans" || value === "zh-Hant") return value
+  return "auto"
 }

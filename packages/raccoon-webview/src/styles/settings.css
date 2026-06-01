@@ -1,0 +1,306 @@
+@layer components {
+  .settings-row {
+    @apply flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] px-3 py-[11px] last:border-b-0;
+  }
+
+  .settings-row-label {
+    @apply min-w-0 flex-[1_1_150px];
+  }
+
+  .settings-row-title {
+    @apply text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-row-description {
+    @apply mt-0.5 text-[12px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-row-control {
+    @apply flex min-w-[120px] max-w-[min(255px,100%)] flex-auto justify-end;
+  }
+
+  .settings-view,
+  .settings-shell {
+    @apply flex min-h-0 flex-1 overflow-hidden;
+  }
+
+  .settings-view {
+    @apply h-full flex-col bg-[var(--color-background)] px-[5px];
+  }
+
+  .settings-header {
+    @apply flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-[5px] pb-[10px] pt-3;
+  }
+
+  .settings-title {
+    @apply text-[14px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-subtitle {
+    @apply mt-0.5 text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-header button,
+  .settings-actions button,
+  .settings-provider-actions button,
+  .settings-provider-config button,
+  .settings-dialog-footer button,
+  .settings-dialog-secondary,
+  .settings-dialog-icon-button {
+    @apply min-h-[28px] rounded-[6px] border border-transparent bg-[var(--color-button)] px-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-55;
+  }
+
+  .settings-nav {
+    @apply w-[136px] shrink-0 border-r border-[var(--color-border)] px-1.5 py-2;
+  }
+
+  .settings-nav-item {
+    @apply flex min-h-[30px] w-full items-center gap-2 rounded-[5px] border border-transparent bg-transparent px-2 text-left text-[var(--color-foreground)] hover:bg-[var(--color-hover)];
+  }
+
+  .settings-nav-item.active {
+    @apply bg-[var(--color-hover)];
+  }
+
+  .settings-nav-icon {
+    @apply flex w-[16px] shrink-0 items-center justify-center text-[var(--color-muted)];
+  }
+
+  .settings-nav-item.active .settings-nav-icon {
+    @apply text-[var(--color-foreground)];
+  }
+
+  .settings-content {
+    @apply min-w-0 flex-1 overflow-auto px-3 pb-[18px] pt-3;
+  }
+
+  .settings-content h3 {
+    @apply m-0 mb-[10px] text-[16px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-content h4 {
+    @apply mb-[10px] mt-[18px] text-[13px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-card {
+    @apply overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)];
+  }
+
+  .settings-model-card {
+    @apply overflow-visible;
+  }
+
+  .settings-actions {
+    @apply flex shrink-0 items-center justify-between gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3;
+  }
+
+  .settings-actions-status {
+    @apply text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-actions-status.dirty {
+    @apply text-[var(--color-foreground)];
+  }
+
+  .settings-actions-buttons {
+    @apply flex gap-2;
+  }
+
+  .settings-provider-feature {
+    @apply mb-3;
+  }
+
+  .settings-provider-block {
+    @apply border-b border-[var(--color-border)] last:border-b-0;
+  }
+
+  .settings-provider-row {
+    @apply flex items-center gap-3 px-3 py-[11px];
+  }
+
+  .settings-provider-mark {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-button)] text-[12px] font-semibold text-[var(--color-muted)];
+  }
+
+  .settings-provider-main {
+    @apply min-w-0 flex-1;
+  }
+
+  .settings-provider-name-row {
+    @apply flex flex-wrap items-center gap-1.5;
+  }
+
+  .settings-provider-name {
+    @apply text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-provider-meta {
+    @apply mt-0.5 text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-provider-status,
+  .settings-provider-tag {
+    @apply rounded-[999px] bg-[var(--color-button)] px-2 py-0.5 text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-provider-status.connected {
+    @apply text-[var(--color-focus)];
+  }
+
+  .settings-provider-config {
+    @apply flex flex-wrap items-end gap-2 border-t border-[var(--color-border)] px-3 py-3;
+  }
+
+  .settings-provider-field,
+  .settings-dialog-field {
+    @apply flex min-w-[160px] flex-1 flex-col gap-1 text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-provider-input {
+    @apply h-[28px] min-w-[92px] rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[12px] text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
+  }
+
+  .settings-select {
+    @apply h-[28px] min-w-[120px] rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[12px] text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
+  }
+
+  .settings-provider-error,
+  .settings-dialog-error {
+    @apply border-t border-[var(--color-border)] px-3 py-2 text-[12px] text-[var(--color-error)];
+  }
+
+  .settings-provider-list {
+    @apply border-t border-[var(--color-border)];
+  }
+
+  .settings-dialog-backdrop {
+    @apply absolute inset-0 z-30 flex items-stretch justify-center bg-black/20 p-2;
+  }
+
+  .settings-dialog {
+    @apply flex max-h-full w-full max-w-[720px] flex-col overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-background)] shadow-[var(--shadow-md)];
+  }
+
+  .settings-custom-provider-dialog {
+    @apply self-center max-h-[min(620px,100%)] max-w-[560px];
+  }
+
+  .settings-custom-provider-dialog .settings-dialog-header,
+  .settings-custom-provider-dialog .settings-dialog-footer {
+    @apply py-2.5;
+  }
+
+  .settings-custom-provider-dialog .settings-dialog-header {
+    @apply justify-between;
+  }
+
+  .settings-custom-provider-dialog .settings-dialog-body {
+    @apply p-2.5;
+  }
+
+  .settings-custom-provider-dialog .settings-dialog-grid {
+    @apply gap-2;
+  }
+
+  .settings-custom-provider-dialog .settings-dialog-body > .settings-dialog-field {
+    @apply mt-2;
+  }
+
+  .settings-custom-provider-dialog .settings-dialog-models {
+    @apply mt-2 gap-1.5;
+  }
+
+  .settings-provider-connect-dialog {
+    @apply self-center max-h-[min(420px,100%)] max-w-[420px];
+  }
+
+  .settings-provider-connect-header {
+    @apply justify-between px-3 py-2.5;
+  }
+
+  .settings-provider-connect-body {
+    @apply flex flex-col gap-3 px-3 py-3;
+  }
+
+  .settings-provider-connect-body .settings-dialog-field {
+    @apply min-w-0 gap-1.5 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-2;
+  }
+
+  .settings-provider-connect-body .settings-provider-input {
+    @apply w-full;
+  }
+
+  .settings-provider-connect-note {
+    @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] px-2 py-2 text-[12px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-provider-connect-footer {
+    @apply justify-end px-3 py-2.5;
+  }
+
+  .settings-dialog-header {
+    @apply flex shrink-0 items-center gap-3 border-b border-[var(--color-border)] px-3 py-3;
+  }
+
+  .settings-dialog-back,
+  .settings-dialog-icon-button {
+    @apply flex h-[28px] w-[28px] items-center justify-center px-0;
+  }
+
+  .settings-dialog-title {
+    @apply text-[14px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-dialog-subtitle,
+  .settings-dialog-section-description,
+  .settings-dialog-note,
+  .settings-dialog-field small {
+    @apply text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-dialog-body {
+    @apply min-h-0 flex-1 overflow-auto p-3;
+  }
+
+  .settings-dialog-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+  }
+
+  .settings-dialog-models {
+    @apply mt-3 flex flex-col gap-2;
+  }
+
+  .settings-dialog-section,
+  .settings-dialog-fetched-header,
+  .settings-dialog-footer {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .settings-dialog-section-title {
+    @apply text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-dialog-fetched {
+    @apply rounded-[6px] border border-[var(--color-border)] p-2;
+  }
+
+  .settings-dialog-fetched-list {
+    @apply mt-2 max-h-[180px] overflow-auto;
+  }
+
+  .settings-dialog-fetched-row {
+    @apply flex items-center gap-2 px-1 py-1 text-[12px] text-[var(--color-foreground)];
+  }
+
+  .settings-dialog-model-row {
+    @apply grid grid-cols-[1fr_1fr_auto_28px] items-center gap-2;
+  }
+
+  .settings-dialog-model-capability {
+    @apply flex items-center gap-1 whitespace-nowrap text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-dialog-footer {
+    @apply shrink-0 border-t border-[var(--color-border)] px-3 py-3;
+  }
+}

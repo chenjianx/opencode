@@ -20,6 +20,8 @@ import { CloudflareAIGatewayAuthPlugin, CloudflareWorkersAuthPlugin } from "./cl
 import { AzureAuthPlugin } from "./azure"
 import { DigitalOceanAuthPlugin } from "./digitalocean"
 import { XaiAuthPlugin } from "./xai"
+// raccoon_change - load the Raccoon auth plugin so provider.auth exposes Raccoon login
+import { RaccoonAuthPlugin } from "@opencode-ai/raccoon-auth-plugin"
 import { Effect, Layer, Context, Stream } from "effect"
 import { EffectBridge } from "@/effect/bridge"
 import { InstanceState } from "@/effect/instance-state"
@@ -78,6 +80,8 @@ function internalPlugins(flags: RuntimeFlags.Info): PluginInstance[] {
     AzureAuthPlugin,
     DigitalOceanAuthPlugin,
     XaiAuthPlugin,
+    // raccoon_change - register Raccoon as a built-in auth plugin
+    RaccoonAuthPlugin,
   ]
 }
 

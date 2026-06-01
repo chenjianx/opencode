@@ -11,11 +11,20 @@
   },
   "categories": ["Other"],
   "activationEvents": [
+    "onStartupFinished",
     "onView:raccoon.chat",
     "onCommand:raccoon.openChat",
     "onCommand:raccoon.newSession",
     "onCommand:raccoon.pickSession",
-    "onCommand:raccoon.openSettings"
+    "onCommand:raccoon.openSettings",
+    "onCommand:raccoon.explainCode",
+    "onCommand:raccoon.fixCode",
+    "onCommand:raccoon.improveCode",
+    "onCommand:raccoon.addToContext",
+    "onCommand:raccoon.askFunction",
+    "onCommand:raccoon.optimizeFunction",
+    "onCommand:raccoon.refactorFunction",
+    "onCommand:raccoon.commentFunction"
   ],
   "main": "./dist/extension.cjs",
   "contributes": {
@@ -38,6 +47,52 @@
         "command": "raccoon.openSettings",
         "title": "Raccoon: Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "raccoon.explainCode",
+        "title": "Explain",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.fixCode",
+        "title": "Fix",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.improveCode",
+        "title": "Improve",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.addToContext",
+        "title": "Add to Context",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.askFunction",
+        "title": "Ask",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.optimizeFunction",
+        "title": "Optimize",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.refactorFunction",
+        "title": "Refactor",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.commentFunction",
+        "title": "Comment",
+        "category": "Raccoon"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "raccoon.editorContextMenu",
+        "label": "Raccoon"
       }
     ],
     "menus": {
@@ -56,6 +111,31 @@
           "command": "raccoon.openSettings",
           "when": "view == raccoon.chat",
           "group": "navigation@3"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "raccoon.editorContextMenu",
+          "group": "1_raccoon",
+          "when": "editorHasSelection"
+        }
+      ],
+      "raccoon.editorContextMenu": [
+        {
+          "command": "raccoon.explainCode",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "raccoon.fixCode",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "raccoon.improveCode",
+          "group": "1_actions@3"
+        },
+        {
+          "command": "raccoon.addToContext",
+          "group": "1_actions@4"
         }
       ]
     },

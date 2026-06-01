@@ -14,13 +14,19 @@ const popularProviders = [
   { id: "copilot", name: "GitHub Copilot", noteKey: "settings.providers.copilot.note" },
 ] as const
 
-const emptyCustomModel = () => ({ id: "", name: "" })
+const emptyCustomModel = () => ({ id: "", name: "", supportsImage: false })
 const raccoonLoginUrl = "http://10.4.196.193:5580"
 
 type ProviderDraft = {
   methodIndex: number
   apiKey: string
   inputs: Record<string, string>
+}
+
+type CustomModelDraft = {
+  id: string
+  name: string
+  supportsImage?: boolean
 }
 
 type Prompt = NonNullable<RaccoonProviderAuthMethod["prompts"]>[number]
@@ -46,7 +52,13 @@ export function SettingsProviders() {
   const [providerDrafts, setProviderDrafts] = useState<Record<string, ProviderDraft>>({})
   const [connectingProviderID, setConnectingProviderID] = useState<string>()
   const [providerError, setProviderError] = useState<string>()
-  const [custom, setCustom] = useState({
+  const [custom, setCustom] = useState<{
+    providerID: string
+    name: string
+    baseURL: string
+    apiKey: string
+    models: CustomModelDraft[]
+  }>({
     providerID: "",
     name: "",
     baseURL: "",
@@ -57,7 +69,7 @@ export function SettingsProviders() {
   const [fetchingModels, setFetchingModels] = useState(false)
   const [fetchError, setFetchError] = useState<string>()
   const [fetchStatus, setFetchStatus] = useState<string>()
-  const [fetchedModels, setFetchedModels] = useState<Array<{ id: string; name: string }>>()
+  const [fetchedModels, setFetchedModels] = useState<Array<{ id: string; name: string; supportsImage?: boolean }>>()
   const [selectedFetched, setSelectedFetched] = useState<Set<string>>(new Set())
   const [fetchedQuery, setFetchedQuery] = useState("")
   const [savingCustom, setSavingCustom] = useState(false)
@@ -157,7 +169,9 @@ export function SettingsProviders() {
     const providerID = custom.providerID.trim()
     const name = custom.name.trim()
     const baseURL = custom.baseURL.trim()
-    const models = custom.models.map((model) => ({ id: model.id.trim(), name: model.name.trim() })).filter((model) => model.id && model.name)
+    const models = custom.models
+      .map((model) => ({ id: model.id.trim(), name: model.name.trim(), supportsImage: model.supportsImage ?? false }))
+      .filter((model) => model.id && model.name)
     if (!providerID || !name || !baseURL || models.length === 0) {
       setSaveError(language.t("settings.providers.error.customRequired"))
       return

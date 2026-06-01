@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowClockwiseIcon, PaperPlaneRightIcon } from "@phosphor-icons/react"
-import { useSession } from "../context/session"
-import type { ChatMode, ExtensionToWebview, RaccoonSlashCommand } from "../protocol"
-import { useVSCode } from "../context/vscode"
-import { ModelPicker } from "./model-picker"
+import { useSession } from "../../context/session"
+import type { RaccoonFileAttachment } from "../../protocol"
+import type { ChatMode, ExtensionToWebview, RaccoonSlashCommand } from "../../protocol"
+import { useVSCode } from "../../context/vscode"
+import { ModelPicker } from "../ui/model-picker"
+import { PromptAttachments } from "./prompt-attachments"
+import { PromptDragOverlay } from "./prompt-drag-overlay"
 import {
   dirName,
   fileName,
@@ -41,16 +44,21 @@ export function PromptInput() {
   const commandItemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mentionItemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const dragDepth = useRef(0)
   const [draft, setDraft] = useState("")
+  const [attachments, setAttachments] = useState<RaccoonFileAttachment[]>([])
+  const [dragging, setDragging] = useState(false)
   const [modeOpen, setModeOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const [commandSelected, setCommandSelected] = useState(0)
+  const minTextareaHeight = 76
+  const maxTextareaHeight = 220
   const modeOptions: { value: ChatMode; label: string }[] = [
     { value: "build", label: "Build" },
     { value: "plan", label: "Plan" },
   ]
   const currentMode = modeOptions.find((mode) => mode.value === session.state.mode)
-  const canSend = session.canSend(draft)
+  const canSend = session.canSend(draft, attachments)
   const busy = session.state.busy ?? false
   const commandQuery = slashQuery(draft, textareaRef.current?.selectionStart ?? draft.length)
   const atQuery = mentionQuery(draft, textareaRef.current?.selectionStart ?? draft.length)
@@ -117,6 +125,43 @@ export function PromptInput() {
     mentionItemRefs.current[mention.selected]?.scrollIntoView({ block: "nearest" })
   }, [mention.selected, mentionVisible])
 
+  useEffect(() => {
+    const onWindowDragEnd = () => {
+      dragDepth.current = 0
+      setDragging(false)
+    }
+    window.addEventListener("dragend", onWindowDragEnd)
+    window.addEventListener("drop", onWindowDragEnd)
+    return () => {
+      window.removeEventListener("dragend", onWindowDragEnd)
+      window.removeEventListener("drop", onWindowDragEnd)
+    }
+  }, [])
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+    textarea.style.height = "0px"
+    const nextHeight = Math.min(Math.max(textarea.scrollHeight, minTextareaHeight), maxTextareaHeight)
+    textarea.style.height = `${nextHeight}px`
+    textarea.style.overflowY = textarea.scrollHeight > maxTextareaHeight ? "auto" : "hidden"
+  }, [draft])
+
+  useEffect(() => {
+    const unsubscribe = vscode.onMessage((message) => {
+      if (message.type !== "appendPrompt") return
+      setDraft((current) => (message.replace || current.trim().length === 0 ? message.text : `${current.trimEnd()}\n\n${message.text}`))
+      setCommandOpen(false)
+      mention.close()
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+        const position = textareaRef.current?.value.length ?? 0
+        textareaRef.current?.setSelectionRange(position, position)
+      })
+    })
+    return unsubscribe
+  }, [mention, vscode])
+
   const requestContext = (kind: "terminal" | "git-changes", sessionID?: string) =>
     new Promise<string>((resolve, reject) => {
       const requestID = `${kind}-context-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -154,6 +199,87 @@ export function PromptInput() {
       })
     })
 
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.addEventListener("error", () => resolve(""))
+      reader.addEventListener("load", () => {
+        const value = typeof reader.result === "string" ? reader.result : ""
+        const index = value.indexOf(",")
+        resolve(index === -1 ? value : value.slice(index + 1))
+      })
+      reader.readAsDataURL(file)
+    })
+
+  const addAttachments = async (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"))
+    if (images.length === 0) return
+
+    const next = await Promise.all<RaccoonFileAttachment | null>(
+      images.map(async (file, index) => {
+        const data = await fileToDataUrl(file)
+        if (!data) return null
+        return {
+          path: file.name || `image-${Date.now()}-${index}.png`,
+          filename: file.name || `image-${Date.now()}-${index}.png`,
+          mime: file.type || "image/png",
+          url: data.startsWith("data:") ? data : `data:${file.type || "image/png"};base64,${data}`,
+        } satisfies RaccoonFileAttachment
+      }),
+    )
+
+    setAttachments((current) => [...current, ...next.filter((item): item is RaccoonFileAttachment => !!item)])
+  }
+
+  const handlePaste = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(event.clipboardData.items)
+      .filter((item) => item.kind === "file")
+      .map((item) => item.getAsFile())
+      .filter((file): file is File => !!file && file.type.startsWith("image/"))
+
+    if (files.length === 0) return
+
+    event.preventDefault()
+    await addAttachments(files)
+  }
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes("Files")) return
+    event.preventDefault()
+    dragDepth.current += 1
+    setDragging(true)
+  }
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    if (!event.dataTransfer.types.includes("Files")) return
+    event.preventDefault()
+    setDragging(true)
+  }
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    if (event.currentTarget !== event.target) return
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (dragDepth.current === 0) setDragging(false)
+  }
+
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    const files = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/"))
+    if (files.length === 0) return
+
+    event.preventDefault()
+    dragDepth.current = 0
+    setDragging(false)
+    await addAttachments(files)
+  }
+
+  const removeAttachment = (path: string) => {
+    setAttachments((current) => current.filter((item) => item.path !== path))
+  }
+
+  const openAttachment = (attachment: RaccoonFileAttachment) => {
+    session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime })
+  }
+
   const send = async () => {
     if (busy) {
       session.stopSession()
@@ -184,13 +310,10 @@ export function PromptInput() {
     }
     session.sendMessage(
       draft,
-      [
-        ...mention.parseFileAttachments(draft, session.state.directory ?? ""),
-        ...(terminalFile ? [terminalFile] : []),
-        ...(gitFile ? [gitFile] : []),
-      ],
+      [...attachments, ...mention.parseFileAttachments(draft, session.state.directory ?? ""), ...(terminalFile ? [terminalFile] : []), ...(gitFile ? [gitFile] : [])],
     )
     setDraft("")
+    setAttachments([])
     setCommandOpen(false)
     mention.close()
     mention.clearMentionedPaths()
@@ -238,7 +361,14 @@ export function PromptInput() {
 
   return (
     <div className="mt-2.5 mb-2 flex w-full flex-col border-t border-[var(--color-border)] px-0 pt-2">
-      <div className="relative flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-0">
+      <div
+        className="relative flex flex-col gap-1.5 rounded-[6px] border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-background)] p-0"
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <PromptDragOverlay active={dragging} />
         {commandVisible ? (
           <div
             className="absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-[220px] w-full overflow-y-auto rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-[var(--shadow-md)]"
@@ -326,11 +456,14 @@ export function PromptInput() {
             })}
           </div>
         ) : null}
+        <PromptAttachments attachments={attachments} onOpen={openAttachment} onRemove={removeAttachment} />
         <textarea
           ref={textareaRef}
           className="min-h-[76px] w-full resize-none rounded-[4px] border border-transparent bg-transparent px-[7px] py-1.5 text-[13px] leading-[19px] text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted)]"
+          style={{ height: `${minTextareaHeight}px` }}
           value={draft}
           placeholder={'输入问题，键入 "/" 执行命令，键入 "@" 添加上下文'}
+          onPaste={handlePaste}
           onChange={(event) => {
             setDraft(event.currentTarget.value)
             setCommandOpen(slashQuery(event.currentTarget.value, event.currentTarget.selectionStart) !== undefined)
@@ -457,8 +590,8 @@ export function PromptInput() {
             }`}
             disabled={!busy && !canSend}
             onClick={send}
-            aria-label={busy ? "Stop" : canSend ? "Send" : "Cannot send"}
-          >
+          aria-label={busy ? "Stop" : canSend ? "Send" : "Cannot send"}
+        >
             {busy ? (
               <ArrowClockwiseIcon className="animate-spin" size={20} weight="bold" />
             ) : (

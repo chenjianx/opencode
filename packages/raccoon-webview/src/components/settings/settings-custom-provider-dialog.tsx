@@ -5,13 +5,13 @@ type CustomProviderDraft = {
   name: string
   baseURL: string
   apiKey: string
-  models: Array<{ id: string; name: string }>
+  models: Array<{ id: string; name: string; supportsImage?: boolean }>
 }
 
 export function SettingsCustomProviderDialog(props: {
   custom: CustomProviderDraft
-  fetchedModels?: Array<{ id: string; name: string }>
-  filteredFetchedModels: Array<{ id: string; name: string }>
+  fetchedModels?: Array<{ id: string; name: string; supportsImage?: boolean }>
+  filteredFetchedModels: Array<{ id: string; name: string; supportsImage?: boolean }>
   fetchedQuery: string
   selectedFetched: Set<string>
   fetchingModels: boolean
@@ -169,6 +169,22 @@ export function SettingsCustomProviderDialog(props: {
                     }))
                   }}
                 />
+                <label className="settings-dialog-model-capability">
+                  <input
+                    type="checkbox"
+                    checked={model.supportsImage ?? false}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked
+                      props.onCustomChange((current) => ({
+                        ...current,
+                        models: current.models.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, supportsImage: checked } : item,
+                        ),
+                      }))
+                    }}
+                  />
+                  <span>Image</span>
+                </label>
                 <button
                   type="button"
                   className="settings-dialog-icon-button"
@@ -188,7 +204,9 @@ export function SettingsCustomProviderDialog(props: {
             <button
               type="button"
               className="settings-dialog-secondary"
-              onClick={() => props.onCustomChange((current) => ({ ...current, models: [...current.models, { id: "", name: "" }] }))}
+              onClick={() =>
+                props.onCustomChange((current) => ({ ...current, models: [...current.models, { id: "", name: "", supportsImage: false }] }))
+              }
             >
               {language.t("settings.customProvider.addModel")}
             </button>

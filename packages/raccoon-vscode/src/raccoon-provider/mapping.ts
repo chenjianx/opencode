@@ -84,6 +84,9 @@ export function mapPart(part: Part): RaccoonMessagePart {
         ? part.type
         : "other",
     title: part.type === "file" ? part.filename ?? "file" : part.type,
+    mime: part.type === "file" ? part.mime : undefined,
+    filename: part.type === "file" ? part.filename : undefined,
+    url: part.type === "file" ? part.url : undefined,
   }
 }
 

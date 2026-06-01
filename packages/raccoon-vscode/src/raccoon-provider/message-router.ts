@@ -1,5 +1,5 @@
 import type { FilePartInput } from "@opencode-ai/sdk/v2/client"
-import type { ChatMode, WebviewToExtension } from "@opencode-ai/raccoon-webview"
+import type { ChatMode, RaccoonPluginLanguageMode, WebviewToExtension } from "@opencode-ai/raccoon-webview"
 import type { ModelSelection } from "./model-state.js"
 import type { RaccoonWebviewSource } from "./webview-host.js"
 
@@ -18,6 +18,7 @@ type MessageRouterDeps = {
   unrevertSession: (sessionID: string, source: RaccoonWebviewSource) => Promise<void>
   runSlashCommand: (name: string, source: RaccoonWebviewSource) => Promise<void>
   setMode: (mode: ChatMode) => void
+  setPluginLanguage: (language: RaccoonPluginLanguageMode) => void
   setModel: (model: ModelSelection | undefined) => Promise<void>
   setModeModel: (mode: ChatMode, model: ModelSelection) => Promise<void>
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => Promise<void>
@@ -31,6 +32,7 @@ type MessageRouterDeps = {
   configureCustomProvider: (message: Extract<WebviewToExtension, { type: "configureCustomProvider" }>) => Promise<void>
   requestFileSearch: (requestID: string, query: string, kind?: "file" | "folder") => Promise<void>
   openFile: (filePath: string, line?: number, column?: number) => void
+  openImage: (url: string, filename?: string, mime?: string) => Promise<void>
   requestTerminalContext: (requestID: string, source: RaccoonWebviewSource) => Promise<void>
   requestGitChangesContext: (requestID: string, source: RaccoonWebviewSource) => Promise<void>
   questionReply: (message: Extract<WebviewToExtension, { type: "questionReply" }>) => Promise<void>
@@ -106,6 +108,10 @@ export class RaccoonMessageRouter {
       this.deps.setMode(message.mode)
       return
     }
+    if (message.type === "setPluginLanguage") {
+      await this.deps.setPluginLanguage(message.language)
+      return
+    }
     if (message.type === "setModel") {
       await this.deps.setModel(message.model)
       return
@@ -156,6 +162,10 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "openFile") {
       this.deps.openFile(message.filePath, message.line, message.column)
+      return
+    }
+    if (message.type === "openImage") {
+      await this.deps.openImage(message.url, message.filename, message.mime)
       return
     }
     if (message.type === "requestTerminalContext") {

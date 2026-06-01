@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { DotsThreeVerticalIcon, PencilIcon, TrashIcon, DownloadIcon } from "@phosphor-icons/react"
-import { useLanguage } from "../context/language"
-import { useSession } from "../context/session"
+import { useLanguage } from "../../context/language"
+import { useSession } from "../../context/session"
 
 function sessionTitle(title: string, untitled: string) {
   if (!title || title === "New session") return untitled

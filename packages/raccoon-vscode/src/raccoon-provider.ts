@@ -9,6 +9,7 @@ import type {
   ChatMode,
   ExtensionToWebview,
   RaccoonMessage,
+  RaccoonPluginLanguage,
   RaccoonState,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
@@ -18,6 +19,12 @@ import {
   messageText,
 } from "./raccoon-provider/mapping.js"
 import { gitChangesContext, terminalContext } from "./raccoon-provider/context-mentions.js"
+import {
+  createEditorContext,
+  createPrompt,
+  getEditorContext,
+  type EditorContextAction,
+} from "./raccoon-provider/editor-context.js"
 import { searchFiles } from "./raccoon-provider/file-search.js"
 import {
   removePart as removeSessionPart,
@@ -48,6 +55,21 @@ function isAbsolutePath(filePath: string) {
   return filePath.length >= 2 && filePath.charCodeAt(0) === 92 && filePath.charCodeAt(1) === 92
 }
 
+function imageExtension(filename: string | undefined, mime: string) {
+  const current = filename?.match(/\.[A-Za-z0-9]+$/)?.[0]
+  if (current) return current
+  if (mime === "image/jpeg") return ".jpg"
+  if (mime === "image/gif") return ".gif"
+  if (mime === "image/webp") return ".webp"
+  if (mime === "image/svg+xml") return ".svg"
+  return ".png"
+}
+
+function normalizePluginLanguage(value: string | undefined): RaccoonPluginLanguage {
+  if (value?.toLowerCase().startsWith("zh")) return "zh-Hans"
+  return "en"
+}
+
 export class RaccoonProvider implements vscode.WebviewViewProvider {
   static readonly viewType = "raccoon.chat"
 
@@ -69,10 +91,13 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     providers: [],
     mode: "build",
     loading: true,
+    pluginLanguageMode: "auto",
+    pluginLanguage: normalizePluginLanguage(vscode.env.language),
   }
 
   constructor(
     private readonly extensionUri: vscode.Uri,
+    private readonly storageUri: vscode.Uri,
     private readonly connection: RaccoonConnectionService,
     private readonly output: vscode.OutputChannel,
     private readonly storage?: vscode.Memento,
@@ -91,6 +116,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       withLoading: (run) => this.withLoading(run),
       storage,
       webviewHost: this.webviewHost,
+      pluginLanguage: () => normalizePluginLanguage(vscode.env.language),
     })
     this.state = { ...this.state, ...this.config.initialState() }
     this.sessions = new RaccoonSessionController({
@@ -151,6 +177,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       unrevertSession: (sessionID, source) => this.sessions.unrevertSession(sessionID, source),
       runSlashCommand: (name, source) => this.sessions.runSlashCommand(name, source),
       setMode: (mode) => this.config.setMode(mode),
+      setPluginLanguage: (language) => this.config.setPluginLanguage(language),
       setModel: (model) => this.config.setModel(model),
       setModeModel: (mode, model) => this.config.setModeModel(mode, model),
       setModelEnabled: (model, enabled) => this.config.setModelEnabled(model, enabled),
@@ -164,6 +191,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       configureCustomProvider: (message) => this.config.configureCustomProvider(message),
       requestFileSearch: (requestID, query, kind) => this.requestFileSearch(requestID, query, kind),
       openFile: (filePath, line, column) => this.openFile(filePath, line, column),
+      openImage: (url, filename, mime) => this.openImage(url, filename, mime),
       requestTerminalContext: (requestID, source) => this.requestTerminalContext(requestID, source),
       requestGitChangesContext: (requestID, source) => this.requestGitChangesContext(requestID, source),
       questionReply: (message) => this.sessions.questionReply(message),
@@ -222,6 +250,39 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   async openSettings() {
     await this.refresh()
     this.sessions.openSettings()
+  }
+
+  async appendEditorContext(type: "ADD_TO_CONTEXT") {
+    const context = getEditorContext()
+    if (!context) return
+    await vscode.commands.executeCommand("workbench.view.extension.raccoon")
+    this.webviewHost.post("chat", {
+      type: "appendPrompt",
+      text: createPrompt(type, context, this.state.pluginLanguage),
+      replace: type !== "ADD_TO_CONTEXT",
+    })
+  }
+
+  async sendEditorContext(type: "EXPLAIN" | "FIX" | "IMPROVE") {
+    const context = getEditorContext()
+    if (!context) return
+    await this.sendContextPrompt(type, context)
+  }
+
+  async sendDocumentRangeContext(type: EditorContextAction, uri: vscode.Uri, range: vscode.Range) {
+    const document = await vscode.workspace.openTextDocument(uri)
+    const context = createEditorContext(document, range)
+    if (!context) return
+    await this.sendContextPrompt(type, context)
+  }
+
+  private async sendContextPrompt(type: EditorContextAction, context: ReturnType<typeof createEditorContext>) {
+    if (!context) return
+    await vscode.commands.executeCommand("workbench.view.extension.raccoon")
+    if (!this.state.activeSessionID) {
+      await this.sessions.createSession(this.state.mode)
+    }
+    await this.sessions.sendMessage(createPrompt(type, context, this.state.pluginLanguage), this.state.mode, this.state.selectedModel)
   }
 
   getState() {
@@ -380,9 +441,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   }
 
   private openFile(filePath: string, line?: number, column?: number) {
-    const uri = isAbsolutePath(filePath)
-      ? vscode.Uri.file(filePath)
-      : vscode.Uri.joinPath(vscode.Uri.file(this.directory()), filePath)
+    const uri = this.fileUri(filePath)
     vscode.workspace.openTextDocument(uri).then(
       (document) => {
         const options: vscode.TextDocumentShowOptions = { preview: true }
@@ -394,6 +453,49 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       },
       (error) => this.output.appendLine(`Failed to open file ${uri.fsPath}: ${error instanceof Error ? error.message : String(error)}`),
     )
+  }
+
+  private async openImage(url: string, filename?: string, mime?: string) {
+    try {
+      if (url.startsWith("file://")) {
+        await vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(url), { preview: true })
+        return
+      }
+
+      if (!url.startsWith("data:")) return
+
+      const match = url.match(/^data:([^;,]+)?(?:;base64)?,(.*)$/)
+      if (!match) return
+
+      const mediaType = mime ?? match[1] ?? "image/png"
+      const extension = imageExtension(filename, mediaType)
+      const safeName = (filename ?? `raccoon-image-${Date.now()}${extension}`).replace(/[\\/:"*?<>|]+/g, "-")
+      const uri = vscode.Uri.joinPath(this.storageUri, "image-preview", safeName.includes(".") ? safeName : `${safeName}${extension}`)
+      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.storageUri, "image-preview"))
+      await vscode.workspace.fs.writeFile(uri, Buffer.from(decodeURIComponent(match[2] ?? ""), url.includes(";base64,") ? "base64" : "utf8"))
+      await vscode.commands.executeCommand("vscode.open", uri, { preview: true })
+    } catch (error) {
+      this.output.appendLine(`Failed to open image: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  private fileUri(filePath: string) {
+    if (isAbsolutePath(filePath)) return vscode.Uri.file(filePath)
+    const directory = this.directory()
+    const base = vscode.Uri.file(directory)
+    const normalized = filePath.replace(/\\/g, "/").replace(/^\.?\//, "")
+    const directoryParts = directory.replace(/\\/g, "/").split("/").filter(Boolean)
+    const fileParts = normalized.split("/").filter(Boolean)
+    const overlap = fileParts
+      .map((_, index) => index + 1)
+      .reverse()
+      .find(
+        (length) =>
+          length < fileParts.length &&
+          length <= directoryParts.length &&
+          fileParts.slice(0, length).join("/") === directoryParts.slice(-length).join("/"),
+      )
+    return vscode.Uri.joinPath(base, overlap ? fileParts.slice(overlap).join("/") : normalized)
   }
 
   private async withLoading(run: () => Promise<void>) {

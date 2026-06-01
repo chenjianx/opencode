@@ -6,7 +6,7 @@ export function buildConnectSrc(port?: number) {
 export function buildCspString(cspSource: string, nonce: string, port?: number) {
   return [
     "default-src 'none'",
-    `style-src ${cspSource}`,
+    `style-src ${cspSource} 'unsafe-inline'`,
     `script-src 'nonce-${nonce}' 'wasm-unsafe-eval' ${cspSource}`,
     `connect-src ${cspSource} ${buildConnectSrc(port)}`,
     `img-src ${cspSource} data: https:`,

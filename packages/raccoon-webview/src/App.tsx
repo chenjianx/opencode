@@ -1,4 +1,4 @@
-import { ChatView } from "./components/chat-view"
+import { ChatView } from "./components/chat/chat-view"
 import { LanguageProvider } from "./context/language"
 import { SessionProvider } from "./context/session"
 import { VSCodeProvider } from "./context/vscode"

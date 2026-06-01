@@ -1,6 +1,6 @@
 import { useState } from "react"
-import type { RaccoonModel } from "../protocol"
-import { useLanguage } from "../context/language"
+import type { RaccoonModel } from "../../protocol"
+import { useLanguage } from "../../context/language"
 import { Popover } from "./popover"
 
 const providerPriority: Record<string, number> = {
@@ -57,7 +57,7 @@ export function ModelPicker(props: {
         result.set(key, [...(result.get(key) ?? []), model])
         return result
       }, new Map<string, RaccoonModel[]>()),
-  )
+)
 
   return (
     <Popover

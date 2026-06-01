@@ -1,6 +1,6 @@
 import type { ChatMode, RaccoonModel } from "../../protocol"
 import { useLanguage } from "../../context/language"
-import { ModelPicker } from "../model-picker"
+import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow } from "./settings-common"
 
 type ModelSelection = { providerID: string; modelID: string }

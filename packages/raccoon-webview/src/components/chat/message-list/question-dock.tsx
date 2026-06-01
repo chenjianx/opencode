@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { CaretLeft, CaretRight, Check, X } from "@phosphor-icons/react"
-import { useLanguage } from "../context/language"
-import { useSession } from "../context/session"
-import type { RaccoonQuestionRequest } from "../protocol"
+import { useLanguage } from "../../../context/language"
+import { useSession } from "../../../context/session"
+import type { RaccoonQuestionRequest } from "../../../protocol"
 
 type Translate = ReturnType<typeof useLanguage>["t"]
 
