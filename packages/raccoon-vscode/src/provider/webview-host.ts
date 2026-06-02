@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import type { ExtensionToWebview, RaccoonSession, RaccoonState, WebviewToExtension } from "@opencode-ai/raccoon-webview"
 import type { RaccoonConnectionService } from "../services/cli-backend/index.js"
-import { buildWebviewHtml } from "../webview-html.js"
+import { buildWebviewHtml } from "../webview/html.js"
 
 export type RaccoonWebviewSource = "chat" | "settings"
 

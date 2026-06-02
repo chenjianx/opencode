@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto"
 import * as vscode from "vscode"
-import { buildCspString } from "./webview-html-utils.js"
+import { buildCspString } from "./html-utils.js"
 
 export function buildWebviewHtml(
   webview: vscode.Webview,

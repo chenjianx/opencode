@@ -1398,7 +1398,7 @@ export const layer = Layer.effect(
           const models = p?.models
           if (!p || !models) continue
 
-          const providerID = ProviderID.make(p.id)
+          const providerID = ProviderV2.ID.make(p.id)
           if (disabled.has(providerID)) continue
 
           const provider = database[providerID]
@@ -1412,7 +1412,7 @@ export const layer = Layer.effect(
                 id,
                 {
                   ...model,
-                  id: ModelID.make(id),
+                  id: ProviderV2.ModelID.make(id),
                   providerID,
                 },
               ]),

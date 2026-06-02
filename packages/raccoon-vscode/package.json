@@ -1,7 +1,7 @@
 {
   "name": "raccoon-vscode",
-  "displayName": "Raccoon",
-  "description": "Raccoon VS Code client for opencode",
+  "displayName": "%raccoon.package.displayName%",
+  "description": "%raccoon.package.description%",
   "version": "0.0.0",
   "publisher": "raccoon",
   "private": true,
@@ -21,6 +21,7 @@
     "onCommand:raccoon.fixCode",
     "onCommand:raccoon.improveCode",
     "onCommand:raccoon.addToContext",
+    "onCommand:raccoon.openFunctionActions",
     "onCommand:raccoon.askFunction",
     "onCommand:raccoon.optimizeFunction",
     "onCommand:raccoon.refactorFunction",
@@ -28,71 +29,85 @@
   ],
   "main": "./dist/extension.cjs",
   "contributes": {
+    "icons": {
+      "raccoon-icon": {
+        "description": "raccoon logo",
+        "default": {
+          "fontPath": "images/raccoon.woff",
+          "fontCharacter": "\\e900"
+        }
+      }
+    },
     "commands": [
       {
         "command": "raccoon.openChat",
-        "title": "Raccoon: Open Chat"
+        "title": "%raccoon.commands.openChat.title%"
       },
       {
         "command": "raccoon.newSession",
-        "title": "Raccoon: New Session",
+        "title": "%raccoon.commands.newSession.title%",
         "icon": "$(add)"
       },
       {
         "command": "raccoon.pickSession",
-        "title": "Raccoon: History",
+        "title": "%raccoon.commands.pickSession.title%",
         "icon": "$(history)"
       },
       {
         "command": "raccoon.openSettings",
-        "title": "Raccoon: Settings",
+        "title": "%raccoon.commands.openSettings.title%",
         "icon": "$(gear)"
       },
       {
         "command": "raccoon.explainCode",
-        "title": "Explain",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.explainCode.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.fixCode",
-        "title": "Fix",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.fixCode.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.improveCode",
-        "title": "Improve",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.improveCode.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.addToContext",
-        "title": "Add to Context",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.addToContext.title%",
+        "category": "%raccoon.commands.category%"
+      },
+      {
+        "command": "raccoon.openFunctionActions",
+        "title": "%raccoon.commands.openFunctionActions.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.askFunction",
-        "title": "Ask",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.askFunction.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.optimizeFunction",
-        "title": "Optimize",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.optimizeFunction.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.refactorFunction",
-        "title": "Refactor",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.refactorFunction.title%",
+        "category": "%raccoon.commands.category%"
       },
       {
         "command": "raccoon.commentFunction",
-        "title": "Comment",
-        "category": "Raccoon"
+        "title": "%raccoon.commands.commentFunction.title%",
+        "category": "%raccoon.commands.category%"
       }
     ],
     "submenus": [
       {
         "id": "raccoon.editorContextMenu",
-        "label": "Raccoon"
+        "label": "%raccoon.submenus.editorContext.label%"
       }
     ],
     "menus": {
@@ -143,7 +158,7 @@
       "activitybar": [
         {
           "id": "raccoon",
-          "title": "Raccoon",
+          "title": "%raccoon.views.container.title%",
           "icon": "images/raccoon.svg"
         }
       ]
@@ -153,22 +168,22 @@
         {
           "type": "webview",
           "id": "raccoon.chat",
-          "name": "Chat"
+          "name": "%raccoon.views.chat.name%"
         }
       ]
     },
     "configuration": {
-      "title": "Raccoon",
+      "title": "%raccoon.configuration.title%",
       "properties": {
         "raccoon.serverUrl": {
           "type": "string",
           "default": "",
-          "description": "Existing opencode server URL. When empty, Raccoon starts `opencode serve` locally."
+          "description": "%raccoon.configuration.serverUrl.description%"
         },
         "raccoon.opencodeCommand": {
           "type": "string",
           "default": "opencode",
-          "description": "Command used to start opencode."
+          "description": "%raccoon.configuration.opencodeCommand.description%"
         }
       }
     }
@@ -185,7 +200,27 @@
   },
   "dependencies": {
     "@opencode-ai/raccoon-webview": "workspace:*",
-    "@opencode-ai/sdk": "workspace:*"
+    "@opencode-ai/sdk": "workspace:*",
+    "@tree-sitter-grammars/tree-sitter-kotlin": "1.1.0",
+    "tree-sitter": "^0.25.0",
+    "tree-sitter-c": "0.24.1",
+    "tree-sitter-c-sharp": "^0.23.1",
+    "tree-sitter-cpp": "^0.23.4",
+    "tree-sitter-dart": "1.0.0",
+    "tree-sitter-bash": "0.25.0",
+    "tree-sitter-go": "^0.25.0",
+    "tree-sitter-java": "^0.23.5",
+    "tree-sitter-javascript": "^0.25.0",
+    "tree-sitter-lua": "2.1.3",
+    "tree-sitter-objc": "3.0.2",
+    "tree-sitter-php": "^0.23.0",
+    "tree-sitter-ruby": "^0.23.1",
+    "tree-sitter-scala": "0.24.0",
+    "tree-sitter-swift": "^0.7.1",
+    "tree-sitter-python": "^0.25.0",
+    "tree-sitter-powershell": "0.25.10",
+    "tree-sitter-rust": "^0.24.0",
+    "tree-sitter-typescript": "^0.23.2"
   },
   "devDependencies": {
     "@types/node": "20.x",

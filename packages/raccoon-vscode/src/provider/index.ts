@@ -13,34 +13,34 @@ import type {
   RaccoonState,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
-import { RaccoonConnectionService, type ConnectionState } from "./services/cli-backend/index.js"
+import { RaccoonConnectionService, type ConnectionState } from "../services/cli-backend/index.js"
 import {
   mapPart,
   messageText,
-} from "./raccoon-provider/mapping.js"
-import { gitChangesContext, terminalContext } from "./raccoon-provider/context-mentions.js"
+} from "./mapping.js"
+import { gitChangesContext, terminalContext } from "./context-mentions.js"
 import {
   createEditorContext,
   createPrompt,
   getEditorContext,
   type EditorContextAction,
-} from "./raccoon-provider/editor-context.js"
-import { searchFiles } from "./raccoon-provider/file-search.js"
+} from "./editor-context.js"
+import { searchFiles } from "./file-search.js"
 import {
   removePart as removeSessionPart,
   removeSession as removeSessionState,
   upsertMessage as upsertSessionMessage,
   upsertPart as upsertSessionPart,
   upsertSession as upsertSessionState,
-} from "./raccoon-provider/session-state.js"
-import { FetchModelsError, fetchOpenAIModels } from "./raccoon-provider/openai-models.js"
-import { RaccoonStreamScheduler } from "./raccoon-provider/stream-scheduler.js"
-import { RaccoonEventStream } from "./raccoon-provider/event-stream.js"
-import { RaccoonEventHandler } from "./raccoon-provider/event-handler.js"
-import { RaccoonMessageRouter } from "./raccoon-provider/message-router.js"
-import { RaccoonProviderConfig } from "./raccoon-provider/provider-config.js"
-import { RaccoonSessionController } from "./raccoon-provider/session-controller.js"
-import { RaccoonWebviewHost, type RaccoonWebviewSource } from "./raccoon-provider/webview-host.js"
+} from "./session-state.js"
+import { FetchModelsError, fetchOpenAIModels } from "./openai-models.js"
+import { RaccoonStreamScheduler } from "./stream-scheduler.js"
+import { RaccoonEventStream } from "./event-stream.js"
+import { RaccoonEventHandler } from "./event-handler.js"
+import { RaccoonMessageRouter } from "./message-router.js"
+import { RaccoonProviderConfig } from "./provider-config.js"
+import { RaccoonSessionController } from "./session-controller.js"
+import { RaccoonWebviewHost, type RaccoonWebviewSource } from "./webview-host.js"
 
 function isAbsolutePath(filePath: string) {
   if (filePath.charCodeAt(0) === 47) return true

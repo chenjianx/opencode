@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
-import { RaccoonCodeLensProvider } from "./raccoon-code-lens.js"
-import { RaccoonProvider } from "./raccoon-provider.js"
+import { functionActionLabels } from "./i18n.js"
+import { RaccoonCodeLensProvider } from "./code-lens/index.js"
+import { RaccoonProvider } from "./provider/index.js"
 import { RaccoonConnectionService } from "./services/cli-backend/index.js"
 
 export function activate(context: vscode.ExtensionContext) {
@@ -33,6 +34,20 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("raccoon.fixCode", async () => provider.sendEditorContext("FIX")),
     vscode.commands.registerCommand("raccoon.improveCode", async () => provider.sendEditorContext("IMPROVE")),
     vscode.commands.registerCommand("raccoon.addToContext", async () => provider.appendEditorContext("ADD_TO_CONTEXT")),
+    vscode.commands.registerCommand("raccoon.openFunctionActions", async (uri: vscode.Uri, range: vscode.Range) => {
+      const labels = functionActionLabels(provider.getState().pluginLanguage ?? "en")
+      const action = await vscode.window.showQuickPick(
+        [
+          { label: labels.ask, type: "ASK" as const },
+          { label: labels.optimize, type: "OPTIMIZE" as const },
+          { label: labels.refactor, type: "REFACTOR" as const },
+          { label: labels.comment, type: "COMMENT" as const },
+        ],
+        { placeHolder: labels.placeholder },
+      )
+      if (!action) return
+      await provider.sendDocumentRangeContext(action.type, uri, range)
+    }),
     vscode.commands.registerCommand("raccoon.askFunction", async (uri: vscode.Uri, range: vscode.Range, type = "ASK") =>
       provider.sendDocumentRangeContext(type, uri, range),
     ),
