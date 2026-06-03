@@ -1,17 +1,17 @@
-import { Copy, Plus, Trash } from "@phosphor-icons/react"
-import { useEffect, useMemo, useState } from "react"
+import { ArrowCounterClockwise, Copy, DownloadSimple, Plus, Trash, UploadSimple } from "@phosphor-icons/react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type {
   RaccoonAgent,
   RaccoonAgentMode,
   RaccoonAgentScope,
   RaccoonModel,
-  RaccoonPermissionAction,
   RaccoonPermissionConfig,
-  RaccoonPermissionRule,
 } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow } from "./settings-common"
+import { PermissionEditor, PermissionRuleset } from "./permission-editor"
+import { mergePermissionPatch, type PermissionPatch } from "./permission-utils"
 
 type ModelSelection = { providerID: string; modelID: string }
 type AgentDraft = {
@@ -26,29 +26,11 @@ type AgentDraft = {
   steps: string
   variant: string
   prompt: string
-  globalPermission: RaccoonPermissionAction
-  permissionRules: RaccoonPermissionRule[]
+  permission: RaccoonPermissionConfig
+  hidden: boolean
 }
 
-const PERMISSION_NAMES = [
-  "read",
-  "edit",
-  "glob",
-  "grep",
-  "list",
-  "bash",
-  "task",
-  "skill",
-  "lsp",
-  "todoread",
-  "todowrite",
-  "webfetch",
-  "websearch",
-  "external_directory",
-  "question",
-  "plan_enter",
-  "plan_exit",
-]
+const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
 
 function label(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
@@ -72,8 +54,14 @@ function modeValue(value: RaccoonAgent["mode"] | undefined): RaccoonAgentMode {
   return "subagent"
 }
 
+function parseModelString(value: unknown): ModelSelection | undefined {
+  if (typeof value !== "string") return undefined
+  const index = value.indexOf("/")
+  if (index <= 0) return undefined
+  return { providerID: value.slice(0, index), modelID: value.slice(index + 1) }
+}
+
 function agentDraft(agent: RaccoonAgent | undefined): AgentDraft {
-  const rules = normalizeRules(Array.isArray(agent?.permission) ? agent.permission : [])
   return {
     originalName: agent?.name ?? "custom-agent",
     scope: "project",
@@ -86,52 +74,28 @@ function agentDraft(agent: RaccoonAgent | undefined): AgentDraft {
     steps: numericString(agent?.steps),
     variant: stringValue(agent?.variant),
     prompt: stringValue(agent?.prompt),
-    globalPermission: rules.find((rule) => rule.permission === "*" && rule.pattern === "*")?.action ?? "allow",
-    permissionRules: rules.filter((rule) => !(rule.permission === "*" && rule.pattern === "*")),
+    permission: agent?.permissionConfig ? { ...agent.permissionConfig } : {},
+    hidden: agent?.hidden ?? false,
   }
 }
 
-function newDraft(existing: RaccoonAgent[]): AgentDraft {
+function uniqueName(base: string, existing: RaccoonAgent[]): string {
   const names = new Set(existing.map((agent) => agent.name))
-  const name = Array.from({ length: 100 }, (_, index) => (index === 0 ? "custom-agent" : `custom-agent-${index + 1}`)).find(
-    (candidate) => !names.has(candidate),
+  return (
+    Array.from({ length: 100 }, (_, index) => (index === 0 ? base : `${base}-${index + 1}`)).find(
+      (candidate) => !names.has(candidate),
+    ) ?? base
   )
-  return { ...agentDraft(undefined), originalName: name ?? "custom-agent", name: name ?? "custom-agent" }
+}
+
+function newDraft(existing: RaccoonAgent[]): AgentDraft {
+  const name = uniqueName("custom-agent", existing)
+  return { ...agentDraft(undefined), originalName: name, name }
 }
 
 function duplicateDraft(agent: RaccoonAgent, existing: RaccoonAgent[]): AgentDraft {
-  const names = new Set(existing.map((item) => item.name))
-  const name = Array.from({ length: 100 }, (_, index) => `${agent.name}-copy${index === 0 ? "" : `-${index + 1}`}`).find(
-    (candidate) => !names.has(candidate),
-  )
-  return { ...agentDraft(agent), originalName: name ?? `${agent.name}-copy`, name: name ?? `${agent.name}-copy` }
-}
-
-function normalizeRules(rules: RaccoonPermissionRule[]) {
-  return Array.from(
-    new Map(
-      rules
-        .filter((rule) => rule.permission && rule.pattern && isPermissionAction(rule.action))
-        .map((rule) => [`${rule.permission}::${rule.pattern}`, rule] as const),
-    ).values(),
-  ).sort((a, b) => a.permission.localeCompare(b.permission) || a.pattern.localeCompare(b.pattern))
-}
-
-function isPermissionAction(value: unknown): value is RaccoonPermissionAction {
-  return value === "allow" || value === "ask" || value === "deny"
-}
-
-function permissionConfig(draft: AgentDraft): RaccoonPermissionConfig {
-  const grouped = normalizeRules(draft.permissionRules).reduce<Record<string, Record<string, RaccoonPermissionAction>>>((acc, rule) => {
-    return { ...acc, [rule.permission]: { ...(acc[rule.permission] ?? {}), [rule.pattern]: rule.action } }
-  }, {})
-  return Object.fromEntries([
-    ["*", draft.globalPermission],
-    ...Object.entries(grouped).map(([name, patterns]) => [
-      name,
-      Object.keys(patterns).length === 1 && patterns["*"] ? patterns["*"] : patterns,
-    ]),
-  ]) as RaccoonPermissionConfig
+  const name = uniqueName(`${agent.name}-copy`, existing)
+  return { ...agentDraft(agent), originalName: name, name }
 }
 
 function numeric(value: string, min: number, max: number) {
@@ -147,8 +111,58 @@ function draftSnapshot(draft: AgentDraft) {
     temperature: numeric(draft.temperature, 0, 2),
     topP: numeric(draft.topP, 0, 1),
     steps: numeric(draft.steps, 1, 100),
-    permissionRules: normalizeRules(draft.permissionRules),
   })
+}
+
+function exportPayload(draft: AgentDraft) {
+  const payload: Record<string, unknown> = { name: draft.name.trim() }
+  if (draft.description.trim()) payload.description = draft.description.trim()
+  payload.mode = draft.mode
+  if (draft.model) payload.model = `${draft.model.providerID}/${draft.model.modelID}`
+  const temperature = numeric(draft.temperature, 0, 2)
+  if (temperature !== undefined) payload.temperature = temperature
+  const topP = numeric(draft.topP, 0, 1)
+  if (topP !== undefined) payload.top_p = topP
+  const steps = numeric(draft.steps, 1, 100)
+  if (steps !== undefined) payload.steps = steps
+  if (draft.variant.trim()) payload.variant = draft.variant.trim()
+  if (draft.prompt.trim()) payload.prompt = draft.prompt
+  if (Object.keys(draft.permission).length > 0) payload.permission = draft.permission
+  if (draft.hidden) payload.hidden = true
+  return payload
+}
+
+type ImportResult = { ok: true; draft: AgentDraft } | { ok: false; error: "invalidJson" | "invalidName" | "duplicate" }
+
+function draftFromImport(text: string, existing: RaccoonAgent[]): ImportResult {
+  let data: Record<string, unknown>
+  try {
+    const parsed = JSON.parse(text)
+    if (!parsed || typeof parsed !== "object") return { ok: false, error: "invalidJson" }
+    data = parsed as Record<string, unknown>
+  } catch {
+    return { ok: false, error: "invalidJson" }
+  }
+  const name = typeof data.name === "string" ? data.name.trim() : ""
+  if (!NAME_RE.test(name)) return { ok: false, error: "invalidName" }
+  if (existing.some((agent) => agent.name === name)) return { ok: false, error: "duplicate" }
+  const draft: AgentDraft = {
+    ...agentDraft(undefined),
+    originalName: name,
+    name,
+    description: stringValue(data.description),
+    mode: modeValue(data.mode as RaccoonAgentMode | undefined),
+    model: parseModelString(data.model),
+    temperature: numericString(data.temperature),
+    topP: numericString(data.top_p),
+    steps: numericString(data.steps),
+    variant: stringValue(data.variant),
+    prompt: stringValue(data.prompt),
+    permission:
+      data.permission && typeof data.permission === "object" ? (data.permission as RaccoonPermissionConfig) : {},
+    hidden: data.hidden === true,
+  }
+  return { ok: true, draft }
 }
 
 export function SettingsAgents(props: {
@@ -170,6 +184,7 @@ export function SettingsAgents(props: {
       steps?: number
       prompt?: string
       permission?: RaccoonPermissionConfig
+      hidden?: boolean
     },
     scope: RaccoonAgentScope,
   ) => void
@@ -183,40 +198,63 @@ export function SettingsAgents(props: {
   const onConfigureAgent = props.onConfigureAgent
   const onDeleteAgent = props.onDeleteAgent
   const [selectedName, setSelectedName] = useState("")
+  const [creating, setCreating] = useState(false)
+  const [importError, setImportError] = useState<string>("")
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const selected = useMemo(
     () => agents.find((agent) => agent.name === selectedName) ?? agents[0],
     [agents, selectedName],
   )
   const [draft, setDraft] = useState(() => agentDraft(selected))
   const [baseline, setBaseline] = useState(() => draftSnapshot(draft))
-  const [pendingPermission, setPendingPermission] = useState("bash")
-  const [pendingPattern, setPendingPattern] = useState("*")
-  const [pendingAction, setPendingAction] = useState<RaccoonPermissionAction>("ask")
+  const resetTokenRef = useRef(props.resetToken)
 
   useEffect(() => {
+    if (creating) return
     if (selectedName && agents.some((agent) => agent.name === selectedName)) return
     setSelectedName(agents[0]?.name ?? "")
-  }, [agents, selectedName])
+  }, [agents, selectedName, creating])
 
   useEffect(() => {
+    // A Discard (resetToken bump) always cancels an in-progress create and
+    // restores the current selection, even while `creating`.
+    if (props.resetToken !== resetTokenRef.current) {
+      resetTokenRef.current = props.resetToken
+      setCreating(false)
+      const base = agents.find((agent) => agent.name === selectedName) ?? agents[0]
+      const next = agentDraft(base)
+      setDraft(next)
+      setBaseline(draftSnapshot(next))
+      return
+    }
+    if (creating) return
     const next = agentDraft(selected)
     setDraft(next)
     setBaseline(draftSnapshot(next))
-  }, [props.resetToken, selected])
+  }, [props.resetToken, selected, creating, agents, selectedName])
 
-  const dirty = draftSnapshot(draft) !== baseline
-  const invalidName = !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(draft.name.trim())
+  // When a freshly created/duplicated agent has been persisted under its draft
+  // name, leave creating mode so the normal selection/reset logic resumes.
+  useEffect(() => {
+    if (creating && agents.some((agent) => agent.name === selectedName)) setCreating(false)
+  }, [agents, creating, selectedName])
+
+  // A brand-new agent does not yet exist on disk, so it is always savable even
+  // before the user edits any field.
+  const dirty = creating || draftSnapshot(draft) !== baseline
+  const invalidName = !NAME_RE.test(draft.name.trim())
   const duplicateName = agents.some((agent) => agent.name === draft.name.trim() && agent.name !== draft.originalName)
 
   useEffect(() => {
     onDirtyChange(dirty)
     onSave(
       dirty && !invalidName && !duplicateName
-        ? () =>
+        ? () => {
+            const savedName = draft.name.trim()
             onConfigureAgent(
               draft.originalName,
               {
-                name: draft.name.trim(),
+                name: savedName,
                 description: draft.description,
                 mode: draft.mode,
                 model: draft.model,
@@ -225,52 +263,87 @@ export function SettingsAgents(props: {
                 variant: draft.variant,
                 steps: numeric(draft.steps, 1, 100),
                 prompt: draft.prompt,
-                permission: permissionConfig(draft),
+                permission: draft.permission,
+                hidden: draft.hidden,
               },
               draft.scope,
             )
+            // Track the saved name (which may differ from the original when
+            // creating or renaming). Keep `creating` set until that name lands
+            // in the refreshed agents list so the reset effects don't clobber
+            // the panel mid-save; the "clear creating" effect then resyncs.
+            setCreating(true)
+            setSelectedName(savedName)
+          }
         : undefined,
     )
   }, [dirty, draft, duplicateName, invalidName, onConfigureAgent, onDirtyChange, onSave])
 
-  const selectDraft = (next: AgentDraft) => {
+  const selectDraft = (next: AgentDraft, isCreating = false) => {
+    setCreating(isCreating)
     setDraft(next)
     setBaseline(draftSnapshot(next))
     setSelectedName(next.originalName)
+    setImportError("")
   }
-  const addRule = () => {
-    setDraft((current) => ({
-      ...current,
-      permissionRules: normalizeRules([
-        ...current.permissionRules,
-        { permission: pendingPermission.trim(), pattern: pendingPattern.trim() || "*", action: pendingAction },
-      ]),
-    }))
+  const selectExisting = (name: string) => {
+    setCreating(false)
+    setSelectedName(name)
+    setImportError("")
   }
-  const setRuleAction = (permission: string, pattern: string, action: RaccoonPermissionAction) => {
-    setDraft((current) => ({
-      ...current,
-      permissionRules: current.permissionRules.map((rule) =>
-        rule.permission === permission && rule.pattern === pattern ? { ...rule, action } : rule,
-      ),
-    }))
+  const applyPermission = (patch: PermissionPatch) => {
+    setDraft((current) => ({ ...current, permission: mergePermissionPatch(current.permission, patch) }))
   }
-  const removeRule = (permission: string, pattern: string) => {
-    setDraft((current) => ({
-      ...current,
-      permissionRules: current.permissionRules.filter((rule) => rule.permission !== permission || rule.pattern !== pattern),
-    }))
+
+  const exportAgent = () => {
+    const payload = exportPayload(draft)
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `${draft.name.trim() || "agent"}.agent.json`
+    anchor.click()
+    URL.revokeObjectURL(url)
   }
+  const onImportFile = async (file: File | undefined) => {
+    if (!file) return
+    const result = draftFromImport(await file.text(), agents)
+    if (result.ok) {
+      selectDraft(result.draft, true)
+    } else {
+      setImportError(language.t(`settings.agents.import.${result.error}`))
+    }
+  }
+
+  // calculated ruleset only meaningful for an already-resolved (saved) agent
+  const editingRules = creating ? undefined : selected?.permission
 
   return (
     <>
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="m-0">{language.t("settings.agents.title")}</h3>
-        <button type="button" className="settings-small-button" onClick={() => selectDraft(newDraft(agents))}>
-          <Plus size={14} weight="bold" />
-          <span>{language.t("settings.agents.new")}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              void onImportFile(event.currentTarget.files?.[0])
+              event.currentTarget.value = ""
+            }}
+          />
+          <button type="button" className="settings-small-button" title={language.t("settings.agents.import")} onClick={() => fileInputRef.current?.click()}>
+            <UploadSimple size={14} weight="bold" />
+            <span>{language.t("settings.agents.import")}</span>
+          </button>
+          <button type="button" className="settings-small-button" onClick={() => selectDraft(newDraft(agents), true)}>
+            <Plus size={14} weight="bold" />
+            <span>{language.t("settings.agents.new")}</span>
+          </button>
+        </div>
       </div>
+      {importError ? <div className="mb-2 text-[11px] text-[var(--color-error)]">{importError}</div> : null}
       <div className="settings-agent-shell">
         <div className="settings-card settings-agent-list">
           {agents.length === 0 ? (
@@ -280,8 +353,8 @@ export function SettingsAgents(props: {
               <button
                 type="button"
                 key={agent.name}
-                className={`settings-agent-list-item ${agent.name === selected?.name ? "active" : ""}`}
-                onClick={() => setSelectedName(agent.name)}
+                className={`settings-agent-list-item ${!creating && agent.name === selected?.name ? "active" : ""}`}
+                onClick={() => selectExisting(agent.name)}
               >
                 <span className="settings-agent-list-main">
                   <span className="settings-agent-list-name">{label(agent.name)}</span>
@@ -289,6 +362,7 @@ export function SettingsAgents(props: {
                 </span>
                 <span className="settings-agent-list-tags">
                   <span>{agent.mode}</span>
+                  {agent.hidden ? <span>{language.t("settings.agents.hidden.title")}</span> : null}
                   {agent.native ? <span>{language.t("settings.agents.native")}</span> : null}
                 </span>
               </button>
@@ -303,19 +377,27 @@ export function SettingsAgents(props: {
               <div className="settings-agent-panel-subtitle">{language.t("settings.agents.configureSubtitle")}</div>
             </div>
             <div className="settings-agent-panel-actions">
-              {selected ? (
-                <button type="button" className="settings-icon-button" title={language.t("settings.agents.duplicate")} onClick={() => selectDraft(duplicateDraft(selected, agents))}>
+              {selected && !creating ? (
+                <button type="button" className="settings-small-button" title={language.t("settings.agents.duplicate")} onClick={() => selectDraft(duplicateDraft(selected, agents), true)}>
                   <Copy size={14} weight="bold" />
+                  <span>{language.t("settings.agents.action.duplicate")}</span>
                 </button>
               ) : null}
-              <button
-                type="button"
-                className="settings-icon-button"
-                title={selected?.native ? language.t("settings.agents.reset") : language.t("settings.agents.delete")}
-                onClick={() => onDeleteAgent(draft.originalName, draft.scope)}
-              >
-                <Trash size={14} weight="bold" />
+              <button type="button" className="settings-small-button" title={language.t("settings.agents.export")} onClick={exportAgent}>
+                <DownloadSimple size={14} weight="bold" />
+                <span>{language.t("settings.agents.export")}</span>
               </button>
+              {selected && !creating ? (
+                <button
+                  type="button"
+                  className="settings-small-button"
+                  title={selected.native ? language.t("settings.agents.reset") : language.t("settings.agents.delete")}
+                  onClick={() => onDeleteAgent(selected.name, draft.scope)}
+                >
+                  {selected.native ? <ArrowCounterClockwise size={14} weight="bold" /> : <Trash size={14} weight="bold" />}
+                  <span>{selected.native ? language.t("settings.agents.action.reset") : language.t("settings.agents.action.delete")}</span>
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -391,34 +473,55 @@ export function SettingsAgents(props: {
           </SettingsRow>
           <SettingsRow title={language.t("settings.agents.parameters.title")} description={language.t("settings.agents.parameters.description")}>
             <div className="grid w-full grid-cols-3 gap-2 max-[520px]:grid-cols-1">
-              <input
-                className="settings-provider-input"
-                value={draft.temperature}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  setDraft((current) => ({ ...current, temperature: value }))
-                }}
-                placeholder="temperature"
-              />
-              <input
-                className="settings-provider-input"
-                value={draft.topP}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  setDraft((current) => ({ ...current, topP: value }))
-                }}
-                placeholder="top_p"
-              />
-              <input
-                className="settings-provider-input"
-                value={draft.steps}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  setDraft((current) => ({ ...current, steps: value }))
-                }}
-                placeholder="steps"
-              />
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-[var(--color-muted)]">temperature</span>
+                <input
+                  className="settings-provider-input"
+                  value={draft.temperature}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value
+                    setDraft((current) => ({ ...current, temperature: value }))
+                  }}
+                  placeholder="0 – 2"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-[var(--color-muted)]">top_p</span>
+                <input
+                  className="settings-provider-input"
+                  value={draft.topP}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value
+                    setDraft((current) => ({ ...current, topP: value }))
+                  }}
+                  placeholder="0 – 1"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[11px] text-[var(--color-muted)]">steps</span>
+                <input
+                  className="settings-provider-input"
+                  value={draft.steps}
+                  onChange={(event) => {
+                    const value = event.currentTarget.value
+                    setDraft((current) => ({ ...current, steps: value }))
+                  }}
+                  placeholder="1 – 100"
+                />
+              </label>
             </div>
+          </SettingsRow>
+          <SettingsRow title={language.t("settings.agents.hidden.title")} description={language.t("settings.agents.hidden.description")}>
+            <input
+              type="checkbox"
+              role="switch"
+              className="settings-toggle"
+              checked={draft.hidden}
+              onChange={(event) => {
+                const value = event.currentTarget.checked
+                setDraft((current) => ({ ...current, hidden: value }))
+              }}
+            />
           </SettingsRow>
           <div className="settings-agent-section-title">{language.t("settings.agents.instructions")}</div>
           <SettingsRow title={language.t("settings.agents.prompt.title")} description={language.t("settings.agents.prompt.description")}>
@@ -433,81 +536,9 @@ export function SettingsAgents(props: {
             />
           </SettingsRow>
 
-          <div className="border-t border-[var(--color-border)] px-3 py-3">
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div className="text-[12px] font-medium text-[var(--color-foreground)]">{language.t("settings.agents.permissions.title")}</div>
-                <div className="text-[11px] text-[var(--color-muted)]">{language.t("settings.agents.permissions.description")}</div>
-              </div>
-              <select
-                className="settings-select"
-                value={draft.globalPermission}
-                onChange={(event) => {
-                  const value = event.currentTarget.value as RaccoonPermissionAction
-                  setDraft((current) => ({ ...current, globalPermission: value }))
-                }}
-              >
-                <option value="allow">{language.t("settings.agents.permission.allow")}</option>
-                <option value="ask">{language.t("settings.agents.permission.ask")}</option>
-                <option value="deny">{language.t("settings.agents.permission.deny")}</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-[minmax(100px,1fr)_minmax(110px,1fr)_96px_32px] gap-2 max-[620px]:grid-cols-1">
-              <select
-                className="settings-select"
-                value={pendingPermission}
-                onChange={(event) => setPendingPermission(event.currentTarget.value)}
-              >
-                {PERMISSION_NAMES.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="settings-provider-input"
-                value={pendingPattern}
-                onChange={(event) => setPendingPattern(event.currentTarget.value)}
-                placeholder="*"
-              />
-              <select
-                className="settings-select min-w-0"
-                value={pendingAction}
-                onChange={(event) => setPendingAction(event.currentTarget.value as RaccoonPermissionAction)}
-              >
-                <option value="allow">{language.t("settings.agents.permission.allow")}</option>
-                <option value="ask">{language.t("settings.agents.permission.ask")}</option>
-                <option value="deny">{language.t("settings.agents.permission.deny")}</option>
-              </select>
-              <button type="button" className="settings-icon-button" title={language.t("settings.agents.permissions.add")} onClick={addRule}>
-                <Plus size={14} weight="bold" />
-              </button>
-            </div>
-            <div className="mt-2 overflow-hidden rounded-[4px] border border-[var(--color-border)]">
-              {draft.permissionRules.length === 0 ? (
-                <div className="px-2 py-2 text-[11px] text-[var(--color-muted)]">{language.t("settings.agents.permissions.empty")}</div>
-              ) : (
-                normalizeRules(draft.permissionRules).map((rule) => (
-                  <div key={`${rule.permission}:${rule.pattern}`} className="grid grid-cols-[1fr_1fr_96px_32px] items-center gap-2 border-b border-[var(--color-border)] px-2 py-1.5 last:border-b-0 max-[620px]:grid-cols-1">
-                    <div className="truncate text-[12px] text-[var(--color-foreground)]">{rule.permission}</div>
-                    <div className="truncate text-[12px] text-[var(--color-muted)]">{rule.pattern}</div>
-                    <select
-                      className="settings-select min-w-0"
-                      value={rule.action}
-                      onChange={(event) => setRuleAction(rule.permission, rule.pattern, event.currentTarget.value as RaccoonPermissionAction)}
-                    >
-                      <option value="allow">{language.t("settings.agents.permission.allow")}</option>
-                      <option value="ask">{language.t("settings.agents.permission.ask")}</option>
-                      <option value="deny">{language.t("settings.agents.permission.deny")}</option>
-                    </select>
-                    <button type="button" className="settings-icon-button" title={language.t("settings.agents.permissions.remove")} onClick={() => removeRule(rule.permission, rule.pattern)}>
-                      <Trash size={14} weight="bold" />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <div className="settings-agent-section-title">{language.t("settings.agents.permissions.title")}</div>
+          <PermissionEditor permission={draft.permission} rules={editingRules} inherited onChange={applyPermission} />
+          {editingRules && editingRules.length > 0 ? <PermissionRuleset agent={draft.name} rules={editingRules} /> : null}
         </div>
       </div>
     </>

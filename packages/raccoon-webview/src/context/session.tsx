@@ -84,6 +84,7 @@ type SessionActionsContextValue = {
       steps?: number
       prompt?: string
       permission?: RaccoonPermissionConfig
+      hidden?: boolean
       disable?: boolean
     },
     scope: RaccoonAgentScope,

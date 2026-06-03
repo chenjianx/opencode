@@ -85,12 +85,14 @@ export class RaccoonProviderConfig {
     const saved = await this.modelState.load(active, { selected: this.selectedModel, model: this.modeModels })
     this.selectedModel = saved.selected
     this.modeModels = saved.model
-    const [configResponse, providerResponse, authResponse, commandResponse, agentResponse] = await Promise.all([
+    const [configResponse, providerResponse, authResponse, commandResponse, agentResponse, rawConfigResponse, rawGlobalConfigResponse] = await Promise.all([
       active.config.providers({ directory: this.deps.directory() }, { throwOnError: true }),
       active.provider.list({ directory: this.deps.directory() }, { throwOnError: true }),
       active.provider.auth({ directory: this.deps.directory() }, { throwOnError: true }),
       active.command.list({ directory: this.deps.directory() }, { throwOnError: true }),
       active.app.agents({ directory: this.deps.directory() }, { throwOnError: true }),
+      active.config.get({ directory: this.deps.directory() }, { throwOnError: true }),
+      active.global.config.get({ throwOnError: true }).catch(() => undefined),
     ])
     this.providerAuthMethods = authResponse.data ?? {}
     const connected = new Set(providerResponse.data.connected)
@@ -114,10 +116,11 @@ export class RaccoonProviderConfig {
       source: command.source,
       hints: command.hints,
     }))
+    const agentOverrides = collectAgentOverrides(rawGlobalConfigResponse?.data?.agent, rawConfigResponse.data?.agent)
     this.deps.setState({
       ...this.deps.getState(),
       models,
-      agents: visibleAgents(agentResponse.data),
+      agents: visibleAgents(agentResponse.data, agentOverrides),
       providers,
       commands,
       slashCommands: [
@@ -213,12 +216,28 @@ export class RaccoonProviderConfig {
     const targetName = requireAgentName(message.agent.name ?? message.name)
     if (sourceName !== targetName) await this.writeAgentConfig(message.scope, sourceName, undefined)
     await this.writeAgentConfig(message.scope, targetName, agentConfigValue(message.agent))
+    await this.reloadInstanceConfig()
     await this.deps.refresh()
   }
 
   async deleteAgent(name: string, scope: RaccoonAgentScope) {
     await this.writeAgentConfig(scope, requireAgentName(name), undefined)
+    await this.reloadInstanceConfig()
     await this.deps.refresh()
+  }
+
+  // opencode caches resolved config/agents per instance and only re-reads from
+  // disk when the instance is disposed. Writing the agent config file is not
+  // enough for `app.agents()`/`config.get` to reflect the change, so dispose the
+  // instance to flush those caches before refreshing the webview state.
+  private async reloadInstanceConfig() {
+    try {
+      const client = await this.deps.client()
+      await client.instance.dispose({ directory: this.deps.directory() })
+    } catch {
+      // Best-effort: the config file is already written; a stale view will
+      // recover on the next full reload.
+    }
   }
 
   private async writeAgentConfig(scope: RaccoonAgentScope, name: string, value: OpencodeAgentConfig | undefined) {
@@ -543,25 +562,37 @@ function normalizePluginLanguageMode(value: string | undefined): RaccoonPluginLa
   return "auto"
 }
 
-function visibleAgents(agents: OpencodeAgent[]) {
-  return agents
-    .filter((agent) => agent.hidden !== true)
-    .map((agent) => ({
-      name: agent.name,
-      description: agent.description,
-      mode: agent.mode,
-      native: agent.native,
-      hidden: agent.hidden,
-      temperature: agent.temperature,
-      topP: agent.topP,
-      variant: agent.variant,
-      steps: agent.steps,
-      color: agent.color,
-      permission: agent.permission,
-      model: agent.model,
-      prompt: agent.prompt,
-      options: agent.options,
-    }))
+function collectAgentOverrides(
+  ...sources: (Record<string, OpencodeAgentConfig | undefined> | undefined)[]
+): Record<string, RaccoonPermissionConfig> {
+  const overrides: Record<string, RaccoonPermissionConfig> = {}
+  for (const source of sources) {
+    if (!source) continue
+    for (const [name, config] of Object.entries(source)) {
+      if (config?.permission) overrides[name] = config.permission as RaccoonPermissionConfig
+    }
+  }
+  return overrides
+}
+
+function visibleAgents(agents: OpencodeAgent[], overrides: Record<string, RaccoonPermissionConfig> = {}) {
+  return agents.map((agent) => ({
+    name: agent.name,
+    description: agent.description,
+    mode: agent.mode,
+    native: agent.native,
+    hidden: agent.hidden,
+    temperature: agent.temperature,
+    topP: agent.topP,
+    variant: agent.variant,
+    steps: agent.steps,
+    color: agent.color,
+    permission: agent.permission,
+    permissionConfig: overrides[agent.name],
+    model: agent.model,
+    prompt: agent.prompt,
+    options: agent.options,
+  }))
 }
 
 export type RaccoonAgentConfigUpdate = {
@@ -575,6 +606,7 @@ export type RaccoonAgentConfigUpdate = {
   steps?: number
   prompt?: string
   permission?: RaccoonPermissionConfig
+  hidden?: boolean
   disable?: boolean
 }
 
@@ -595,6 +627,7 @@ function agentConfigValue(agent: RaccoonAgentConfigUpdate): OpencodeAgentConfig 
     ...(agent.steps !== undefined ? { steps: agent.steps } : {}),
     ...(agent.prompt !== undefined ? { prompt: agent.prompt } : {}),
     ...(agent.permission ? { permission: agent.permission } : {}),
+    ...(agent.hidden !== undefined ? { hidden: agent.hidden } : {}),
     ...(agent.disable !== undefined ? { disable: agent.disable } : {}),
   }
 }

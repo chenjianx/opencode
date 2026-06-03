@@ -250,6 +250,24 @@
     @apply h-[28px] min-w-[120px] rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[12px] text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
   }
 
+  .settings-toggle {
+    @apply relative h-[18px] w-[34px] shrink-0 cursor-pointer appearance-none rounded-full border border-[var(--color-border)] bg-[var(--color-button)] outline-none transition-colors focus-visible:border-[var(--color-focus)];
+  }
+
+  .settings-toggle::before {
+    content: "";
+    @apply absolute left-[2px] top-[2px] h-[12px] w-[12px] rounded-full bg-[var(--color-muted)] transition-transform;
+  }
+
+  .settings-toggle:checked {
+    @apply border-[var(--color-focus)] bg-[var(--color-focus)];
+  }
+
+  .settings-toggle:checked::before {
+    @apply bg-[var(--color-background)];
+    transform: translateX(16px);
+  }
+
   .settings-provider-error,
   .settings-dialog-error {
     @apply border-t border-[var(--color-border)] px-3 py-2 text-[12px] text-[var(--color-error)];

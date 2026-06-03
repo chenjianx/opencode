@@ -33,7 +33,7 @@ export function SettingsView() {
   }, [session.state.selectedModel, session.state.modeModels, session.state.pluginLanguageMode])
 
   const connectedModels = session.state.models.filter((model) => model.connected)
-  const modeAgents = session.state.agents.filter((agent) => agent.mode !== "subagent")
+  const modeAgents = session.state.agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
   const modes = modeAgents.map((agent) => agent.name)
   const dirty =
     !sameModel(draftSelectedModel, session.state.selectedModel) ||

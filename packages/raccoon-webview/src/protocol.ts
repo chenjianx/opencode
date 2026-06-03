@@ -23,6 +23,7 @@ export type RaccoonAgent = {
   steps?: number
   color?: string
   permission?: RaccoonPermissionRule[]
+  permissionConfig?: RaccoonPermissionConfig
   model?: {
     providerID: string
     modelID: string
@@ -275,6 +276,7 @@ export type WebviewToExtension =
         steps?: number
         prompt?: string
         permission?: RaccoonPermissionConfig
+        hidden?: boolean
         disable?: boolean
       }
     }

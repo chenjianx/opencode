@@ -63,7 +63,7 @@ export function PromptInput() {
   const minTextareaHeight = 76
   const maxTextareaHeight = 220
   const modeOptions = session.state.agents
-    .filter((agent) => agent.mode !== "subagent")
+    .filter((agent) => agent.mode !== "subagent" && !agent.hidden)
     .map((agent) => ({
       value: agent.name,
       label: modeLabel(agent.name),
