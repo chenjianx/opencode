@@ -53,6 +53,7 @@ it.instance("returns default native agents when no config", () =>
     const agents = yield* load((svc) => svc.list())
     const names = agents.map((a) => a.name)
     expect(names).toContain("build")
+    expect(names).toContain("ask") // raccoon_change - built-in ask agent is listed
     expect(names).toContain("plan")
     expect(names).toContain("general")
     expect(names).toContain("explore")
@@ -62,6 +63,49 @@ it.instance("returns default native agents when no config", () =>
     expect(names).toContain("summary")
   }),
 )
+
+// raccoon_change start - cover built-in ask agent readonly permissions
+it.instance("ask agent has readonly default properties", () =>
+  Effect.gen(function* () {
+    const ask = yield* load((svc) => svc.get("ask"))
+    expect(ask).toBeDefined()
+    expect(ask?.mode).toBe("primary")
+    expect(ask?.native).toBe(true)
+    expect(evalPerm(ask, "edit")).toBe("deny")
+    expect(evalPerm(ask, "read")).toBe("allow")
+    expect(evalPerm(ask, "grep")).toBe("allow")
+    expect(evalPerm(ask, "glob")).toBe("allow")
+    expect(evalPerm(ask, "list")).toBe("allow")
+    expect(evalPerm(ask, "question")).toBe("allow")
+    expect(evalPerm(ask, "webfetch")).toBe("allow")
+    expect(evalPerm(ask, "websearch")).toBe("allow")
+    expect(Permission.evaluate("bash", "git status --short", ask!.permission).action).toBe("allow")
+    expect(Permission.evaluate("bash", "git checkout -- file.ts", ask!.permission).action).toBe("deny")
+    expect(Permission.evaluate("bash", "echo hi > file.txt", ask!.permission).action).toBe("deny")
+  }),
+)
+
+it.instance(
+  "ask agent permission can be further restricted by config",
+  () =>
+    Effect.gen(function* () {
+      const ask = yield* load((svc) => svc.get("ask"))
+      expect(evalPerm(ask, "webfetch")).toBe("deny")
+      expect(evalPerm(ask, "read")).toBe("allow")
+    }),
+  {
+    config: {
+      agent: {
+        ask: {
+          permission: {
+            webfetch: "deny",
+          },
+        },
+      },
+    },
+  },
+)
+// raccoon_change end
 
 it.instance("build agent has correct default properties", () =>
   Effect.gen(function* () {
@@ -725,6 +769,7 @@ it.instance(
   {
     config: {
       agent: {
+        ask: { disable: true }, // raccoon_change - ask is also a primary agent
         build: { disable: true },
         plan: { disable: true },
       },

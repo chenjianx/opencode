@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Plugs, SlidersHorizontal, Translate } from "@phosphor-icons/react"
-import type { ChatMode } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
+import { SettingsAgents } from "./settings-agents"
 import { SettingsLanguage } from "./settings-language"
 import { SettingsModels } from "./settings-models"
 import { SettingsProviders } from "./settings-providers"
@@ -17,10 +17,14 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "providers" | "language">("models")
+  const [tab, setTab] = useState<"models" | "agents" | "providers" | "language">("models")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.selectedModel)
-  const [draftModeModels, setDraftModeModels] = useState<Partial<Record<ChatMode, ModelSelection>>>(session.state.modeModels ?? {})
+  const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
+  const [agentDirty, setAgentDirty] = useState(false)
+  const [agentSave, setAgentSave] = useState<(() => void) | undefined>()
+  const [agentResetToken, setAgentResetToken] = useState(0)
+  const handleAgentSave = useCallback((next: (() => void) | undefined) => setAgentSave(() => next), [])
 
   useEffect(() => {
     setDraftSelectedModel(session.state.selectedModel)
@@ -29,27 +33,29 @@ export function SettingsView() {
   }, [session.state.selectedModel, session.state.modeModels, session.state.pluginLanguageMode])
 
   const connectedModels = session.state.models.filter((model) => model.connected)
+  const modeAgents = session.state.agents.filter((agent) => agent.mode !== "subagent")
+  const modes = modeAgents.map((agent) => agent.name)
   const dirty =
     !sameModel(draftSelectedModel, session.state.selectedModel) ||
-    !sameModel(draftModeModels.build, session.state.modeModels?.build) ||
-    !sameModel(draftModeModels.plan, session.state.modeModels?.plan) ||
-    draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto")
+    modes.some((mode) => !sameModel(draftModeModels[mode], session.state.modeModels?.[mode])) ||
+    draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto") ||
+    agentDirty
 
   const discard = () => {
     setDraftSelectedModel(session.state.selectedModel)
     setDraftModeModels(session.state.modeModels ?? {})
     setDraftPluginLanguageMode(session.state.pluginLanguageMode ?? "auto")
+    setAgentDirty(false)
+    setAgentResetToken((token) => token + 1)
   }
 
   const save = () => {
     if (draftSelectedModel && !sameModel(draftSelectedModel, session.state.selectedModel)) session.setModel(draftSelectedModel)
-    if (draftModeModels.build && !sameModel(draftModeModels.build, session.state.modeModels?.build)) {
-      session.setModeModel("build", draftModeModels.build)
-    }
-    if (draftModeModels.plan && !sameModel(draftModeModels.plan, session.state.modeModels?.plan)) {
-      session.setModeModel("plan", draftModeModels.plan)
-    }
+    modes
+      .filter((mode) => draftModeModels[mode] && !sameModel(draftModeModels[mode], session.state.modeModels?.[mode]))
+      .forEach((mode) => session.setModeModel(mode, draftModeModels[mode]!))
     if (draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto")) session.setPluginLanguage(draftPluginLanguageMode)
+    if (agentDirty) agentSave?.()
   }
 
   return (
@@ -69,6 +75,12 @@ export function SettingsView() {
             </span>
             <span>{language.t("settings.nav.models")}</span>
           </button>
+          <button type="button" className={`settings-nav-item ${tab === "agents" ? "active" : ""}`} onClick={() => setTab("agents")}>
+            <span className="settings-nav-icon">
+              <SlidersHorizontal size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.agents")}</span>
+          </button>
           <button type="button" className={`settings-nav-item ${tab === "providers" ? "active" : ""}`} onClick={() => setTab("providers")}>
             <span className="settings-nav-icon">
               <Plugs size={16} weight="bold" />
@@ -86,11 +98,22 @@ export function SettingsView() {
         <div className="settings-content">
           {tab === "models" ? (
             <SettingsModels
+              agents={modeAgents}
               connectedModels={connectedModels}
               selectedModel={draftSelectedModel}
               modeModels={draftModeModels}
               onSelectedModelChange={setDraftSelectedModel}
               onModeModelChange={(mode, model) => setDraftModeModels((current) => ({ ...current, [mode]: model }))}
+            />
+          ) : tab === "agents" ? (
+            <SettingsAgents
+              agents={session.state.agents}
+              connectedModels={connectedModels}
+              resetToken={agentResetToken}
+              onDirtyChange={setAgentDirty}
+              onSave={handleAgentSave}
+              onConfigureAgent={session.configureAgent}
+              onDeleteAgent={session.deleteAgent}
             />
           ) : tab === "language" ? (
             <SettingsLanguage pluginLanguageMode={draftPluginLanguageMode} onPluginLanguageChange={setDraftPluginLanguageMode} />

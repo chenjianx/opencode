@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ArrowClockwiseIcon, PaperPlaneRightIcon } from "@phosphor-icons/react"
 import { useSession } from "../../context/session"
 import type { RaccoonFileAttachment } from "../../protocol"
-import type { ChatMode, ExtensionToWebview, RaccoonSlashCommand } from "../../protocol"
+import type { ExtensionToWebview, RaccoonSlashCommand } from "../../protocol"
 import { useVSCode } from "../../context/vscode"
 import { ModelPicker } from "../ui/model-picker"
 import { PromptAttachments } from "./prompt-attachments"
@@ -35,6 +35,14 @@ function commandGroupLabel(source: RaccoonSlashCommand["source"]) {
   return "Skills"
 }
 
+function modeLabel(value: string) {
+  return value
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+type ModelSelection = { providerID: string; modelID: string }
+
 export function PromptInput() {
   const session = useSession()
   const vscode = useVSCode()
@@ -51,13 +59,23 @@ export function PromptInput() {
   const [modeOpen, setModeOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const [commandSelected, setCommandSelected] = useState(0)
+  const [sessionModels, setSessionModels] = useState<Record<string, ModelSelection>>({})
   const minTextareaHeight = 76
   const maxTextareaHeight = 220
-  const modeOptions: { value: ChatMode; label: string }[] = [
-    { value: "build", label: "Build" },
-    { value: "plan", label: "Plan" },
-  ]
-  const currentMode = modeOptions.find((mode) => mode.value === session.state.mode)
+  const modeOptions = session.state.agents
+    .filter((agent) => agent.mode !== "subagent")
+    .map((agent) => ({
+      value: agent.name,
+      label: modeLabel(agent.name),
+      description: agent.description,
+    }))
+  const currentMode = modeOptions.find((mode) => mode.value === session.state.mode) ?? {
+    value: session.state.mode,
+    label: modeLabel(session.state.mode),
+  }
+  const activeSessionID = session.state.activeSessionID
+  const conversationModel = activeSessionID ? sessionModels[activeSessionID] : undefined
+  const selectedModel = conversationModel ?? session.selectedModel
   const canSend = session.canSend(draft, attachments)
   const busy = session.state.busy ?? false
   const commandQuery = slashQuery(draft, textareaRef.current?.selectionStart ?? draft.length)
@@ -311,6 +329,7 @@ export function PromptInput() {
     session.sendMessage(
       draft,
       [...attachments, ...mention.parseFileAttachments(draft, session.state.directory ?? ""), ...(terminalFile ? [terminalFile] : []), ...(gitFile ? [gitFile] : [])],
+      selectedModel,
     )
     setDraft("")
     setAttachments([])
@@ -546,7 +565,7 @@ export function PromptInput() {
               </button>
               {modeOpen ? (
                 <div
-                  className="absolute bottom-[calc(100%+4px)] left-0 z-30 w-max min-w-full overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-[var(--shadow-md)]"
+                  className="absolute bottom-[calc(100%+4px)] left-0 z-30 w-[min(320px,calc(100vw-24px))] overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-[var(--shadow-md)]"
                   role="listbox"
                   aria-label="Mode"
                 >
@@ -566,7 +585,14 @@ export function PromptInput() {
                           setModeOpen(false)
                         }}
                       >
-                        <span className="font-medium">{mode.label}</span>
+                        <span className="min-w-0">
+                          <span className="block font-medium">{mode.label}</span>
+                          {mode.description ? (
+                            <span className="mt-0.5 block max-w-[260px] whitespace-normal text-[11px] leading-[14px] text-[var(--color-muted)]">
+                              {mode.description}
+                            </span>
+                          ) : null}
+                        </span>
                         {active ? <span className="text-[11px] text-[var(--color-muted)]">✓</span> : null}
                       </button>
                     )
@@ -575,9 +601,12 @@ export function PromptInput() {
               ) : null}
             </div>
             <ModelPicker
-              value={session.selectedModel}
+              value={selectedModel}
               models={session.models}
-              onChange={session.setModel}
+              onChange={(model) => {
+                if (!activeSessionID) return
+                setSessionModels((current) => ({ ...current, [activeSessionID]: model }))
+              }}
               ariaLabel="Model"
               placeholder="No model"
               compact

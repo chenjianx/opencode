@@ -1,4 +1,5 @@
 #!/bin/sh
+export PATH="/Users/chenjian2.vendor/.nvm/versions/node/v20.20.2/bin:$PATH"
 set -e
 # Check if bun version matches package.json
 # keep in sync with packages/script/src/index.ts semver qualifier

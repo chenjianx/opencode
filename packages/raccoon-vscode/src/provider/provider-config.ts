@@ -1,10 +1,12 @@
 import * as vscode from "vscode"
-import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import type { Agent as OpencodeAgent, AgentConfig as OpencodeAgentConfig, OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import type {
   ChatMode,
   ExtensionToWebview,
   RaccoonCommand,
+  RaccoonAgentScope,
   RaccoonModel,
+  RaccoonPermissionConfig,
   RaccoonProviderAuthMethod,
   RaccoonPluginLanguage,
   RaccoonPluginLanguageMode,
@@ -83,11 +85,12 @@ export class RaccoonProviderConfig {
     const saved = await this.modelState.load(active, { selected: this.selectedModel, model: this.modeModels })
     this.selectedModel = saved.selected
     this.modeModels = saved.model
-    const [configResponse, providerResponse, authResponse, commandResponse] = await Promise.all([
+    const [configResponse, providerResponse, authResponse, commandResponse, agentResponse] = await Promise.all([
       active.config.providers({ directory: this.deps.directory() }, { throwOnError: true }),
       active.provider.list({ directory: this.deps.directory() }, { throwOnError: true }),
       active.provider.auth({ directory: this.deps.directory() }, { throwOnError: true }),
       active.command.list({ directory: this.deps.directory() }, { throwOnError: true }),
+      active.app.agents({ directory: this.deps.directory() }, { throwOnError: true }),
     ])
     this.providerAuthMethods = authResponse.data ?? {}
     const connected = new Set(providerResponse.data.connected)
@@ -114,6 +117,7 @@ export class RaccoonProviderConfig {
     this.deps.setState({
       ...this.deps.getState(),
       models,
+      agents: visibleAgents(agentResponse.data),
       providers,
       commands,
       slashCommands: [
@@ -202,6 +206,31 @@ export class RaccoonProviderConfig {
       { throwOnError: true },
     )
     await this.deps.refresh()
+  }
+
+  async configureAgent(message: Extract<WebviewToExtension, { type: "configureAgent" }>) {
+    const sourceName = requireAgentName(message.name)
+    const targetName = requireAgentName(message.agent.name ?? message.name)
+    if (sourceName !== targetName) await this.writeAgentConfig(message.scope, sourceName, undefined)
+    await this.writeAgentConfig(message.scope, targetName, agentConfigValue(message.agent))
+    await this.deps.refresh()
+  }
+
+  async deleteAgent(name: string, scope: RaccoonAgentScope) {
+    await this.writeAgentConfig(scope, requireAgentName(name), undefined)
+    await this.deps.refresh()
+  }
+
+  private async writeAgentConfig(scope: RaccoonAgentScope, name: string, value: OpencodeAgentConfig | undefined) {
+    const client = await this.deps.client()
+    const config = {
+      agent: { [name]: value } as Record<string, OpencodeAgentConfig | undefined>,
+    }
+    if (scope === "user") {
+      await client.global.config.update({ config }, { throwOnError: true })
+      return
+    }
+    await client.config.update({ directory: this.deps.directory(), config }, { throwOnError: true })
   }
 
   async connectProvider(message: Extract<WebviewToExtension, { type: "connectProvider" }>) {
@@ -512,4 +541,60 @@ export class RaccoonProviderConfig {
 function normalizePluginLanguageMode(value: string | undefined): RaccoonPluginLanguageMode {
   if (value === "auto" || value === "en" || value === "zh-Hans" || value === "zh-Hant") return value
   return "auto"
+}
+
+function visibleAgents(agents: OpencodeAgent[]) {
+  return agents
+    .filter((agent) => agent.hidden !== true)
+    .map((agent) => ({
+      name: agent.name,
+      description: agent.description,
+      mode: agent.mode,
+      native: agent.native,
+      hidden: agent.hidden,
+      temperature: agent.temperature,
+      topP: agent.topP,
+      variant: agent.variant,
+      steps: agent.steps,
+      color: agent.color,
+      permission: agent.permission,
+      model: agent.model,
+      prompt: agent.prompt,
+      options: agent.options,
+    }))
+}
+
+export type RaccoonAgentConfigUpdate = {
+  name?: string
+  description?: string
+  mode?: "subagent" | "primary" | "all"
+  model?: ModelSelection
+  temperature?: number
+  topP?: number
+  variant?: string
+  steps?: number
+  prompt?: string
+  permission?: RaccoonPermissionConfig
+  disable?: boolean
+}
+
+function requireAgentName(value: string) {
+  const name = value.trim()
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name)) throw new Error("Agent name must use letters, numbers, dashes, or underscores")
+  return name
+}
+
+function agentConfigValue(agent: RaccoonAgentConfigUpdate): OpencodeAgentConfig {
+  return {
+    ...(agent.model ? { model: `${agent.model.providerID}/${agent.model.modelID}` } : {}),
+    ...(agent.description !== undefined ? { description: agent.description.trim() } : {}),
+    ...(agent.mode ? { mode: agent.mode } : {}),
+    ...(agent.temperature !== undefined ? { temperature: agent.temperature } : {}),
+    ...(agent.topP !== undefined ? { top_p: agent.topP } : {}),
+    ...(agent.variant !== undefined ? { variant: agent.variant.trim() } : {}),
+    ...(agent.steps !== undefined ? { steps: agent.steps } : {}),
+    ...(agent.prompt !== undefined ? { prompt: agent.prompt } : {}),
+    ...(agent.permission ? { permission: agent.permission } : {}),
+    ...(agent.disable !== undefined ? { disable: agent.disable } : {}),
+  }
 }

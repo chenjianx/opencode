@@ -42,6 +42,8 @@
 
   .settings-header button,
   .settings-actions button,
+  .settings-small-button,
+  .settings-icon-button,
   .settings-provider-actions button,
   .settings-provider-config button,
   .settings-dialog-footer button,
@@ -104,6 +106,90 @@
 
   .settings-actions-buttons {
     @apply flex gap-2;
+  }
+
+  .settings-small-button {
+    @apply inline-flex h-[28px] items-center gap-1.5 rounded-[4px] px-2 text-[12px];
+  }
+
+  .settings-icon-button {
+    @apply inline-flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[4px] px-0;
+  }
+
+  .settings-agent-shell {
+    @apply grid min-h-0 grid-cols-[minmax(190px,250px)_minmax(0,1fr)] gap-3 max-[760px]:grid-cols-1;
+  }
+
+  .settings-agent-list {
+    @apply max-h-full overflow-auto;
+  }
+
+  .settings-agent-list-item {
+    @apply grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left last:border-b-0 hover:bg-[var(--color-hover)];
+  }
+
+  .settings-agent-list-item.active {
+    @apply bg-[var(--color-button)];
+    box-shadow: inset 3px 0 0 var(--color-focus);
+  }
+
+  .settings-agent-list-main {
+    @apply min-w-0;
+  }
+
+  .settings-agent-list-name {
+    @apply block truncate text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-agent-list-description {
+    @apply mt-0.5 overflow-hidden text-[11px] leading-4 text-[var(--color-muted)];
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .settings-agent-list-tags {
+    @apply flex max-w-[82px] flex-col items-end gap-1;
+  }
+
+  .settings-agent-list-tags span {
+    @apply max-w-full truncate rounded-[999px] bg-[var(--color-background)] px-1.5 py-0.5 text-[10px] text-[var(--color-muted)];
+  }
+
+  .settings-agent-panel {
+    @apply overflow-visible;
+  }
+
+  .settings-agent-panel-header {
+    @apply flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2.5;
+  }
+
+  .settings-agent-panel-title {
+    @apply min-w-0;
+  }
+
+  .settings-agent-panel-name {
+    @apply truncate text-[13px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-agent-panel-subtitle {
+    @apply mt-0.5 text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-agent-panel-actions {
+    @apply flex gap-1.5;
+  }
+
+  .settings-agent-panel .settings-row {
+    @apply grid grid-cols-[minmax(150px,210px)_minmax(0,1fr)] items-start gap-4 max-[620px]:grid-cols-1;
+  }
+
+  .settings-agent-panel .settings-row-control {
+    @apply max-w-none justify-start;
+  }
+
+  .settings-agent-section-title {
+    @apply border-b border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)];
   }
 
   .settings-provider-feature {

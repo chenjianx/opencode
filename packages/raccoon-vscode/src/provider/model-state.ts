@@ -29,7 +29,6 @@ export function modeModelSelections(value: unknown): Partial<Record<ChatMode, Mo
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
       .map(([key, item]) => {
-        if (key !== "build" && key !== "plan") return
         const model = modelSelection(item)
         if (!model) return
         return [key, model] as const

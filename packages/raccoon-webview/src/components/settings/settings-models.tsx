@@ -1,4 +1,4 @@
-import type { ChatMode, RaccoonModel } from "../../protocol"
+import type { RaccoonAgent, RaccoonModel } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow } from "./settings-common"
@@ -10,18 +10,25 @@ function labelOf(model: RaccoonModel | undefined, notSet: string) {
   return model.modelName
 }
 
+function modeLabel(value: string) {
+  return value
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 export function SettingsModels(props: {
+  agents: RaccoonAgent[]
   connectedModels: RaccoonModel[]
   selectedModel?: ModelSelection
-  modeModels: Partial<Record<ChatMode, ModelSelection>>
+  modeModels: Partial<Record<string, ModelSelection>>
   onSelectedModelChange: (model: ModelSelection) => void
-  onModeModelChange: (mode: ChatMode, model: ModelSelection) => void
+  onModeModelChange: (mode: string, model: ModelSelection) => void
 }) {
   const language = useLanguage()
   const selectedModel = props.connectedModels.find(
     (model) => model.providerID === props.selectedModel?.providerID && model.modelID === props.selectedModel?.modelID,
   )
-  const modeModel = (mode: ChatMode) =>
+  const modeModel = (mode: string) =>
     props.connectedModels.find(
       (model) =>
         model.providerID === props.modeModels[mode]?.providerID &&
@@ -44,40 +51,32 @@ export function SettingsModels(props: {
             maxWidth={255}
           />
         </SettingsRow>
-        <SettingsRow
-          title={language.t("settings.models.build.title")}
-          description={language.t("settings.models.current", {
-            model: labelOf(modeModel("build") ?? selectedModel, language.t("settings.models.notSet")),
-          })}
-        >
-          <ModelPicker
-            value={props.modeModels.build ?? props.selectedModel}
-            models={props.connectedModels}
-            onChange={(model) => props.onModeModelChange("build", model)}
-            ariaLabel={language.t("settings.models.build.title")}
-            placeholder={language.t("settings.models.noModel")}
-            compact
-            placement="bottom"
-            maxWidth={255}
-          />
-        </SettingsRow>
-        <SettingsRow
-          title={language.t("settings.models.plan.title")}
-          description={language.t("settings.models.current", {
-            model: labelOf(modeModel("plan") ?? selectedModel, language.t("settings.models.notSet")),
-          })}
-        >
-          <ModelPicker
-            value={props.modeModels.plan ?? props.selectedModel}
-            models={props.connectedModels}
-            onChange={(model) => props.onModeModelChange("plan", model)}
-            ariaLabel={language.t("settings.models.plan.title")}
-            placeholder={language.t("settings.models.noModel")}
-            compact
-            placement="bottom"
-            maxWidth={255}
-          />
-        </SettingsRow>
+        {props.agents.map((agent) => (
+          <SettingsRow
+            key={agent.name}
+            title={`${modeLabel(agent.name)} model`}
+            description={
+              agent.description
+                ? `${agent.description} ${language.t("settings.models.current", {
+                    model: labelOf(modeModel(agent.name) ?? selectedModel, language.t("settings.models.notSet")),
+                  })}`
+                : language.t("settings.models.current", {
+                    model: labelOf(modeModel(agent.name) ?? selectedModel, language.t("settings.models.notSet")),
+                  })
+            }
+          >
+            <ModelPicker
+              value={props.modeModels[agent.name] ?? props.selectedModel}
+              models={props.connectedModels}
+              onChange={(model) => props.onModeModelChange(agent.name, model)}
+              ariaLabel={`${modeLabel(agent.name)} model`}
+              placeholder={language.t("settings.models.noModel")}
+              compact
+              placement="bottom"
+              maxWidth={255}
+            />
+          </SettingsRow>
+        ))}
       </div>
     </>
   )

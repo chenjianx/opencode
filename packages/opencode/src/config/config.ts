@@ -206,6 +206,7 @@ export const Info = Schema.Struct({
         // primary
         plan: Schema.optional(ConfigAgent.Info),
         build: Schema.optional(ConfigAgent.Info),
+        ask: Schema.optional(ConfigAgent.Info), // raccoon_change - expose built-in ask agent config
         // subagent
         general: Schema.optional(ConfigAgent.Info),
         explore: Schema.optional(ConfigAgent.Info),

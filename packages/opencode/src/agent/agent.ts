@@ -9,6 +9,7 @@ import { Auth } from "../auth"
 import { ProviderTransform } from "@/provider/transform"
 
 import PROMPT_GENERATE from "./generate.txt"
+import PROMPT_ASK from "./prompt/ask.txt" // raccoon_change - load ask agent prompt
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
 import PROMPT_EXPLORE from "./prompt/explore.txt"
 import PROMPT_SCOUT from "./prompt/scout.txt"
@@ -56,6 +57,80 @@ const GeneratedAgent = Schema.Struct({
   whenToUse: Schema.String,
   systemPrompt: Schema.String,
 })
+
+// raccoon_change start - add readonly bash rules for ask agent
+const READ_ONLY_BASH = {
+  "*": "deny",
+  "cat *": "allow",
+  "head *": "allow",
+  "tail *": "allow",
+  "less *": "allow",
+  "ls *": "allow",
+  "tree *": "allow",
+  "pwd *": "allow",
+  "echo *": "allow",
+  "wc *": "allow",
+  "which *": "allow",
+  "type *": "allow",
+  "file *": "allow",
+  "diff *": "allow",
+  "du *": "allow",
+  "df *": "allow",
+  "date *": "allow",
+  "uname *": "allow",
+  "whoami *": "allow",
+  "printenv *": "allow",
+  "man *": "allow",
+  "grep *": "allow",
+  "rg *": "allow",
+  "ag *": "allow",
+  "sort *": "allow",
+  "uniq *": "allow",
+  "cut *": "allow",
+  "tr *": "allow",
+  "jq *": "allow",
+  "git *": "deny",
+  "git log *": "allow",
+  "git show *": "allow",
+  "git diff *": "allow",
+  "git status *": "allow",
+  "git blame *": "allow",
+  "git rev-parse *": "allow",
+  "git rev-list *": "allow",
+  "git ls-files *": "allow",
+  "git ls-tree *": "allow",
+  "git ls-remote *": "allow",
+  "git shortlog *": "allow",
+  "git describe *": "allow",
+  "git cat-file *": "allow",
+  "git name-rev *": "allow",
+  "git stash list *": "allow",
+  "git tag -l *": "allow",
+  "git branch --list *": "allow",
+  "git branch -a *": "allow",
+  "git branch -r *": "allow",
+  "git remote -v *": "allow",
+  "gh *": "ask",
+  "*\n*": "deny",
+  "*<(*": "deny",
+  "*|*": "deny",
+  "*;*": "deny",
+  "*&&*": "deny",
+  "*&*": "deny",
+  "*$(*": "deny",
+  "*`*": "deny",
+  "*>*": "deny",
+  "* > *": "deny",
+  "*>>*": "deny",
+  "* >> *": "deny",
+  "*>|*": "deny",
+  "* >| *": "deny",
+  "sort -o *": "deny",
+  "sort * -o *": "deny",
+  "sort --output*": "deny",
+  "sort * --output*": "deny",
+} satisfies Record<string, PermissionLegacy.Action>
+// raccoon_change end
 
 export interface Interface {
   readonly get: (agent: string) => Effect.Effect<Info>
@@ -167,6 +242,42 @@ export const layer = Layer.effect(
             mode: "primary",
             native: true,
           },
+          // raccoon_change start - register readonly ask as a built-in primary agent
+          ask: {
+            name: "ask",
+            description: "Get answers and explanations without making changes to the codebase.",
+            prompt: PROMPT_ASK,
+            options: {},
+            permission: Permission.merge(
+              defaults,
+              Permission.fromConfig({
+                "*": "deny",
+                read: {
+                  "*": "allow",
+                  "*.env": "ask",
+                  "*.env.*": "ask",
+                  "*.env.example": "allow",
+                },
+                grep: "allow",
+                glob: "allow",
+                list: "allow",
+                skill: "allow",
+                question: "allow",
+                webfetch: "allow",
+                websearch: "allow",
+                external_directory: readonlyExternalDirectory,
+              }),
+              user,
+              Permission.fromConfig({
+                edit: "deny",
+                bash: READ_ONLY_BASH,
+              }),
+              user.filter((rule) => rule.action === "deny"),
+            ),
+            mode: "primary",
+            native: true,
+          },
+          // raccoon_change end
           general: {
             name: "general",
             description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,

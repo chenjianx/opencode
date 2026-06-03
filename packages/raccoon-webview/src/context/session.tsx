@@ -2,6 +2,9 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type {
   ChatMode,
   RaccoonCommand,
+  RaccoonAgentScope,
+  RaccoonAgentMode,
+  RaccoonPermissionConfig,
   RaccoonFileAttachment,
   RaccoonMessage,
   RaccoonModel,
@@ -18,6 +21,7 @@ import { applyPartUpdates } from "./session-parts"
 const initialState: RaccoonState = {
   sessions: [],
   messages: [],
+  agents: [],
   models: [],
   providers: [],
   commands: [],
@@ -67,6 +71,24 @@ type SessionActionsContextValue = {
   loginRaccoon: (serverUrl?: string) => void
   cancelRaccoonLogin: () => void
   configureProvider: (providerID: string, apiKey: string) => void
+  configureAgent: (
+    name: string,
+    agent: {
+      name?: string
+      description?: string
+      mode?: RaccoonAgentMode
+      model?: { providerID: string; modelID: string }
+      temperature?: number
+      topP?: number
+      variant?: string
+      steps?: number
+      prompt?: string
+      permission?: RaccoonPermissionConfig
+      disable?: boolean
+    },
+    scope: RaccoonAgentScope,
+  ) => void
+  deleteAgent: (name: string, scope: RaccoonAgentScope) => void
   connectProvider: (input: {
     providerID: string
     methodIndex?: number
@@ -82,7 +104,7 @@ type SessionActionsContextValue = {
     models: Array<{ id: string; name: string }>
     editing?: boolean
   }) => void
-  sendMessage: (text: string, files?: RaccoonFileAttachment[]) => void
+  sendMessage: (text: string, files?: RaccoonFileAttachment[], model?: { providerID: string; modelID: string }) => void
   replyToQuestion: (requestID: string, answers: string[][]) => void
   rejectQuestion: (requestID: string) => void
   openFile: (filePath: string, line?: number, column?: number) => void
@@ -339,13 +361,15 @@ export function SessionProvider(props: { children: ReactNode }) {
       loginRaccoon: (serverUrl) => vscode.postMessage({ type: "loginRaccoon", serverUrl }),
       cancelRaccoonLogin: () => vscode.postMessage({ type: "cancelRaccoonLogin" }),
       configureProvider: (providerID, apiKey) => vscode.postMessage({ type: "configureProvider", providerID, apiKey }),
+      configureAgent: (name, agent, scope) => vscode.postMessage({ type: "configureAgent", name, agent, scope }),
+      deleteAgent: (name, scope) => vscode.postMessage({ type: "deleteAgent", name, scope }),
       connectProvider: (input) => vscode.postMessage({ type: "connectProvider", ...input }),
       cancelProviderConnect: (providerID) => vscode.postMessage({ type: "cancelProviderConnect", providerID }),
       configureCustomProvider: (input) => vscode.postMessage({ type: "configureCustomProvider", ...input }),
-      sendMessage: (text, files) => {
+      sendMessage: (text, files, model) => {
         const trimmed = text.trim()
         if (!trimmed && !(files?.length ?? 0)) return
-        vscode.postMessage({ type: "sendMessage", text: trimmed, mode: stateRef.current.mode, model: stateRef.current.selectedModel, files })
+        vscode.postMessage({ type: "sendMessage", text: trimmed, mode: stateRef.current.mode, model: model ?? stateRef.current.selectedModel, files })
       },
       replyToQuestion: (requestID, answers) => {
         setQuestionErrors((current) => {

@@ -1,6 +1,35 @@
-export type ChatMode = "build" | "plan"
+export type ChatMode = string
 export type RaccoonPluginLanguage = "en" | "zh-Hans" | "zh-Hant"
 export type RaccoonPluginLanguageMode = "auto" | RaccoonPluginLanguage
+export type RaccoonAgentMode = "subagent" | "primary" | "all"
+export type RaccoonAgentScope = "project" | "user"
+export type RaccoonPermissionAction = "allow" | "ask" | "deny"
+export type RaccoonPermissionConfig = Record<string, RaccoonPermissionAction | Record<string, RaccoonPermissionAction>>
+export type RaccoonPermissionRule = {
+  permission: string
+  pattern: string
+  action: RaccoonPermissionAction
+}
+
+export type RaccoonAgent = {
+  name: string
+  description?: string
+  mode: RaccoonAgentMode
+  native?: boolean
+  hidden?: boolean
+  temperature?: number
+  topP?: number
+  variant?: string
+  steps?: number
+  color?: string
+  permission?: RaccoonPermissionRule[]
+  model?: {
+    providerID: string
+    modelID: string
+  }
+  prompt?: string
+  options?: Record<string, unknown>
+}
 
 export type RaccoonModel = {
   providerID: string
@@ -189,6 +218,7 @@ export type RaccoonState = {
   activeSession?: RaccoonSession
   sessions: RaccoonSession[]
   messages: RaccoonMessage[]
+  agents: RaccoonAgent[]
   models: RaccoonModel[]
   providers: RaccoonProviderInfo[]
   commands?: RaccoonCommand[]
@@ -230,6 +260,25 @@ export type WebviewToExtension =
   | { type: "loginRaccoon"; serverUrl?: string }
   | { type: "cancelRaccoonLogin" }
   | { type: "configureProvider"; providerID: string; apiKey: string }
+  | {
+      type: "configureAgent"
+      name: string
+      scope: RaccoonAgentScope
+      agent: {
+        name?: string
+        description?: string
+        mode?: RaccoonAgentMode
+        model?: { providerID: string; modelID: string }
+        temperature?: number
+        topP?: number
+        variant?: string
+        steps?: number
+        prompt?: string
+        permission?: RaccoonPermissionConfig
+        disable?: boolean
+      }
+    }
+  | { type: "deleteAgent"; name: string; scope: RaccoonAgentScope }
   | {
       type: "connectProvider"
       providerID: string

@@ -87,6 +87,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   private state: RaccoonState = {
     sessions: [],
     messages: [],
+    agents: [],
     models: [],
     providers: [],
     mode: "build",
@@ -185,6 +186,8 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       loginRaccoon: (serverUrl, source) => this.config.loginRaccoon(serverUrl, source),
       cancelRaccoonLogin: () => this.config.cancelRaccoonLogin(),
       configureProvider: (providerID, apiKey) => this.config.configureProvider(providerID, apiKey),
+      configureAgent: (message) => this.config.configureAgent(message),
+      deleteAgent: (name, scope) => this.config.deleteAgent(name, scope),
       connectProvider: (message) => this.config.connectProvider(message),
       cancelProviderConnect: (providerID) => this.config.cancelProviderConnect(providerID),
       fetchCustomProviderModels: (message, source) => this.fetchCustomProviderModels(message, source),

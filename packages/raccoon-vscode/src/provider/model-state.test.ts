@@ -25,6 +25,7 @@ describe("ModelStateStore", () => {
         model: {
           build: { providerID: "anthropic", modelID: "claude-sonnet-4" },
           plan: { providerID: "raccoon", modelID: "big-pickle" },
+          ask: { providerID: "openai", modelID: "gpt-4.1" },
         },
       })
 
@@ -33,6 +34,7 @@ describe("ModelStateStore", () => {
         model: {
           build: { providerID: "anthropic", modelID: "claude-sonnet-4" },
           plan: { providerID: "raccoon", modelID: "big-pickle" },
+          ask: { providerID: "openai", modelID: "gpt-4.1" },
         },
       })
     } finally {
