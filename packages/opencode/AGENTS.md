@@ -45,12 +45,22 @@ same file — they remain inaccessible to consumers (they are not projected by
 
 # raccoon_change markers
 
+- **Prefer the extraction layer.** Put raccoon-specific logic in
+  `src/raccoon/` (mirroring kilocode's `src/kilocode/`). Upstream files should
+  only keep a single `import { Raccoon* } from "@/raccoon/..."` plus a one-line
+  seam (a spread, a flag, a helper call). This keeps the bulk of our code out of
+  upstream merge conflicts.
+- Only inline logic into an upstream file when it genuinely cannot be externalized
+  (e.g. passing a flag into an upstream function, or spreading into an upstream
+  object literal).
 - When editing files under `packages/opencode`, mark any changed lines with
   `// raccoon_change` comments.
 - Use a single-line `// raccoon_change - ...` comment for a one-line change.
 - Use `// raccoon_change start - ...` and `// raccoon_change end` around a
   multi-line change block.
 - Keep the note short and specific about what changed.
+- For tests, prefer adding raccoon-specific cases under `test/raccoon/` rather
+  than editing upstream test files.
 
 ## When the file is an `index.ts`
 

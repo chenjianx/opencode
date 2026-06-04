@@ -10,6 +10,7 @@ import { assertExternalDirectoryEffect } from "./external-directory"
 import { Instruction } from "../session/instruction"
 import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
 import { Reference } from "@/reference/reference"
+import { RaccoonRead } from "@/raccoon/read" // raccoon_change - directory inlining extracted to src/raccoon
 
 const DEFAULT_READ_LIMIT = 2000
 const MAX_LINE_LENGTH = 2000
@@ -17,9 +18,6 @@ const MAX_LINE_SUFFIX = `... (line truncated to ${MAX_LINE_LENGTH} chars)`
 const MAX_BYTES = 50 * 1024
 const MAX_BYTES_LABEL = `${MAX_BYTES / 1024} KB`
 const SAMPLE_BYTES = 4096
-// raccoon_change start - inline folder files for directory mentions
-const DIRECTORY_CONCURRENCY = 8
-// raccoon_change end
 const SUPPORTED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"])
 
 class ReadStop extends Schema.TaggedErrorClass<ReadStop>()("ReadStop", {}) {}
@@ -231,43 +229,6 @@ export const ReadTool = Tool.define<
       return nonPrintableCount / bytes.length > 0.3
     }
 
-    // raccoon_change start - inline folder files for directory mentions
-    type DirectoryFile = {
-      filepath: string
-      content: string
-    }
-    const readDirectoryFiles = Effect.fn("ReadTool.readDirectoryFiles")(function* (
-      filepath: string,
-      items: string[],
-      directory: string,
-    ) {
-      const entries = yield* fs.readDirectoryEntries(filepath).pipe(Effect.catch(() => Effect.succeed([])))
-      const types = new Map(entries.map((entry) => [entry.name, entry.type]))
-      const files = yield* Effect.forEach(
-        items.filter((item) => !item.endsWith("/") && types.get(item) === "file"),
-        Effect.fnUntraced(function* (item) {
-          const child = path.join(filepath, item)
-          const info = yield* fs.stat(child).pipe(Effect.catch(() => Effect.void))
-          if (info?.type !== "File") return
-          const sample = yield* readSample(child, Number(info.size), SAMPLE_BYTES).pipe(
-            Effect.catch(() => Effect.succeed(new Uint8Array())),
-          )
-          if (isBinaryFile(child, sample)) return
-          const file = yield* lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 }).pipe(Effect.catch(() => Effect.void))
-          if (!file) return
-          const rel = path.relative(directory, child).replaceAll("\\", "/")
-          const note = file.cut || file.more ? "\n\n(File truncated)" : ""
-          return {
-            filepath: child,
-            content: `<file_content path="${rel}">\n${file.raw.join("\n")}${note}\n</file_content>`,
-          }
-        }),
-        { concurrency: DIRECTORY_CONCURRENCY },
-      )
-      return files.filter((item): item is DirectoryFile => item !== undefined)
-    })
-    // raccoon_change end
-
     const run = Effect.fn("ReadTool.execute")(function* (
       params: Schema.Schema.Type<typeof Parameters>,
       ctx: Tool.Context<Metadata>,
@@ -311,10 +272,23 @@ export const ReadTool = Tool.define<
         const start = offset - 1
         const sliced = items.slice(start, start + limit)
         const truncated = start + sliced.length < items.length
-        // raccoon_change start - inline folder files for directory mentions
+        // raccoon_change - inline folder files for directory mentions (logic in src/raccoon/read.ts)
         const expand = Boolean(ctx.extra?.["includeDirectoryFiles"])
-        const loaded = expand ? yield* readDirectoryFiles(filepath, sliced, instance.directory) : []
-        // raccoon_change end
+        const loaded = expand
+          ? yield* RaccoonRead.inlineDirectory(
+              {
+                fs,
+                readSample,
+                lines,
+                isBinaryFile,
+                sampleBytes: SAMPLE_BYTES,
+                defaultReadLimit: DEFAULT_READ_LIMIT,
+              },
+              filepath,
+              sliced,
+              instance.directory,
+            )
+          : []
         let output = [
           `<path>${filepath}</path>`,
           `<type>directory</type>`,
@@ -335,9 +309,7 @@ export const ReadTool = Tool.define<
           metadata: {
             preview: sliced.slice(0, 20).join("\n"),
             truncated,
-            // raccoon_change start - inline folder files for directory mentions
-            loaded: loaded.map((item) => item.filepath),
-            // raccoon_change end
+            loaded: loaded.map((item) => item.filepath), // raccoon_change - inlined directory files
             display: {
               type: "directory" as const,
               path: filepath,

@@ -16,6 +16,7 @@ import { Process } from "@/util/process"
 import { errorMessage } from "@/util/error"
 import { text } from "node:stream/consumers"
 import { Effect, Option } from "effect"
+import { RaccoonBranding } from "@/raccoon/branding" // raccoon_change - provider branding extracted to src/raccoon
 
 type PluginAuth = NonNullable<Hooks["auth"]>
 
@@ -366,8 +367,6 @@ export const ProvidersLoginCommand = effectCmd({
     const hooks = yield* pluginSvc.list()
 
     const priority: Record<string, number> = {
-      // raccoon_change start - prefer Raccoon as the default provider login
-      raccoon: 0,
       opencode: 1,
       openai: 2,
       "github-copilot": 3,
@@ -375,7 +374,6 @@ export const ProvidersLoginCommand = effectCmd({
       anthropic: 5,
       openrouter: 6,
       vercel: 7,
-      // raccoon_change end
     }
     const pluginProviders = resolvePluginProviders({
       hooks,
@@ -389,16 +387,14 @@ export const ProvidersLoginCommand = effectCmd({
         providers,
         values(),
         sortBy(
-          (x) => priority[x.id] ?? 99,
+          (x) => RaccoonBranding.priority(x.id, priority), // raccoon_change - raccoon sorts first
           (x) => x.name ?? x.id,
         ),
         map((x) => ({
           label: x.name,
           value: x.id,
-          hint: {
-            raccoon: "recommended", // raccoon_change - mark Raccoon as the recommended login
-            openai: "ChatGPT Plus/Pro or API key",
-          }[x.id],
+          // raccoon_change - raccoon marked as recommended login
+          hint: RaccoonBranding.hint(x.id, { openai: "ChatGPT Plus/Pro or API key" }, RaccoonBranding.cliHint),
         })),
       ),
       ...pluginProviders.map((x) => ({
