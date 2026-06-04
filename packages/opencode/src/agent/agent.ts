@@ -127,7 +127,7 @@ const READ_ONLY_BASH = {
   "sort * -o *": "deny",
   "sort --output*": "deny",
   "sort * --output*": "deny",
-} satisfies Record<string, PermissionLegacy.Action>
+} satisfies Record<string, PermissionV1.Action>
 // raccoon_change end
 
 export interface Interface {
