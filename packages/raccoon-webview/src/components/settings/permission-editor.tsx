@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/language"
 import type { I18nKey } from "../../i18n/en"
 import type { RaccoonPermissionAction, RaccoonPermissionConfig, RaccoonPermissionRule } from "../../protocol"
 import { SettingsRow } from "./settings-common"
+import { titleCase } from "./utils"
 import {
   addExceptionPatch,
   clearGroupedPatch,
@@ -74,15 +75,7 @@ const TRAILING_TOOLS: ToolDef[] = [
 ]
 
 function toolTitle(id: string): string {
-  return id
-    .split(" / ")
-    .map((part) =>
-      part
-        .split("_")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" "),
-    )
-    .join(" / ")
+  return titleCase(id)
 }
 
 export function PermissionEditor(props: {

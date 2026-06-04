@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { Plugs, SlidersHorizontal, Translate } from "@phosphor-icons/react"
+import { Plugs, Robot, SlidersHorizontal, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
@@ -77,7 +77,7 @@ export function SettingsView() {
           </button>
           <button type="button" className={`settings-nav-item ${tab === "agents" ? "active" : ""}`} onClick={() => setTab("agents")}>
             <span className="settings-nav-icon">
-              <SlidersHorizontal size={16} weight="bold" />
+              <Robot size={16} weight="bold" />
             </span>
             <span>{language.t("settings.nav.agents")}</span>
           </button>

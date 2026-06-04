@@ -3,6 +3,7 @@ import { CopyIcon, CheckIcon } from "@phosphor-icons/react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import { bundledLanguages, codeToTokens, type BundledLanguage, type ThemedToken } from "shiki"
+import { useLanguage } from "../../context/language"
 
 const FILE_PATH_UNIX_RE =
   /^((?:\/|\.\.?\/)?(?:[a-zA-Z0-9_@-][a-zA-Z0-9_@./-]*\/)*[a-zA-Z0-9_@.-]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?)?$/
@@ -83,6 +84,7 @@ function tokenClass(color: string | undefined) {
 }
 
 function CodeBlock(props: { language?: string; code: string }) {
+  const { t } = useLanguage()
   const [tokens, setTokens] = useState<ThemedToken[][]>()
   const [copied, setCopied] = useState(false)
   const language = shikiLanguage(props.language)
@@ -119,8 +121,8 @@ function CodeBlock(props: { language?: string; code: string }) {
         <button
           type="button"
           data-slot="markdown-code-copy"
-          aria-label={copied ? "Copied" : "Copy code"}
-          title={copied ? "Copied" : "Copy code"}
+          aria-label={copied ? t("markdown.copied") : t("markdown.copy")}
+          title={copied ? t("markdown.copied") : t("markdown.copy")}
           onClick={() => {
             void navigator.clipboard.writeText(props.code)
             setCopied(true)

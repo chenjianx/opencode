@@ -22,7 +22,9 @@ function eventSessionID(event: Event) {
     event.type === "session.diff" ||
     event.type === "question.asked" ||
     event.type === "question.replied" ||
-    event.type === "question.rejected"
+    event.type === "question.rejected" ||
+    event.type === "permission.asked" ||
+    event.type === "permission.replied"
     ? event.properties.sessionID
     : undefined
 }
@@ -138,6 +140,28 @@ export class RaccoonEventHandler {
     }
     if (event.type === "question.replied" || event.type === "question.rejected") {
       this.deps.postMessage({ type: "questionResolved", requestID: event.properties.requestID })
+      this.deps.scheduleEventRefresh()
+      return
+    }
+    if (event.type === "permission.asked") {
+      this.deps.stopPromptRefresh(event.properties.sessionID)
+      this.deps.postMessage({
+        type: "permissionRequest",
+        permission: {
+          id: event.properties.id,
+          sessionID: event.properties.sessionID,
+          permission: event.properties.permission,
+          patterns: event.properties.patterns,
+          metadata: event.properties.metadata,
+          always: event.properties.always,
+          tool: event.properties.tool,
+        },
+      })
+      this.setState({ loading: true, busy: true })
+      return
+    }
+    if (event.type === "permission.replied") {
+      this.deps.postMessage({ type: "permissionResolved", requestID: event.properties.requestID })
       this.deps.scheduleEventRefresh()
       return
     }

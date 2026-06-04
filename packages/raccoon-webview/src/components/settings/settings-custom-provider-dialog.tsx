@@ -1,4 +1,7 @@
+import { X } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
+import { SettingsDialog } from "./settings-dialog"
+import { TextField, TextInput } from "./settings-common"
 
 type CustomProviderDraft = {
   providerID: string
@@ -31,72 +34,56 @@ export function SettingsCustomProviderDialog(props: {
   const language = useLanguage()
 
   return (
-    <div className="settings-dialog-backdrop" role="presentation">
-      <div className="settings-dialog settings-custom-provider-dialog" role="dialog" aria-modal="true" aria-labelledby="custom-provider-title">
-        <div className="settings-dialog-header">
-          <div>
-            <div className="settings-dialog-title" id="custom-provider-title">
-              {language.t("settings.customProvider.title")}
-            </div>
-            <div className="settings-dialog-subtitle">{language.t("settings.customProvider.subtitle")}</div>
-          </div>
-          <button type="button" className="settings-dialog-icon-button" onClick={props.onClose} aria-label={language.t("common.close")}>
-            ×
+    <SettingsDialog
+      titleId="custom-provider-title"
+      title={language.t("settings.customProvider.title")}
+      subtitle={language.t("settings.customProvider.subtitle")}
+      onClose={props.onClose}
+      className="settings-custom-provider-dialog"
+      footer={
+        <>
+          {props.onDelete ? (
+            <button type="button" disabled={props.savingCustom} onClick={props.onDelete}>
+              {language.t("settings.customProvider.delete")}
+            </button>
+          ) : null}
+          <button type="button" disabled={props.savingCustom} onClick={props.onClose}>
+            {language.t("common.cancel")}
           </button>
-        </div>
-        <div className="settings-dialog-body">
-          <div className="settings-dialog-grid">
-            <label className="settings-dialog-field">
-              <span>{language.t("settings.customProvider.providerID")}</span>
-              <input
-                className="settings-provider-input"
-                value={props.custom.providerID}
-                placeholder={language.t("settings.customProvider.providerID.placeholder")}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  props.onCustomChange((current) => ({ ...current, providerID: value }))
-                }}
-              />
-              <small>{language.t("settings.customProvider.providerID.help")}</small>
-            </label>
-            <label className="settings-dialog-field">
-              <span>{language.t("settings.customProvider.displayName")}</span>
-              <input
-                className="settings-provider-input"
-                value={props.custom.name}
-                placeholder={language.t("settings.customProvider.displayName.placeholder")}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  props.onCustomChange((current) => ({ ...current, name: value }))
-                }}
-              />
-            </label>
+          <button type="button" disabled={props.savingCustom} onClick={props.onSave}>
+            {props.savingCustom ? language.t("common.saving") : language.t("settings.customProvider.save")}
+          </button>
+        </>
+      }
+    >
+      <div className="settings-dialog-grid">
+            <TextField
+              label={language.t("settings.customProvider.providerID")}
+              value={props.custom.providerID}
+              placeholder={language.t("settings.customProvider.providerID.placeholder")}
+              help={language.t("settings.customProvider.providerID.help")}
+              onChange={(value) => props.onCustomChange((current) => ({ ...current, providerID: value }))}
+            />
+            <TextField
+              label={language.t("settings.customProvider.displayName")}
+              value={props.custom.name}
+              placeholder={language.t("settings.customProvider.displayName.placeholder")}
+              onChange={(value) => props.onCustomChange((current) => ({ ...current, name: value }))}
+            />
           </div>
-          <label className="settings-dialog-field">
-            <span>{language.t("settings.customProvider.baseUrl")}</span>
-            <input
-              className="settings-provider-input"
-              value={props.custom.baseURL}
-              placeholder={language.t("settings.customProvider.baseUrl.placeholder")}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                props.onCustomChange((current) => ({ ...current, baseURL: value }))
-              }}
-            />
-          </label>
-          <label className="settings-dialog-field">
-            <span>{language.t("settings.customProvider.apiKey")}</span>
-            <input
-              className="settings-provider-input"
-              type="password"
-              value={props.custom.apiKey}
-              placeholder={language.t("settings.customProvider.apiKey.placeholder")}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                props.onCustomChange((current) => ({ ...current, apiKey: value }))
-              }}
-            />
-          </label>
+          <TextField
+            label={language.t("settings.customProvider.baseUrl")}
+            value={props.custom.baseURL}
+            placeholder={language.t("settings.customProvider.baseUrl.placeholder")}
+            onChange={(value) => props.onCustomChange((current) => ({ ...current, baseURL: value }))}
+          />
+          <TextField
+            label={language.t("settings.customProvider.apiKey")}
+            type="password"
+            value={props.custom.apiKey}
+            placeholder={language.t("settings.customProvider.apiKey.placeholder")}
+            onChange={(value) => props.onCustomChange((current) => ({ ...current, apiKey: value }))}
+          />
 
           <div className="settings-dialog-models">
             <div className="settings-dialog-section">
@@ -114,11 +101,10 @@ export function SettingsCustomProviderDialog(props: {
             {props.fetchedModels ? (
               <div className="settings-dialog-fetched">
                 <div className="settings-dialog-fetched-header">
-                  <input
-                    className="settings-provider-input"
+                  <TextInput
                     value={props.fetchedQuery}
                     placeholder={language.t("settings.customProvider.searchFetched")}
-                    onChange={(event) => props.onFetchedQueryChange(event.currentTarget.value)}
+                    onChange={props.onFetchedQueryChange}
                   />
                   <button type="button" className="settings-dialog-secondary" onClick={props.onAddFetchedModels}>
                     {language.t("settings.customProvider.addSelected", { count: props.selectedFetched.size })}
@@ -145,29 +131,25 @@ export function SettingsCustomProviderDialog(props: {
             ) : null}
             {props.custom.models.map((model, index) => (
               <div className="settings-dialog-model-row" key={index}>
-                <input
-                  className="settings-provider-input"
+                <TextInput
                   value={model.id}
                   placeholder={language.t("settings.customProvider.modelID.placeholder")}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value
+                  onChange={(value) =>
                     props.onCustomChange((current) => ({
                       ...current,
                       models: current.models.map((item, itemIndex) => (itemIndex === index ? { ...item, id: value } : item)),
                     }))
-                  }}
+                  }
                 />
-                <input
-                  className="settings-provider-input"
+                <TextInput
                   value={model.name}
                   placeholder={language.t("settings.customProvider.modelName.placeholder")}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value
+                  onChange={(value) =>
                     props.onCustomChange((current) => ({
                       ...current,
                       models: current.models.map((item, itemIndex) => (itemIndex === index ? { ...item, name: value } : item)),
                     }))
-                  }}
+                  }
                 />
                 <label className="settings-dialog-model-capability">
                   <input
@@ -183,7 +165,7 @@ export function SettingsCustomProviderDialog(props: {
                       }))
                     }}
                   />
-                  <span>Image</span>
+                  <span>{language.t("settings.customProvider.image")}</span>
                 </label>
                 <button
                   type="button"
@@ -197,7 +179,7 @@ export function SettingsCustomProviderDialog(props: {
                   }
                   aria-label={language.t("settings.customProvider.removeModel")}
                 >
-                  ×
+                  <X size={12} weight="bold" />
                 </button>
               </div>
             ))}
@@ -211,21 +193,6 @@ export function SettingsCustomProviderDialog(props: {
               {language.t("settings.customProvider.addModel")}
             </button>
           </div>
-        </div>
-        <div className="settings-dialog-footer">
-          {props.onDelete ? (
-            <button type="button" disabled={props.savingCustom} onClick={props.onDelete}>
-              {language.t("settings.customProvider.delete")}
-            </button>
-          ) : null}
-          <button type="button" disabled={props.savingCustom} onClick={props.onClose}>
-            {language.t("common.cancel")}
-          </button>
-          <button type="button" disabled={props.savingCustom} onClick={props.onSave}>
-            {props.savingCustom ? language.t("common.saving") : language.t("settings.customProvider.save")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </SettingsDialog>
   )
 }

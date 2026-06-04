@@ -199,6 +199,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       requestGitChangesContext: (requestID, source) => this.requestGitChangesContext(requestID, source),
       questionReply: (message) => this.sessions.questionReply(message),
       questionReject: (message) => this.sessions.questionReject(message),
+      permissionReply: (message) => this.sessions.permissionReply(message),
       deleteCustomProvider: (providerID) => this.config.deleteCustomProvider(providerID),
       stopSession: () => this.sessions.stopSession(),
       sendMessage: (text, mode, model, files) => this.sessions.sendMessage(text, mode, model, files),

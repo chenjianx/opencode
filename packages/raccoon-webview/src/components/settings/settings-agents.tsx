@@ -2,6 +2,7 @@ import { ArrowCounterClockwise, Copy, DownloadSimple, Plus, Trash, UploadSimple 
 import { useEffect, useMemo, useRef, useState } from "react"
 import type {
   RaccoonAgent,
+  RaccoonAgentConfigInput,
   RaccoonAgentMode,
   RaccoonAgentScope,
   RaccoonModel,
@@ -9,9 +10,10 @@ import type {
 } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { ModelPicker } from "../ui/model-picker"
-import { SettingsRow } from "./settings-common"
+import { SettingsRow, Select, TextInput } from "./settings-common"
 import { PermissionEditor, PermissionRuleset } from "./permission-editor"
 import { mergePermissionPatch, type PermissionPatch } from "./permission-utils"
+import { clampParam, downloadJson, formatModelString, parseModelString, titleCase } from "./utils"
 
 type ModelSelection = { providerID: string; modelID: string }
 type AgentDraft = {
@@ -32,10 +34,6 @@ type AgentDraft = {
 
 const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
 
-function label(value: string) {
-  return value.replace(/[-_]/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
-}
-
 function stringValue(value: unknown) {
   return typeof value === "string" ? value : ""
 }
@@ -54,17 +52,10 @@ function modeValue(value: RaccoonAgent["mode"] | undefined): RaccoonAgentMode {
   return "subagent"
 }
 
-function parseModelString(value: unknown): ModelSelection | undefined {
-  if (typeof value !== "string") return undefined
-  const index = value.indexOf("/")
-  if (index <= 0) return undefined
-  return { providerID: value.slice(0, index), modelID: value.slice(index + 1) }
-}
-
 function agentDraft(agent: RaccoonAgent | undefined): AgentDraft {
   return {
     originalName: agent?.name ?? "custom-agent",
-    scope: "project",
+    scope: agent?.configScope ?? "project",
     name: agent?.name ?? "custom-agent",
     description: stringValue(agent?.description),
     mode: modeValue(agent?.mode),
@@ -98,19 +89,12 @@ function duplicateDraft(agent: RaccoonAgent, existing: RaccoonAgent[]): AgentDra
   return { ...agentDraft(agent), originalName: name, name }
 }
 
-function numeric(value: string, min: number, max: number) {
-  if (!value.trim()) return undefined
-  const parsed = Number(value)
-  if (!Number.isFinite(parsed)) return undefined
-  return Math.min(max, Math.max(min, parsed))
-}
-
 function draftSnapshot(draft: AgentDraft) {
   return JSON.stringify({
     ...draft,
-    temperature: numeric(draft.temperature, 0, 2),
-    topP: numeric(draft.topP, 0, 1),
-    steps: numeric(draft.steps, 1, 100),
+    temperature: clampParam(draft.temperature, "temperature"),
+    topP: clampParam(draft.topP, "topP"),
+    steps: clampParam(draft.steps, "steps"),
   })
 }
 
@@ -118,12 +102,12 @@ function exportPayload(draft: AgentDraft) {
   const payload: Record<string, unknown> = { name: draft.name.trim() }
   if (draft.description.trim()) payload.description = draft.description.trim()
   payload.mode = draft.mode
-  if (draft.model) payload.model = `${draft.model.providerID}/${draft.model.modelID}`
-  const temperature = numeric(draft.temperature, 0, 2)
+  if (draft.model) payload.model = formatModelString(draft.model)
+  const temperature = clampParam(draft.temperature, "temperature")
   if (temperature !== undefined) payload.temperature = temperature
-  const topP = numeric(draft.topP, 0, 1)
+  const topP = clampParam(draft.topP, "topP")
   if (topP !== undefined) payload.top_p = topP
-  const steps = numeric(draft.steps, 1, 100)
+  const steps = clampParam(draft.steps, "steps")
   if (steps !== undefined) payload.steps = steps
   if (draft.variant.trim()) payload.variant = draft.variant.trim()
   if (draft.prompt.trim()) payload.prompt = draft.prompt
@@ -171,23 +155,7 @@ export function SettingsAgents(props: {
   resetToken: number
   onDirtyChange: (dirty: boolean) => void
   onSave: (save: (() => void) | undefined) => void
-  onConfigureAgent: (
-    name: string,
-    agent: {
-      name?: string
-      description?: string
-      mode?: RaccoonAgentMode
-      model?: ModelSelection
-      temperature?: number
-      topP?: number
-      variant?: string
-      steps?: number
-      prompt?: string
-      permission?: RaccoonPermissionConfig
-      hidden?: boolean
-    },
-    scope: RaccoonAgentScope,
-  ) => void
+  onConfigureAgent: (name: string, agent: RaccoonAgentConfigInput, scope: RaccoonAgentScope) => void
   onDeleteAgent: (name: string, scope: RaccoonAgentScope) => void
 }) {
   const language = useLanguage()
@@ -258,10 +226,10 @@ export function SettingsAgents(props: {
                 description: draft.description,
                 mode: draft.mode,
                 model: draft.model,
-                temperature: numeric(draft.temperature, 0, 2),
-                topP: numeric(draft.topP, 0, 1),
+                temperature: clampParam(draft.temperature, "temperature"),
+                topP: clampParam(draft.topP, "topP"),
                 variant: draft.variant,
-                steps: numeric(draft.steps, 1, 100),
+                steps: clampParam(draft.steps, "steps"),
                 prompt: draft.prompt,
                 permission: draft.permission,
                 hidden: draft.hidden,
@@ -294,16 +262,12 @@ export function SettingsAgents(props: {
   const applyPermission = (patch: PermissionPatch) => {
     setDraft((current) => ({ ...current, permission: mergePermissionPatch(current.permission, patch) }))
   }
+  const updateDraft = <K extends keyof AgentDraft>(key: K, value: AgentDraft[K]) => {
+    setDraft((current) => ({ ...current, [key]: value }))
+  }
 
   const exportAgent = () => {
-    const payload = exportPayload(draft)
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `${draft.name.trim() || "agent"}.agent.json`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    downloadJson(`${draft.name.trim() || "agent"}.agent.json`, exportPayload(draft))
   }
   const onImportFile = async (file: File | undefined) => {
     if (!file) return
@@ -357,7 +321,7 @@ export function SettingsAgents(props: {
                 onClick={() => selectExisting(agent.name)}
               >
                 <span className="settings-agent-list-main">
-                  <span className="settings-agent-list-name">{label(agent.name)}</span>
+                  <span className="settings-agent-list-name">{titleCase(agent.name)}</span>
                   <span className="settings-agent-list-description">{agent.description || agent.name}</span>
                 </span>
                 <span className="settings-agent-list-tags">
@@ -404,13 +368,10 @@ export function SettingsAgents(props: {
           <div className="settings-agent-section-title">{language.t("settings.agents.identity")}</div>
           <SettingsRow title={language.t("settings.agents.name.title")} description={language.t("settings.agents.name.description")}>
             <div className="flex w-full flex-col gap-1">
-              <input
+              <TextInput
                 className="settings-provider-input w-full"
                 value={draft.name}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  setDraft((current) => ({ ...current, name: value }))
-                }}
+                onChange={(value) => updateDraft("name", value)}
                 placeholder="custom-agent"
               />
               {invalidName || duplicateName ? (
@@ -421,49 +382,42 @@ export function SettingsAgents(props: {
             </div>
           </SettingsRow>
           <SettingsRow title={language.t("settings.agents.scope.title")} description={language.t("settings.agents.scope.description")}>
-            <select
+            <Select
               className="settings-select"
               value={draft.scope}
-              onChange={(event) => {
-                const value = event.currentTarget.value as RaccoonAgentScope
-                setDraft((current) => ({ ...current, scope: value }))
-              }}
-            >
-              <option value="project">{language.t("settings.agents.scope.project")}</option>
-              <option value="user">{language.t("settings.agents.scope.user")}</option>
-            </select>
+              onChange={(value) => updateDraft("scope", value as RaccoonAgentScope)}
+              options={[
+                { value: "project", label: language.t("settings.agents.scope.project") },
+                { value: "user", label: language.t("settings.agents.scope.user") },
+              ]}
+            />
           </SettingsRow>
           <div className="settings-agent-section-title">{language.t("settings.agents.behavior")}</div>
           <SettingsRow title={language.t("settings.agents.description.title")} description={language.t("settings.agents.description.description")}>
-            <input
+            <TextInput
               className="settings-provider-input w-full"
               value={draft.description}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                setDraft((current) => ({ ...current, description: value }))
-              }}
+              onChange={(value) => updateDraft("description", value)}
               placeholder={language.t("settings.agents.description.placeholder")}
             />
           </SettingsRow>
           <SettingsRow title={language.t("settings.agents.mode.title")} description={language.t("settings.agents.mode.description")}>
-            <select
+            <Select
               className="settings-select"
               value={draft.mode}
-              onChange={(event) => {
-                const value = event.currentTarget.value as RaccoonAgentMode
-                setDraft((current) => ({ ...current, mode: value }))
-              }}
-            >
-              <option value="primary">{language.t("settings.agents.mode.primary")}</option>
-              <option value="subagent">{language.t("settings.agents.mode.subagent")}</option>
-              <option value="all">{language.t("settings.agents.mode.all")}</option>
-            </select>
+              onChange={(value) => updateDraft("mode", value as RaccoonAgentMode)}
+              options={[
+                { value: "primary", label: language.t("settings.agents.mode.primary") },
+                { value: "subagent", label: language.t("settings.agents.mode.subagent") },
+                { value: "all", label: language.t("settings.agents.mode.all") },
+              ]}
+            />
           </SettingsRow>
           <SettingsRow title={language.t("settings.agents.model.title")} description={language.t("settings.agents.model.description")}>
             <ModelPicker
               value={draft.model}
               models={connectedModels}
-              onChange={(model) => setDraft((current) => ({ ...current, model }))}
+              onChange={(model) => updateDraft("model", model)}
               ariaLabel={language.t("settings.agents.model.title")}
               placeholder={language.t("settings.models.noModel")}
               compact
@@ -475,39 +429,15 @@ export function SettingsAgents(props: {
             <div className="grid w-full grid-cols-3 gap-2 max-[520px]:grid-cols-1">
               <label className="flex flex-col gap-1">
                 <span className="text-[11px] text-[var(--color-muted)]">temperature</span>
-                <input
-                  className="settings-provider-input"
-                  value={draft.temperature}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value
-                    setDraft((current) => ({ ...current, temperature: value }))
-                  }}
-                  placeholder="0 – 2"
-                />
+                <TextInput value={draft.temperature} onChange={(value) => updateDraft("temperature", value)} placeholder="0 – 2" />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-[11px] text-[var(--color-muted)]">top_p</span>
-                <input
-                  className="settings-provider-input"
-                  value={draft.topP}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value
-                    setDraft((current) => ({ ...current, topP: value }))
-                  }}
-                  placeholder="0 – 1"
-                />
+                <TextInput value={draft.topP} onChange={(value) => updateDraft("topP", value)} placeholder="0 – 1" />
               </label>
               <label className="flex flex-col gap-1">
                 <span className="text-[11px] text-[var(--color-muted)]">steps</span>
-                <input
-                  className="settings-provider-input"
-                  value={draft.steps}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value
-                    setDraft((current) => ({ ...current, steps: value }))
-                  }}
-                  placeholder="1 – 100"
-                />
+                <TextInput value={draft.steps} onChange={(value) => updateDraft("steps", value)} placeholder="1 – 100" />
               </label>
             </div>
           </SettingsRow>
@@ -517,10 +447,7 @@ export function SettingsAgents(props: {
               role="switch"
               className="settings-toggle"
               checked={draft.hidden}
-              onChange={(event) => {
-                const value = event.currentTarget.checked
-                setDraft((current) => ({ ...current, hidden: value }))
-              }}
+              onChange={(event) => updateDraft("hidden", event.currentTarget.checked)}
             />
           </SettingsRow>
           <div className="settings-agent-section-title">{language.t("settings.agents.instructions")}</div>
@@ -528,10 +455,7 @@ export function SettingsAgents(props: {
             <textarea
               className="min-h-[160px] w-full rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 text-[12px] leading-4 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)]"
               value={draft.prompt}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                setDraft((current) => ({ ...current, prompt: value }))
-              }}
+              onChange={(event) => updateDraft("prompt", event.currentTarget.value)}
               placeholder={language.t("settings.agents.prompt.placeholder")}
             />
           </SettingsRow>

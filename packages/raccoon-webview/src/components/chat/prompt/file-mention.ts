@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import type { RaccoonFileAttachment, RaccoonFileSearchItem } from "../../protocol"
-import { useVSCode } from "../../context/vscode"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { RaccoonFileAttachment, RaccoonFileSearchItem } from "../../../protocol"
+import { useVSCode } from "../../../context/vscode"
 
 export const AT_PATTERN = /(?:^|\s)@(\S*)$/
 const AT_GROUP_PATTERN = /(?:^|\s)@(file|folder)\s+(\S*)$/
@@ -119,6 +119,7 @@ export function useFileMention(query: ReturnType<typeof mentionQuery>) {
   const [overrideQuery, setOverrideQuery] = useState<ReturnType<typeof mentionQuery>>()
   const [mentionedPaths, setMentionedPaths] = useState<Set<string>>(new Set())
   const request = useRef(0)
+  const close = useCallback(() => setOpen(false), [])
   const activeQuery = overrideQuery ?? query
   const activeQueryKey = activeQuery ? `${activeQuery.kind ?? "all"}:${activeQuery.text}` : "none"
   const specialItems = useMemo(() => {
@@ -171,7 +172,7 @@ export function useFileMention(query: ReturnType<typeof mentionQuery>) {
       selected,
       mentionedPaths,
       visible: open && items.length > 0,
-      close: () => setOpen(false),
+      close,
       setSelected,
       next: () => setSelected((index) => (index + 1) % Math.max(items.length, 1)),
       previous: () => setSelected((index) => (index - 1 + Math.max(items.length, 1)) % Math.max(items.length, 1)),

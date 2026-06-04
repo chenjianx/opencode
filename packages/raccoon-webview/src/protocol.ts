@@ -24,12 +24,28 @@ export type RaccoonAgent = {
   color?: string
   permission?: RaccoonPermissionRule[]
   permissionConfig?: RaccoonPermissionConfig
+  configScope?: RaccoonAgentScope
   model?: {
     providerID: string
     modelID: string
   }
   prompt?: string
   options?: Record<string, unknown>
+}
+
+export type RaccoonAgentConfigInput = {
+  name?: string
+  description?: string
+  mode?: RaccoonAgentMode
+  model?: { providerID: string; modelID: string }
+  temperature?: number
+  topP?: number
+  variant?: string
+  steps?: number
+  prompt?: string
+  permission?: RaccoonPermissionConfig
+  hidden?: boolean
+  disable?: boolean
 }
 
 export type RaccoonModel = {
@@ -196,6 +212,21 @@ export type RaccoonQuestionRequest = {
   }
 }
 
+export type RaccoonPermissionReply = "once" | "always" | "reject"
+
+export type RaccoonPermissionRequest = {
+  id: string
+  sessionID: string
+  permission: string
+  patterns: string[]
+  metadata: Record<string, unknown>
+  always: string[]
+  tool?: {
+    messageID: string
+    callID: string
+  }
+}
+
 export type RaccoonPartDelta = {
   type: "text-delta"
   textDelta: string
@@ -265,20 +296,7 @@ export type WebviewToExtension =
       type: "configureAgent"
       name: string
       scope: RaccoonAgentScope
-      agent: {
-        name?: string
-        description?: string
-        mode?: RaccoonAgentMode
-        model?: { providerID: string; modelID: string }
-        temperature?: number
-        topP?: number
-        variant?: string
-        steps?: number
-        prompt?: string
-        permission?: RaccoonPermissionConfig
-        hidden?: boolean
-        disable?: boolean
-      }
+      agent: RaccoonAgentConfigInput
     }
   | { type: "deleteAgent"; name: string; scope: RaccoonAgentScope }
   | {
@@ -297,6 +315,7 @@ export type WebviewToExtension =
   | { type: "requestGitChangesContext"; requestID: string; sessionID?: string }
   | { type: "questionReply"; requestID: string; sessionID?: string; answers: string[][] }
   | { type: "questionReject"; requestID: string; sessionID?: string }
+  | { type: "permissionReply"; requestID: string; sessionID?: string; reply: RaccoonPermissionReply }
   | {
       type: "configureCustomProvider"
       providerID: string
@@ -337,6 +356,9 @@ export type ExtensionToWebview =
   | { type: "questionRequest"; question: RaccoonQuestionRequest }
   | { type: "questionResolved"; requestID: string }
   | { type: "questionError"; requestID: string }
+  | { type: "permissionRequest"; permission: RaccoonPermissionRequest }
+  | { type: "permissionResolved"; requestID: string }
+  | { type: "permissionError"; requestID: string }
   | { type: "appendPrompt"; text: string; replace?: boolean }
   | { type: "terminalContextResult"; requestID: string; content: string }
   | { type: "terminalContextError"; requestID: string; error: string }

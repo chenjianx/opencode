@@ -1,5 +1,7 @@
 import type { RaccoonProviderAuthMethod } from "../../protocol"
 import { useLanguage } from "../../context/language"
+import { SettingsDialog } from "./settings-dialog"
+import { SelectField, TextField } from "./settings-common"
 
 type ProviderDraft = {
   methodIndex: number
@@ -40,81 +42,17 @@ export function SettingsProviderConnectDialog(props: {
   const prompts = (method.prompts ?? []).filter((prompt) => visiblePrompt(prompt, props.draft.inputs))
 
   return (
-    <div className="settings-dialog-backdrop" role="presentation">
-      <div className="settings-dialog settings-provider-connect-dialog" role="dialog" aria-modal="true" aria-labelledby="provider-connect-title">
-        <div className="settings-dialog-header settings-provider-connect-header">
-          <div>
-            <div className="settings-dialog-title" id="provider-connect-title">
-              {props.name}
-            </div>
-            <div className="settings-dialog-subtitle">
-              {props.connected ? language.t("common.configured") : language.t("common.notConfigured")}
-            </div>
-          </div>
-          <button type="button" className="settings-dialog-icon-button" onClick={props.onClose} aria-label={language.t("common.close")}>
-            ×
-          </button>
-        </div>
-        <div className="settings-dialog-body settings-provider-connect-body">
-          {props.methods.length > 1 ? (
-            <label className="settings-dialog-field">
-              <span>{language.t("settings.providers.connect.method")}</span>
-              <select
-                className="settings-provider-input"
-                value={props.draft.methodIndex}
-                onChange={(event) => props.onMethodChange(Number(event.currentTarget.value))}
-              >
-                {props.methods.map((entry, index) => (
-                  <option value={index} key={`${entry.type}-${entry.label}`}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {method.type === "api" ? (
-            <label className="settings-dialog-field">
-              <span>{language.t("settings.providers.connect.apiKey")}</span>
-              <input
-                className="settings-provider-input"
-                type="password"
-                value={props.draft.apiKey}
-                placeholder={language.t("settings.providers.connect.apiKey.placeholder")}
-                onChange={(event) => props.onApiKeyChange(event.currentTarget.value)}
-              />
-            </label>
-          ) : (
-            <div className="settings-provider-connect-note">{language.t("settings.providers.connect.browser")}</div>
-          )}
-          {prompts.map((prompt) => (
-            <label className="settings-dialog-field" key={prompt.key}>
-              <span>{prompt.message}</span>
-              {prompt.type === "select" ? (
-                <select
-                  className="settings-provider-input"
-                  value={props.draft.inputs[prompt.key] ?? ""}
-                  onChange={(event) => props.onInputChange(prompt.key, event.currentTarget.value)}
-                >
-                  <option value="">{language.t("common.select")}</option>
-                  {prompt.options.map((option) => (
-                    <option value={option.value} key={option.value}>
-                      {optionText(option)}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  className="settings-provider-input"
-                  value={props.draft.inputs[prompt.key] ?? ""}
-                  placeholder={prompt.placeholder ?? ""}
-                  onChange={(event) => props.onInputChange(prompt.key, event.currentTarget.value)}
-                />
-              )}
-            </label>
-          ))}
-          {props.error ? <div className="settings-dialog-error">{props.error}</div> : null}
-        </div>
-        <div className="settings-dialog-footer settings-provider-connect-footer">
+    <SettingsDialog
+      titleId="provider-connect-title"
+      title={props.name}
+      subtitle={props.connected ? language.t("common.configured") : language.t("common.notConfigured")}
+      onClose={props.onClose}
+      className="settings-provider-connect-dialog"
+      headerClassName="settings-provider-connect-header"
+      bodyClassName="settings-provider-connect-body"
+      footerClassName="settings-provider-connect-footer"
+      footer={
+        <>
           <button type="button" onClick={props.onClose}>
             {language.t("common.cancel")}
           </button>
@@ -125,8 +63,49 @@ export function SettingsProviderConnectDialog(props: {
                 ? language.t("settings.providers.connect.connectProvider")
                 : language.t("settings.providers.connect.saveProvider")}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {props.methods.length > 1 ? (
+            <SelectField
+              label={language.t("settings.providers.connect.method")}
+              value={String(props.draft.methodIndex)}
+              onChange={(value) => props.onMethodChange(Number(value))}
+              options={props.methods.map((entry, index) => ({ value: String(index), label: entry.label }))}
+            />
+          ) : null}
+          {method.type === "api" ? (
+            <TextField
+              label={language.t("settings.providers.connect.apiKey")}
+              type="password"
+              value={props.draft.apiKey}
+              placeholder={language.t("settings.providers.connect.apiKey.placeholder")}
+              onChange={props.onApiKeyChange}
+            />
+          ) : (
+            <div className="settings-provider-connect-note">{language.t("settings.providers.connect.browser")}</div>
+          )}
+          {prompts.map((prompt) =>
+            prompt.type === "select" ? (
+              <SelectField
+                key={prompt.key}
+                label={prompt.message}
+                value={props.draft.inputs[prompt.key] ?? ""}
+                placeholder={language.t("common.select")}
+                options={prompt.options.map((option) => ({ value: option.value, label: optionText(option) }))}
+                onChange={(value) => props.onInputChange(prompt.key, value)}
+              />
+            ) : (
+              <TextField
+                key={prompt.key}
+                label={prompt.message}
+                value={props.draft.inputs[prompt.key] ?? ""}
+                placeholder={prompt.placeholder ?? ""}
+                onChange={(value) => props.onInputChange(prompt.key, value)}
+              />
+            ),
+          )}
+          {props.error ? <div className="settings-dialog-error">{props.error}</div> : null}
+    </SettingsDialog>
   )
 }

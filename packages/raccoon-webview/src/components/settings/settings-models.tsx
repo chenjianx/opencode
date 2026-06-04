@@ -2,18 +2,13 @@ import type { RaccoonAgent, RaccoonModel } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow } from "./settings-common"
+import { titleCase } from "./utils"
 
 type ModelSelection = { providerID: string; modelID: string }
 
 function labelOf(model: RaccoonModel | undefined, notSet: string) {
   if (!model) return notSet
   return model.modelName
-}
-
-function modeLabel(value: string) {
-  return value
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 export function SettingsModels(props: {
@@ -54,7 +49,7 @@ export function SettingsModels(props: {
         {props.agents.map((agent) => (
           <SettingsRow
             key={agent.name}
-            title={`${modeLabel(agent.name)} model`}
+            title={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
             description={
               agent.description
                 ? `${agent.description} ${language.t("settings.models.current", {
@@ -69,7 +64,7 @@ export function SettingsModels(props: {
               value={props.modeModels[agent.name] ?? props.selectedModel}
               models={props.connectedModels}
               onChange={(model) => props.onModeModelChange(agent.name, model)}
-              ariaLabel={`${modeLabel(agent.name)} model`}
+              ariaLabel={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
               placeholder={language.t("settings.models.noModel")}
               compact
               placement="bottom"

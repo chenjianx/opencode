@@ -3,13 +3,14 @@ import type {
   ChatMode,
   RaccoonCommand,
   RaccoonAgentScope,
-  RaccoonAgentMode,
-  RaccoonPermissionConfig,
+  RaccoonAgentConfigInput,
   RaccoonFileAttachment,
   RaccoonMessage,
   RaccoonModel,
   RaccoonPluginLanguage,
   RaccoonPluginLanguageMode,
+  RaccoonPermissionReply,
+  RaccoonPermissionRequest,
   RaccoonQuestionRequest,
   RaccoonSession,
   RaccoonSlashCommand,
@@ -46,6 +47,9 @@ type SessionStateContextValue = {
   revertedMessages: RaccoonMessage[]
   questions: RaccoonQuestionRequest[]
   questionErrors: Set<string>
+  permissions: RaccoonPermissionRequest[]
+  permissionErrors: Set<string>
+  autoApprovePermissions: boolean
 }
 
 type SessionActionsContextValue = {
@@ -73,20 +77,7 @@ type SessionActionsContextValue = {
   configureProvider: (providerID: string, apiKey: string) => void
   configureAgent: (
     name: string,
-    agent: {
-      name?: string
-      description?: string
-      mode?: RaccoonAgentMode
-      model?: { providerID: string; modelID: string }
-      temperature?: number
-      topP?: number
-      variant?: string
-      steps?: number
-      prompt?: string
-      permission?: RaccoonPermissionConfig
-      hidden?: boolean
-      disable?: boolean
-    },
+    agent: RaccoonAgentConfigInput,
     scope: RaccoonAgentScope,
   ) => void
   deleteAgent: (name: string, scope: RaccoonAgentScope) => void
@@ -108,6 +99,8 @@ type SessionActionsContextValue = {
   sendMessage: (text: string, files?: RaccoonFileAttachment[], model?: { providerID: string; modelID: string }) => void
   replyToQuestion: (requestID: string, answers: string[][]) => void
   rejectQuestion: (requestID: string) => void
+  replyToPermission: (requestID: string, reply: RaccoonPermissionReply) => void
+  toggleAutoApprovePermissions: () => void
   openFile: (filePath: string, line?: number, column?: number) => void
   openImage: (input: { url: string; filename?: string; mime?: string }) => void
   stopSession: () => void
@@ -139,8 +132,13 @@ export function SessionProvider(props: { children: ReactNode }) {
   const [state, setState] = useState<RaccoonState>(() => normalizeState(vscode.getState<RaccoonState>() ?? initialState))
   const [questions, setQuestions] = useState<RaccoonQuestionRequest[]>([])
   const [questionErrors, setQuestionErrors] = useState<Set<string>>(() => new Set())
+  const [permissions, setPermissions] = useState<RaccoonPermissionRequest[]>([])
+  const [permissionErrors, setPermissionErrors] = useState<Set<string>>(() => new Set())
+  const [autoApproveSessions, setAutoApproveSessions] = useState<Set<string>>(() => new Set())
   const stateRef = useRef(state)
   const questionsRef = useRef(questions)
+  const permissionsRef = useRef(permissions)
+  const autoApproveRef = useRef(autoApproveSessions)
 
   useEffect(() => {
     stateRef.current = state
@@ -149,6 +147,14 @@ export function SessionProvider(props: { children: ReactNode }) {
   useEffect(() => {
     questionsRef.current = questions
   }, [questions])
+
+  useEffect(() => {
+    permissionsRef.current = permissions
+  }, [permissions])
+
+  useEffect(() => {
+    autoApproveRef.current = autoApproveSessions
+  }, [autoApproveSessions])
 
   useEffect(() => {
     const unsubscribe = vscode.onMessage((message) => {
@@ -218,6 +224,43 @@ export function SessionProvider(props: { children: ReactNode }) {
         setQuestionErrors((current) => new Set(current).add(message.requestID))
         return
       }
+      if (message.type === "permissionRequest") {
+        if (autoApproveRef.current.has(message.permission.sessionID)) {
+          vscode.postMessage({
+            type: "permissionReply",
+            requestID: message.permission.id,
+            sessionID: message.permission.sessionID,
+            reply: "once",
+          })
+          return
+        }
+        setPermissions((current) => {
+          const index = current.findIndex((item) => item.id === message.permission.id)
+          if (index === -1) return [...current, message.permission]
+          return current.map((item) => (item.id === message.permission.id ? message.permission : item))
+        })
+        setPermissionErrors((current) => {
+          if (!current.has(message.permission.id)) return current
+          const next = new Set(current)
+          next.delete(message.permission.id)
+          return next
+        })
+        return
+      }
+      if (message.type === "permissionResolved") {
+        setPermissions((current) => current.filter((item) => item.id !== message.requestID))
+        setPermissionErrors((current) => {
+          if (!current.has(message.requestID)) return current
+          const next = new Set(current)
+          next.delete(message.requestID)
+          return next
+        })
+        return
+      }
+      if (message.type === "permissionError") {
+        setPermissionErrors((current) => new Set(current).add(message.requestID))
+        return
+      }
       if (message.type === "error") {
         setState((current) => {
           const next = { ...current, error: message.message, loading: false }
@@ -282,8 +325,11 @@ export function SessionProvider(props: { children: ReactNode }) {
       revertedMessages,
       questions,
       questionErrors,
+      permissions,
+      permissionErrors,
+      autoApprovePermissions: !!state.activeSessionID && autoApproveSessions.has(state.activeSessionID),
     }
-  }, [questionErrors, questions, state])
+  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, state])
 
   const sessionActions = useMemo<SessionActionsContextValue>(() => {
     return {
@@ -397,6 +443,39 @@ export function SessionProvider(props: { children: ReactNode }) {
           type: "questionReject",
           requestID,
           sessionID: questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
+        })
+      },
+      replyToPermission: (requestID, reply) => {
+        setPermissionErrors((current) => {
+          if (!current.has(requestID)) return current
+          const next = new Set(current)
+          next.delete(requestID)
+          return next
+        })
+        vscode.postMessage({
+          type: "permissionReply",
+          requestID,
+          sessionID: permissionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
+          reply,
+        })
+      },
+      toggleAutoApprovePermissions: () => {
+        const sessionID = stateRef.current.activeSessionID
+        if (!sessionID) return
+        const enabling = !autoApproveRef.current.has(sessionID)
+        setAutoApproveSessions((current) => {
+          const next = new Set(current)
+          if (enabling) next.add(sessionID)
+          else next.delete(sessionID)
+          return next
+        })
+        if (!enabling) return
+        // Auto-approve any prompts already queued for this session.
+        const queued = permissionsRef.current.filter((item) => item.sessionID === sessionID)
+        if (queued.length === 0) return
+        setPermissions((current) => current.filter((item) => item.sessionID !== sessionID))
+        queued.forEach((item) => {
+          vscode.postMessage({ type: "permissionReply", requestID: item.id, sessionID, reply: "once" })
         })
       },
       openFile: (filePath, line, column) => vscode.postMessage({ type: "openFile", filePath, line, column }),

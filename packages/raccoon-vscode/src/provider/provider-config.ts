@@ -1,4 +1,7 @@
 import * as vscode from "vscode"
+import * as fs from "node:fs/promises"
+import * as nodePath from "node:path"
+import { applyEdits, modify, parse as parseJsonc, type ParseError } from "jsonc-parser/lib/esm/main.js"
 import type { Agent as OpencodeAgent, AgentConfig as OpencodeAgentConfig, OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import type {
   ChatMode,
@@ -116,11 +119,13 @@ export class RaccoonProviderConfig {
       source: command.source,
       hints: command.hints,
     }))
+    const projectAgentNames = await collectProjectAgentNames(this.deps.directory())
     const agentOverrides = collectAgentOverrides(rawGlobalConfigResponse?.data?.agent, rawConfigResponse.data?.agent)
+    const agentScopes = collectAgentScopes(rawGlobalConfigResponse?.data?.agent, projectAgentNames)
     this.deps.setState({
       ...this.deps.getState(),
       models,
-      agents: visibleAgents(agentResponse.data, agentOverrides),
+      agents: visibleAgents(agentResponse.data, agentOverrides, agentScopes),
       providers,
       commands,
       slashCommands: [
@@ -221,15 +226,18 @@ export class RaccoonProviderConfig {
   }
 
   async deleteAgent(name: string, scope: RaccoonAgentScope) {
-    await this.writeAgentConfig(scope, requireAgentName(name), undefined)
+    const agent = requireAgentName(name)
+    const deleted = await this.writeAgentConfig(scope, agent, undefined)
+    if (!deleted && scope === "project") await this.writeAgentConfig("user", agent, undefined)
     await this.reloadInstanceConfig()
     await this.deps.refresh()
   }
 
-  // opencode caches resolved config/agents per instance and only re-reads from
-  // disk when the instance is disposed. Writing the agent config file is not
-  // enough for `app.agents()`/`config.get` to reflect the change, so dispose the
-  // instance to flush those caches before refreshing the webview state.
+  // opencode resolves config/agents once per instance and caches the result;
+  // it only re-reads from disk when the instance is disposed. Writing the
+  // config file is therefore not enough for `app.agents()`/`config.get` to
+  // reflect the change, so dispose the instance (teardown runs after the HTTP
+  // response) to flush those caches before refreshing the webview state.
   private async reloadInstanceConfig() {
     try {
       const client = await this.deps.client()
@@ -241,15 +249,44 @@ export class RaccoonProviderConfig {
   }
 
   private async writeAgentConfig(scope: RaccoonAgentScope, name: string, value: OpencodeAgentConfig | undefined) {
-    const client = await this.deps.client()
-    const config = {
-      agent: { [name]: value } as Record<string, OpencodeAgentConfig | undefined>,
-    }
     if (scope === "user") {
-      await client.global.config.update({ config }, { throwOnError: true })
-      return
+      return await this.writeUserAgentConfig(name, value)
     }
-    await client.config.update({ directory: this.deps.directory(), config }, { throwOnError: true })
+    // Project scope: `client.config.update` persists to `<dir>/config.json`,
+    // which opencode never loads as project config (it only reads
+    // `opencode.json`/`opencode.jsonc`). Write directly to the loaded file so
+    // the change actually takes effect.
+    const file = await pickConfigFile(this.deps.directory(), PROJECT_CONFIG_FILES, "opencode.json")
+    const wrote = await writeAgentToFile(file, name, value)
+    const deletedMarkdown =
+      value === undefined ? await deleteAgentMarkdownFiles(nodePath.join(this.deps.directory(), ".opencode"), name) : false
+    return wrote || deletedMarkdown
+  }
+
+  private async writeUserAgentConfig(name: string, value: OpencodeAgentConfig | undefined) {
+    const client = await this.deps.client()
+    const pathInfo = await client.path.get({ directory: this.deps.directory() }, { throwOnError: true })
+    const configDir = pathInfo.data?.config
+    if (!configDir) return
+    const file = await pickConfigFile(configDir, GLOBAL_CONFIG_FILES, "opencode.json")
+
+    await client.global.config.update(
+      {
+        config: {
+          agent: { [name]: value ?? { disable: true } } as Record<string, OpencodeAgentConfig | undefined>,
+        },
+      },
+      { throwOnError: true },
+    )
+
+    // `global.config.update` is merge-only: it cannot remove keys and can leave
+    // stale fields in the cached global config. Rewrite the real file to the
+    // exact target state, then dispose globally so the next refresh reloads that
+    // final state instead of an SDK merge intermediate.
+    const wrote = await writeAgentToFile(file, name, value)
+    const deletedMarkdown = value === undefined ? await deleteAgentMarkdownFiles(configDir, name) : false
+    await client.global.dispose({ throwOnError: true })
+    return wrote || deletedMarkdown
   }
 
   async connectProvider(message: Extract<WebviewToExtension, { type: "connectProvider" }>) {
@@ -575,7 +612,137 @@ function collectAgentOverrides(
   return overrides
 }
 
-function visibleAgents(agents: OpencodeAgent[], overrides: Record<string, RaccoonPermissionConfig> = {}) {
+const PROJECT_CONFIG_FILES = ["opencode.jsonc", "opencode.json"]
+const GLOBAL_CONFIG_FILES = ["opencode.jsonc", "opencode.json", "config.json"]
+
+async function pickConfigFile(dir: string, candidates: string[], fallback: string): Promise<string> {
+  for (const candidate of candidates) {
+    const candidatePath = nodePath.join(dir, candidate)
+    try {
+      await fs.access(candidatePath)
+      return candidatePath
+    } catch {
+      // not present, try the next candidate
+    }
+  }
+  return nodePath.join(dir, fallback)
+}
+
+// Set, replace, or (when value is undefined) delete `agent[name]` in a JSON
+// config file. We read/modify/write the JSON ourselves (rather than via the
+// merge-only SDK) so we can clear stale keys and actually remove an agent.
+// A parse error on existing content is surfaced instead of clobbering the file.
+async function writeAgentToFile(file: string, name: string, value: OpencodeAgentConfig | undefined) {
+  let raw: string | undefined
+  try {
+    raw = await fs.readFile(file, "utf8")
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+  }
+  if (value === undefined && !raw) return false
+  const source = raw?.trim() ? raw : "{}"
+  const config = parseConfig(source, file)
+  const current = config.agent
+  const exists =
+    current && typeof current === "object" && !Array.isArray(current)
+      ? Object.hasOwn(current as Record<string, unknown>, name)
+      : false
+  if (value === undefined && !exists) return false
+  const updated = applyEdits(
+    source,
+    modify(source, ["agent", name], value, {
+      formattingOptions: {
+        insertSpaces: true,
+        tabSize: 2,
+      },
+    }),
+  )
+  await fs.mkdir(nodePath.dirname(file), { recursive: true })
+  await fs.writeFile(file, updated.endsWith("\n") ? updated : `${updated}\n`)
+  return true
+}
+
+async function deleteAgentMarkdownFiles(dir: string, name: string) {
+  const deleted = await Promise.all(
+    ["agent", "agents"].map((folder) =>
+      fs.unlink(nodePath.join(dir, folder, `${name}.md`)).then(
+        () => true,
+        (err) => {
+          if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+          return false
+        },
+      ),
+    ),
+  )
+  return deleted.some(Boolean)
+}
+
+function parseConfig(raw: string, file: string) {
+  const errors: ParseError[] = []
+  const parsed = parseJsonc(raw, errors, { allowTrailingComma: true })
+  if (errors.length > 0) {
+    throw new Error(`Failed to parse config file ${file}`)
+  }
+  if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+    return parsed as Record<string, unknown>
+  }
+  return {}
+}
+
+async function collectProjectAgentNames(directory: string) {
+  const names = new Set<string>()
+  for (const dir of [directory, nodePath.join(directory, ".opencode")]) {
+    const file = await pickConfigFile(dir, PROJECT_CONFIG_FILES, "opencode.json")
+    const config = await readConfigFile(file)
+    for (const name of Object.keys(config.agent ?? {})) names.add(name)
+  }
+  for (const name of await collectAgentMarkdownNames(nodePath.join(directory, ".opencode"))) names.add(name)
+  return names
+}
+
+async function readConfigFile(file: string) {
+  try {
+    return parseConfig(await fs.readFile(file, "utf8"), file) as { agent?: Record<string, unknown> }
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return {}
+    throw err
+  }
+}
+
+async function collectAgentMarkdownNames(dir: string) {
+  const names = await Promise.all(
+    ["agent", "agents"].map((folder) =>
+      fs.readdir(nodePath.join(dir, folder), { withFileTypes: true }).then(
+        (entries) =>
+          entries
+            .filter((entry) => entry.isFile() && entry.name.endsWith(".md"))
+            .map((entry) => entry.name.slice(0, -3)),
+        (err) => {
+          if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+          return []
+        },
+      ),
+    ),
+  )
+  return names.flat()
+}
+
+function collectAgentScopes(
+  global: Record<string, OpencodeAgentConfig | undefined> | undefined,
+  project: Set<string>,
+): Record<string, RaccoonAgentScope> {
+  const scopes: Record<string, RaccoonAgentScope> = {}
+  for (const name of Object.keys(global ?? {})) scopes[name] = "user"
+  // Project entries win: that is the closest override and where edits land.
+  for (const name of project) scopes[name] = "project"
+  return scopes
+}
+
+function visibleAgents(
+  agents: OpencodeAgent[],
+  overrides: Record<string, RaccoonPermissionConfig> = {},
+  scopes: Record<string, RaccoonAgentScope> = {},
+) {
   return agents.map((agent) => ({
     name: agent.name,
     description: agent.description,
@@ -589,6 +756,7 @@ function visibleAgents(agents: OpencodeAgent[], overrides: Record<string, Raccoo
     color: agent.color,
     permission: agent.permission,
     permissionConfig: overrides[agent.name],
+    configScope: scopes[agent.name],
     model: agent.model,
     prompt: agent.prompt,
     options: agent.options,

@@ -3,8 +3,11 @@ import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
 import type { RaccoonProviderAuthMethod } from "../../protocol"
+import { RACCOON_LOGIN_URL } from "../../config"
 import { SettingsCustomProviderDialog } from "./settings-custom-provider-dialog"
+import { SettingsDialog } from "./settings-dialog"
 import { SettingsProviderConnectDialog } from "./settings-provider-connect-dialog"
+import { TextField } from "./settings-common"
 
 const popularProviders = [
   { id: "openai", name: "OpenAI", noteKey: "settings.providers.openai.note" },
@@ -15,7 +18,6 @@ const popularProviders = [
 ] as const
 
 const emptyCustomModel = () => ({ id: "", name: "", supportsImage: false })
-const raccoonLoginUrl = "http://10.4.196.193:5580"
 
 type ProviderDraft = {
   methodIndex: number
@@ -45,7 +47,7 @@ export function SettingsProviders() {
   const apiKeyMethod: RaccoonProviderAuthMethod = { type: "api", label: language.t("settings.providers.connect.apiKey") }
   const [activeProvider, setActiveProvider] = useState<string>()
   const [raccoonDialogOpen, setRaccoonDialogOpen] = useState(false)
-  const [raccoonServerUrl, setRaccoonServerUrl] = useState(raccoonLoginUrl)
+  const [raccoonServerUrl, setRaccoonServerUrl] = useState(RACCOON_LOGIN_URL)
   const [raccoonLoggingIn, setRaccoonLoggingIn] = useState(false)
   const [raccoonLoginError, setRaccoonLoginError] = useState<string>()
   const [customOpen, setCustomOpen] = useState(false)
@@ -462,34 +464,17 @@ export function SettingsProviders() {
         />
       ) : null}
       {raccoonDialogOpen ? (
-        <div className="settings-dialog-backdrop" role="presentation">
-          <div className="settings-dialog settings-provider-connect-dialog" role="dialog" aria-modal="true" aria-labelledby="raccoon-connect-title">
-            <div className="settings-dialog-header settings-provider-connect-header">
-              <div>
-                <div className="settings-dialog-title" id="raccoon-connect-title">
-                  Raccoon
-                </div>
-                <div className="settings-dialog-subtitle">
-                  {raccoonConnected ? language.t("common.configured") : language.t("common.notConfigured")}
-                </div>
-              </div>
-              <button type="button" className="settings-dialog-icon-button" onClick={closeRaccoonDialog} aria-label={language.t("common.close")}>
-                ×
-              </button>
-            </div>
-            <div className="settings-dialog-body settings-provider-connect-body">
-              <label className="settings-dialog-field">
-                <span>{language.t("settings.providers.raccoon.serverUrl")}</span>
-                <input
-                  className="settings-provider-input"
-                  value={raccoonServerUrl}
-                  placeholder={raccoonLoginUrl}
-                  onChange={(event) => setRaccoonServerUrl(event.currentTarget.value)}
-                />
-              </label>
-              {raccoonLoginError ? <div className="settings-dialog-error">{raccoonLoginError}</div> : null}
-            </div>
-            <div className="settings-dialog-footer settings-provider-connect-footer">
+        <SettingsDialog
+          titleId="raccoon-connect-title"
+          title="Raccoon"
+          subtitle={raccoonConnected ? language.t("common.configured") : language.t("common.notConfigured")}
+          onClose={closeRaccoonDialog}
+          className="settings-provider-connect-dialog"
+          headerClassName="settings-provider-connect-header"
+          bodyClassName="settings-provider-connect-body"
+          footerClassName="settings-provider-connect-footer"
+          footer={
+            <>
               <button type="button" onClick={closeRaccoonDialog}>
                 {language.t("common.cancel")}
               </button>
@@ -499,14 +484,22 @@ export function SettingsProviders() {
                 onClick={() => {
                   setRaccoonLoggingIn(true)
                   setRaccoonLoginError(undefined)
-                  session.loginRaccoon(raccoonServerUrl.trim() || raccoonLoginUrl)
+                  session.loginRaccoon(raccoonServerUrl.trim() || RACCOON_LOGIN_URL)
                 }}
               >
                 {raccoonLoggingIn ? language.t("settings.providers.raccoon.waiting") : language.t("settings.providers.raccoon.openBrowser")}
               </button>
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        >
+          <TextField
+            label={language.t("settings.providers.raccoon.serverUrl")}
+            value={raccoonServerUrl}
+            placeholder={RACCOON_LOGIN_URL}
+            onChange={setRaccoonServerUrl}
+          />
+          {raccoonLoginError ? <div className="settings-dialog-error">{raccoonLoginError}</div> : null}
+        </SettingsDialog>
       ) : null}
     </>
   )

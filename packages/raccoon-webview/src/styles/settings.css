@@ -1,4 +1,21 @@
 @layer components {
+  /* Show a hand cursor on every interactive element in the settings UI. */
+  .settings-view button:not(:disabled),
+  .settings-view select:not(:disabled),
+  .settings-view input[type="checkbox"]:not(:disabled),
+  .settings-view input[type="radio"]:not(:disabled),
+  .settings-view label[for],
+  .settings-view summary,
+  .settings-view [role="button"]:not([aria-disabled="true"]) {
+    @apply cursor-pointer;
+  }
+
+  .settings-view button:disabled,
+  .settings-view select:disabled,
+  .settings-view input:disabled {
+    @apply cursor-default;
+  }
+
   .settings-row {
     @apply flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] px-3 py-[11px] last:border-b-0;
   }

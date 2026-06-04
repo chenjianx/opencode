@@ -1,20 +1,15 @@
 import { MessageList } from "./message-list/message-list"
-import { PromptInput } from "./prompt-input"
-import { HistoryView } from "../history/history-view"
-import { SettingsView } from "../settings/settings-view"
+import { PromptInput } from "./prompt/prompt-input"
+import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 
 export function ChatView() {
+  const language = useLanguage()
   const session = useSession()
 
-  if (session.state.view === "settings") return <SettingsView />
-  if (session.state.view === "history") return <HistoryView onClose={() => session.showChat()} />
-
   const activeSession = session.state.sessions.find((item) => item.id === session.state.activeSessionID) ?? session.activeSession
-  const title =
-    activeSession?.title && activeSession.title !== "New session"
-      ? activeSession.title
-      : session.latestUserMessage?.text || activeSession?.title || "New session"
+  const hasRealTitle = !!activeSession?.title && activeSession.title !== "New session"
+  const title = hasRealTitle ? activeSession!.title : session.latestUserMessage?.text || language.t("chat.newSession")
 
   return (
     <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-background)]">

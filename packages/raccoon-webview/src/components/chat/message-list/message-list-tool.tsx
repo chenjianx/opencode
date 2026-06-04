@@ -130,11 +130,12 @@ function isTodoTool(part: RaccoonMessagePart) {
 }
 
 function TodoOutput(props: { todos: TodoItem[] }) {
+  const { t } = useLanguage()
   const active = props.todos.filter((item) => item.status !== "completed")
   const completed = props.todos.filter((item) => item.status === "completed")
   const sections = [
-    { key: "active", title: "待办", items: active },
-    { key: "completed", title: "已完成", items: completed },
+    { key: "active", title: t("tool.todo.active"), items: active },
+    { key: "completed", title: t("tool.todo.completed"), items: completed },
   ].filter((section) => section.items.length > 0)
 
   return (
@@ -198,7 +199,7 @@ function toolInfo(part: RaccoonMessagePart, t: ReturnType<typeof useLanguage>["t
   }
 }
 
-function ToolSummary(props: { info: ReturnType<typeof toolInfo>; status?: string }) {
+function ToolSummary(props: { info: ReturnType<typeof toolInfo>; status?: string; showArrow?: boolean }) {
   return (
     <summary data-component="tool-trigger">
       <span data-slot="basic-tool-tool-trigger-content">
@@ -213,6 +214,7 @@ function ToolSummary(props: { info: ReturnType<typeof toolInfo>; status?: string
           </span>
         </span>
       </span>
+      {props.showArrow ? <span className="tool-arrow">⌄</span> : null}
     </summary>
   )
 }
@@ -242,21 +244,7 @@ export function ToolPart(props: { part: RaccoonMessagePart }) {
 
   return (
     <details className={`tool-part ${props.part.error ? "errored" : ""}`} open={props.part.status === "running"}>
-      <summary data-component="tool-trigger">
-        <span data-slot="basic-tool-tool-trigger-content">
-          <span className="tool-dot" />
-          <span data-slot="basic-tool-tool-info">
-            <span data-slot="basic-tool-tool-info-structured">
-              <span data-slot="basic-tool-tool-info-main">
-                <span data-slot="basic-tool-tool-title">{info.title}</span>
-                {info.subtitle ? <span data-slot="basic-tool-tool-subtitle">{info.subtitle}</span> : null}
-              </span>
-              {props.part.status ? <span data-slot="basic-tool-tool-arg">{props.part.status}</span> : null}
-            </span>
-          </span>
-        </span>
-        {hasDetails ? <span className="tool-arrow">⌄</span> : null}
-      </summary>
+      <ToolSummary info={info} status={props.part.status} showArrow={hasDetails} />
       {hasDetails ? (
         <div data-slot="collapsible-content" className="tool-details">
           {diffs.length > 0 ? (

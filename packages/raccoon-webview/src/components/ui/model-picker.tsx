@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { RaccoonModel } from "../../protocol"
 import { useLanguage } from "../../context/language"
+import { formatModelString } from "../settings/utils"
 import { Popover } from "./popover"
 
 const providerPriority: Record<string, number> = {
@@ -8,7 +9,7 @@ const providerPriority: Record<string, number> = {
 }
 
 function keyOf(model: { providerID: string; modelID: string }) {
-  return `${model.providerID}/${model.modelID}`
+  return formatModelString(model)
 }
 
 function modelParts(name: string) {
@@ -74,7 +75,7 @@ export function ModelPicker(props: {
       trigger={(api) => (
         <button
           type="button"
-          className={`flex items-center justify-between gap-1.5 rounded-[4px] border px-2 text-left leading-none text-[var(--color-input-foreground)] hover:bg-[var(--color-hover)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)] disabled:cursor-default disabled:opacity-55 ${
+          className={`flex items-center justify-between gap-1.5 rounded-[4px] border px-2 text-left leading-none text-[var(--color-input-foreground)] cursor-pointer hover:bg-[var(--color-hover)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)] disabled:cursor-default disabled:opacity-55 ${
             compact
               ? "h-[26px] w-max max-w-full shrink-0 border-[var(--color-border)] bg-transparent text-[12px]"
               : "min-h-[28px] border-[var(--color-border)] bg-[var(--color-input)]"
@@ -123,7 +124,7 @@ export function ModelPicker(props: {
                   return (
                     <button
                       type="button"
-                      className={`flex w-full items-center gap-1.5 border-0 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--color-hover)] ${
+                      className={`flex w-full items-center gap-1.5 border-0 px-3 py-1.5 text-left text-[12px] cursor-pointer hover:bg-[var(--color-hover)] ${
                         active ? "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]" : "bg-transparent text-[var(--color-foreground)]"
                       }`}
                       key={keyOf(model)}

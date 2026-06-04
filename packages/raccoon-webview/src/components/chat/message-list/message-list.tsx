@@ -5,8 +5,41 @@ import { useSession } from "../../../context/session"
 import { turns } from "./message-list-model"
 import { MessageTurn } from "./message-list-turn"
 import { RevertBar } from "./message-list-user"
-import { WelcomeState } from "./message-list-welcome"
 import { QuestionDock } from "./question-dock"
+import { PermissionDock } from "./permission-dock"
+
+function WelcomeState() {
+  const { t } = useLanguage()
+  return (
+    <div className="welcome-state">
+      <div className="welcome-card">
+        <div className="welcome-top">
+          <div className="welcome-mark">R</div>
+          <div className="welcome-title">{t("welcome.title")}</div>
+        </div>
+        <p className="welcome-copy">
+          {t("welcome.greetingPrefix")}
+          <span className="welcome-mention">@RaccoonEthan</span>
+          {t("welcome.greetingSuffix")}
+        </p>
+        <div className="welcome-tip">
+          <span className="welcome-tip-icon">◉</span>
+          <span>{t("welcome.tip")}</span>
+        </div>
+        <ul className="welcome-list">
+          <li>{t("welcome.shortcut.invokePrefix")}<kbd>⌘L</kbd>{t("welcome.shortcut.invokeSuffix")}</li>
+          <li>{t("welcome.shortcut.contextPrefix")}<kbd>@</kbd>{t("welcome.shortcut.contextSuffix")}</li>
+          <li>{t("welcome.shortcut.commandsPrefix")}<kbd>/</kbd>{t("welcome.shortcut.commandsSuffix")}</li>
+        </ul>
+        <p className="welcome-footer">
+          {t("welcome.footerPrefix")}
+          <a href="#" onClick={(event) => event.preventDefault()}>{t("welcome.footerLink")}</a>
+          {t("welcome.footerSuffix")}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 export function MessageList() {
   const language = useLanguage()
@@ -46,6 +79,8 @@ export function MessageList() {
 
   const inlineQuestions = session.questions.filter((request) => !!request.tool?.messageID)
   const floatingQuestions = session.questions.filter((request) => !request.tool?.messageID)
+  // Show permission prompts one at a time — the rest queue behind the active one.
+  const activePermission = session.permissions[0]
 
   return (
     <div className="message-list-shell">
@@ -59,12 +94,15 @@ export function MessageList() {
         {session.state.loading ? (
           <div className="working-indicator">
             <span className="working-dot" />
-            <span>Raccoon is working...</span>
+            <span>{language.t("message.working")}</span>
           </div>
         ) : null}
         {floatingQuestions.map((request) => (
           <QuestionDock key={request.id} request={request} />
         ))}
+        {activePermission ? (
+          <PermissionDock key={activePermission.id} request={activePermission} remaining={session.permissions.length - 1} />
+        ) : null}
       </div>
       {showScrollBottom ? (
         <button

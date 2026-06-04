@@ -39,6 +39,7 @@ type MessageRouterDeps = {
   requestGitChangesContext: (requestID: string, source: RaccoonWebviewSource) => Promise<void>
   questionReply: (message: Extract<WebviewToExtension, { type: "questionReply" }>) => Promise<void>
   questionReject: (message: Extract<WebviewToExtension, { type: "questionReject" }>) => Promise<void>
+  permissionReply: (message: Extract<WebviewToExtension, { type: "permissionReply" }>) => Promise<void>
   deleteCustomProvider: (providerID: string) => Promise<void>
   stopSession: () => Promise<void>
   sendMessage: (
@@ -192,6 +193,10 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "questionReject") {
       await this.deps.questionReject(message)
+      return
+    }
+    if (message.type === "permissionReply") {
+      await this.deps.permissionReply(message)
       return
     }
     if (message.type === "deleteCustomProvider") {

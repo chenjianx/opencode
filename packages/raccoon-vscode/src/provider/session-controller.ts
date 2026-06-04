@@ -412,6 +412,26 @@ export class RaccoonSessionController {
     }
   }
 
+  async permissionReply(message: Extract<WebviewToExtension, { type: "permissionReply" }>) {
+    try {
+      const client = await this.deps.client()
+      await client.permission.reply(
+        {
+          requestID: message.requestID,
+          reply: message.reply,
+          directory: this.deps.directory(),
+        },
+        { throwOnError: true },
+      )
+      this.deps.webviewHost.post("chat", { type: "permissionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
+      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
+      if (sessionID) await this.loadMessages(sessionID)
+    } catch (error) {
+      this.deps.webviewHost.post("chat", { type: "permissionError", requestID: message.requestID } satisfies ExtensionToWebview)
+      this.deps.report(error)
+    }
+  }
+
   async runSlashCommand(name: string, source: RaccoonWebviewSource) {
     const command = uiSlashCommands().find((item) => item.name === name || item.aliases?.includes(name))
     if (!command) return

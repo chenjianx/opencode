@@ -254,6 +254,104 @@
     @apply flex items-center gap-1;
   }
 
+  .prompt-composer button:not(:disabled) {
+    @apply cursor-pointer;
+  }
+
+  .ui-tip {
+    @apply relative;
+  }
+
+  .ui-tip::after {
+    content: attr(data-tip);
+    @apply pointer-events-none absolute bottom-[calc(100%+6px)] right-0 z-40 whitespace-nowrap rounded-[4px] border border-black/10 bg-white px-2 py-1 text-[11px] leading-none text-black opacity-0 shadow-[var(--shadow-md)] transition-opacity duration-150;
+  }
+
+  .ui-tip:hover::after,
+  .ui-tip:focus-visible::after {
+    @apply opacity-100;
+  }
+
+  .permission-dock {
+    @apply mb-2 flex flex-col gap-2 overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_94%,var(--color-hover))] p-2.5 text-[12px] leading-[18px];
+  }
+
+  .permission-dock-head {
+    @apply flex items-start gap-1.5;
+  }
+
+  .permission-dock-icon {
+    @apply mt-px flex h-4 w-4 shrink-0 items-center justify-center text-[var(--color-muted)];
+  }
+
+  .permission-dock-headings {
+    @apply flex min-w-0 flex-1 flex-col;
+  }
+
+  .permission-dock-title {
+    @apply flex min-w-0 items-center gap-1.5 font-medium text-[var(--color-foreground)];
+  }
+
+  .permission-dock-title-text {
+    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .permission-dock-queue {
+    @apply shrink-0 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 text-[10px] font-normal leading-[16px] text-[var(--color-muted)];
+  }
+
+  .permission-dock-subtitle {
+    @apply min-w-0 self-start overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline;
+  }
+
+  .permission-dock-body {
+    @apply flex min-w-0 flex-col gap-2 empty:hidden;
+  }
+
+  .permission-dock-body .tool-diff-panel {
+    @apply mt-0;
+  }
+
+  .permission-dock-url {
+    @apply min-w-0 break-all rounded-[4px] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 font-mono text-[11px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)];
+  }
+
+  .permission-dock-command {
+    @apply m-0 flex max-h-[220px] flex-col gap-1 overflow-auto rounded-[4px] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5;
+  }
+
+  .permission-dock-command-line {
+    @apply block min-w-0 whitespace-pre-wrap break-words font-mono text-[11px] leading-[17px] text-[var(--color-foreground)] before:mr-1.5 before:text-[var(--color-muted)] before:content-['$'];
+  }
+
+  .permission-dock-error {
+    @apply -mt-1 text-[var(--color-error)];
+  }
+
+  .permission-dock-footer {
+    @apply flex items-center justify-between gap-2 border-t border-[var(--color-border)] pt-2;
+  }
+
+  .permission-dock-footer-actions {
+    @apply flex items-center gap-1;
+  }
+
+  .permission-dock-btn {
+    @apply inline-flex items-center justify-center rounded-[4px] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-[12px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .permission-dock-reject {
+    @apply text-[var(--color-muted)];
+  }
+
+  .permission-dock-always {
+    @apply border-[color-mix(in_srgb,var(--color-focus)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-focus)_8%,var(--color-background))] font-medium;
+  }
+
+  .permission-dock-once {
+    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[white] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,black)];
+  }
+
   .welcome-state {
     @apply flex min-h-full items-center justify-center px-3 py-4;
   }
