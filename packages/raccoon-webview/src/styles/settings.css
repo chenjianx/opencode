@@ -290,6 +290,165 @@
     @apply border-t border-[var(--color-border)] px-3 py-2 text-[12px] text-[var(--color-error)];
   }
 
+  /* Rules management ----------------------------------------------------- */
+  .settings-rules-hint {
+    @apply text-[11px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-rules-scope-count {
+    @apply rounded-[999px] bg-[var(--color-background)] px-1.5 py-0.5 text-[10px] leading-none text-[var(--color-muted)];
+  }
+
+  .settings-rules-root {
+    @apply flex h-full min-h-0 flex-col;
+  }
+
+  .settings-rules-intro {
+    @apply mb-2 shrink-0;
+  }
+
+  .settings-rules-shell {
+    @apply flex min-h-0 flex-1 gap-3 max-[760px]:flex-col;
+  }
+
+  .settings-rules-pane {
+    @apply min-h-0 w-[180px] shrink-0 overflow-auto rounded-[8px] p-1 max-[760px]:max-h-[40vh] max-[760px]:w-full;
+  }
+
+  .settings-rules-tree {
+    @apply flex flex-col gap-1;
+  }
+
+  .settings-rules-group {
+    @apply flex flex-col;
+  }
+
+  .settings-rules-group-header {
+    @apply flex items-center gap-0.5;
+  }
+
+  .settings-rules-group-toggle {
+    @apply flex min-w-0 flex-1 items-center gap-1.5 rounded-[6px] bg-transparent px-1.5 py-1.5 text-left;
+  }
+
+  .settings-rules-group-label {
+    @apply min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-muted)];
+  }
+
+  .settings-rules-count {
+    @apply shrink-0 text-[11px] tabular-nums text-[var(--color-muted)];
+  }
+
+  .settings-rules-add {
+    @apply h-6 w-6 shrink-0 text-[var(--color-muted)] hover:text-[var(--color-foreground)];
+  }
+
+  .settings-rules-children {
+    @apply mb-0.5 flex flex-col pl-1.5;
+  }
+
+  .settings-rules-group-empty {
+    @apply px-2 py-1.5 text-[11px] italic text-[var(--color-muted)];
+  }
+
+  .settings-rules-node {
+    @apply flex items-center gap-1.5 rounded-[6px] py-1 pl-1.5 pr-1 hover:bg-[var(--color-hover)];
+  }
+
+  .settings-rules-node.active {
+    @apply bg-[var(--color-button)];
+    box-shadow: inset 1px 0 0 var(--color-focus);
+  }
+
+  .settings-rules-node.disabled .settings-rules-card-name {
+    @apply opacity-45;
+  }
+
+  .settings-rules-node-main {
+    @apply flex min-w-0 flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left outline-none;
+  }
+
+  .settings-rules-card-name {
+    @apply block truncate text-[12px] text-[var(--color-foreground)];
+  }
+
+  .settings-rules-node-toggle {
+    @apply shrink-0;
+  }
+
+  .settings-rules-node-delete {
+    @apply h-5 w-5 shrink-0 text-[var(--color-muted)] hover:text-[var(--color-error)];
+  }
+
+  .settings-rules-editor {
+    @apply flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] max-[760px]:min-h-[320px];
+  }
+
+  .settings-rules-editor-header {
+    @apply flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2.5;
+  }
+
+  .settings-rules-editor-title {
+    @apply truncate text-[13px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-rules-editor-actions {
+    @apply flex shrink-0 items-center gap-2;
+  }
+
+  .settings-rules-editor-body {
+    @apply flex min-h-0 flex-1 flex-col gap-3 px-3 py-3;
+  }
+
+  .settings-rules-field {
+    @apply flex flex-col gap-1 text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-rules-tabs {
+    @apply inline-flex shrink-0 gap-1 self-start rounded-[6px] bg-[var(--color-background)] p-0.5;
+  }
+
+  .settings-rules-tab {
+    @apply rounded-[5px] bg-transparent px-2.5 py-1 text-[12px] text-[var(--color-muted)] hover:bg-[var(--color-hover)];
+  }
+
+  .settings-rules-tab.active {
+    @apply bg-[var(--color-button)] text-[var(--color-foreground)];
+  }
+
+  .settings-rules-editor-area {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+
+  .settings-rules-textarea {
+    @apply h-full min-h-[180px] w-full flex-1 resize-none rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 font-mono text-[12px] leading-5 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
+  }
+
+  .settings-rules-preview {
+    @apply h-full min-h-[180px] flex-1 overflow-auto rounded-[4px] border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5;
+  }
+
+  .settings-rules-editor-footer {
+    @apply flex shrink-0 items-center justify-end gap-2 border-t border-[var(--color-border)] px-3 py-2.5;
+  }
+
+  .settings-rules-empty-pane {
+    @apply flex flex-1 items-center justify-center px-6 py-10 text-center text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-rules-error {
+    @apply text-[11px] text-[var(--color-error)];
+  }
+
+  .settings-rules-save:not(:disabled) {
+    @apply bg-[var(--color-focus)] text-[var(--color-background)] hover:opacity-90;
+  }
+
+  .settings-rules-danger {
+    @apply text-[var(--color-error)];
+  }
+
+
   .settings-provider-list {
     @apply border-t border-[var(--color-border)];
   }
@@ -306,13 +465,28 @@
     @apply self-center max-h-[min(620px,100%)] max-w-[560px];
   }
 
-  .settings-custom-provider-dialog .settings-dialog-header,
+  .settings-rules-confirm-dialog {
+    @apply self-center max-w-[340px];
+  }
+
+  .settings-rules-confirm-dialog .settings-dialog-header {
+    @apply justify-between;
+  }
+
+  .settings-rules-confirm-dialog .settings-dialog-body {
+    @apply px-3 py-3 text-[12px] leading-5 text-[var(--color-foreground)];
+  }
+
+  .settings-rules-confirm-dialog .settings-dialog-footer {
+    @apply justify-end;
+  }
+
   .settings-custom-provider-dialog .settings-dialog-footer {
     @apply py-2.5;
   }
 
   .settings-custom-provider-dialog .settings-dialog-header {
-    @apply justify-between;
+    @apply justify-between py-2.5;
   }
 
   .settings-custom-provider-dialog .settings-dialog-body {

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
-import { Plugs, Robot, SlidersHorizontal, Translate } from "@phosphor-icons/react"
+import { Plugs, Robot, Scroll, SlidersHorizontal, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
 import { SettingsAgents } from "./settings-agents"
+import { SettingsRules } from "./settings-rules"
 import { SettingsLanguage } from "./settings-language"
 import { SettingsModels } from "./settings-models"
 import { SettingsProviders } from "./settings-providers"
@@ -17,7 +18,7 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "agents" | "providers" | "language">("models")
+  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "language">("models")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.selectedModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
@@ -81,6 +82,12 @@ export function SettingsView() {
             </span>
             <span>{language.t("settings.nav.agents")}</span>
           </button>
+          <button type="button" className={`settings-nav-item ${tab === "rules" ? "active" : ""}`} onClick={() => setTab("rules")}>
+            <span className="settings-nav-icon">
+              <Scroll size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.rules")}</span>
+          </button>
           <button type="button" className={`settings-nav-item ${tab === "providers" ? "active" : ""}`} onClick={() => setTab("providers")}>
             <span className="settings-nav-icon">
               <Plugs size={16} weight="bold" />
@@ -117,6 +124,13 @@ export function SettingsView() {
             />
           ) : tab === "language" ? (
             <SettingsLanguage pluginLanguageMode={draftPluginLanguageMode} onPluginLanguageChange={setDraftPluginLanguageMode} />
+          ) : tab === "rules" ? (
+            <SettingsRules
+              rules={session.state.rules ?? []}
+              onSaveRule={session.saveRule}
+              onToggleRule={session.toggleRule}
+              onDeleteRule={session.deleteRule}
+            />
           ) : (
             <SettingsProviders />
           )}

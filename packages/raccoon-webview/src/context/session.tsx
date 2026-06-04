@@ -81,6 +81,9 @@ type SessionActionsContextValue = {
     scope: RaccoonAgentScope,
   ) => void
   deleteAgent: (name: string, scope: RaccoonAgentScope) => void
+  saveRule: (scope: RaccoonAgentScope, originalName: string, name: string, content: string) => void
+  toggleRule: (scope: RaccoonAgentScope, name: string, enabled: boolean) => void
+  deleteRule: (scope: RaccoonAgentScope, name: string) => void
   connectProvider: (input: {
     providerID: string
     methodIndex?: number
@@ -410,6 +413,10 @@ export function SessionProvider(props: { children: ReactNode }) {
       configureProvider: (providerID, apiKey) => vscode.postMessage({ type: "configureProvider", providerID, apiKey }),
       configureAgent: (name, agent, scope) => vscode.postMessage({ type: "configureAgent", name, agent, scope }),
       deleteAgent: (name, scope) => vscode.postMessage({ type: "deleteAgent", name, scope }),
+      saveRule: (scope, originalName, name, content) =>
+        vscode.postMessage({ type: "saveRule", scope, originalName, name, content }),
+      toggleRule: (scope, name, enabled) => vscode.postMessage({ type: "toggleRule", scope, name, enabled }),
+      deleteRule: (scope, name) => vscode.postMessage({ type: "deleteRule", scope, name }),
       connectProvider: (input) => vscode.postMessage({ type: "connectProvider", ...input }),
       cancelProviderConnect: (providerID) => vscode.postMessage({ type: "cancelProviderConnect", providerID }),
       configureCustomProvider: (input) => vscode.postMessage({ type: "configureCustomProvider", ...input }),

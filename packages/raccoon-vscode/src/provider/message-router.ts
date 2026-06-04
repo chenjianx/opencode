@@ -28,6 +28,9 @@ type MessageRouterDeps = {
   configureProvider: (providerID: string, apiKey: string) => Promise<void>
   configureAgent: (message: Extract<WebviewToExtension, { type: "configureAgent" }>) => Promise<void>
   deleteAgent: (name: string, scope: Extract<WebviewToExtension, { type: "deleteAgent" }>["scope"]) => Promise<void>
+  saveRule: (message: Extract<WebviewToExtension, { type: "saveRule" }>) => Promise<void>
+  toggleRule: (message: Extract<WebviewToExtension, { type: "toggleRule" }>) => Promise<void>
+  deleteRule: (message: Extract<WebviewToExtension, { type: "deleteRule" }>) => Promise<void>
   connectProvider: (message: Extract<WebviewToExtension, { type: "connectProvider" }>) => Promise<void>
   cancelProviderConnect: (providerID?: string) => void
   fetchCustomProviderModels: (message: Extract<WebviewToExtension, { type: "fetchCustomProviderModels" }>, source: RaccoonWebviewSource) => Promise<void>
@@ -149,6 +152,18 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "deleteAgent") {
       await this.deps.deleteAgent(message.name, message.scope)
+      return
+    }
+    if (message.type === "saveRule") {
+      await this.deps.saveRule(message)
+      return
+    }
+    if (message.type === "toggleRule") {
+      await this.deps.toggleRule(message)
+      return
+    }
+    if (message.type === "deleteRule") {
+      await this.deps.deleteRule(message)
       return
     }
     if (message.type === "connectProvider") {

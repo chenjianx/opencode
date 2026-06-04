@@ -48,6 +48,13 @@ export type RaccoonAgentConfigInput = {
   disable?: boolean
 }
 
+export type RaccoonRule = {
+  name: string
+  scope: RaccoonAgentScope
+  enabled: boolean
+  content: string
+}
+
 export type RaccoonModel = {
   providerID: string
   providerName: string
@@ -251,6 +258,7 @@ export type RaccoonState = {
   sessions: RaccoonSession[]
   messages: RaccoonMessage[]
   agents: RaccoonAgent[]
+  rules?: RaccoonRule[]
   models: RaccoonModel[]
   providers: RaccoonProviderInfo[]
   commands?: RaccoonCommand[]
@@ -299,6 +307,9 @@ export type WebviewToExtension =
       agent: RaccoonAgentConfigInput
     }
   | { type: "deleteAgent"; name: string; scope: RaccoonAgentScope }
+  | { type: "saveRule"; scope: RaccoonAgentScope; originalName: string; name: string; content: string }
+  | { type: "toggleRule"; scope: RaccoonAgentScope; name: string; enabled: boolean }
+  | { type: "deleteRule"; scope: RaccoonAgentScope; name: string }
   | {
       type: "connectProvider"
       providerID: string

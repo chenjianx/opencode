@@ -21,6 +21,7 @@ import { uiSlashCommands } from "./commands.js"
 import { mapProviderModels, mapProviders, recountProviders } from "./mapping.js"
 import { ModelStateStore, type ModelSelection, modelKey, modeModelSelections } from "./model-state.js"
 import { ActionTokenStore } from "./action-tokens.js"
+import { collectRules } from "./rules-config.js"
 import type { RaccoonWebviewHost, RaccoonWebviewSource } from "./webview-host.js"
 
 type ProviderConfigDeps = {
@@ -122,10 +123,15 @@ export class RaccoonProviderConfig {
     const projectAgentNames = await collectProjectAgentNames(this.deps.directory())
     const agentOverrides = collectAgentOverrides(rawGlobalConfigResponse?.data?.agent, rawConfigResponse.data?.agent)
     const agentScopes = collectAgentScopes(rawGlobalConfigResponse?.data?.agent, projectAgentNames)
+    const [projectRules, userRules] = await Promise.all([
+      collectRules(active, this.deps.directory(), "project").catch(() => []),
+      collectRules(active, this.deps.directory(), "user").catch(() => []),
+    ])
     this.deps.setState({
       ...this.deps.getState(),
       models,
       agents: visibleAgents(agentResponse.data, agentOverrides, agentScopes),
+      rules: [...projectRules, ...userRules],
       providers,
       commands,
       slashCommands: [

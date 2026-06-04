@@ -39,6 +39,7 @@ import { RaccoonEventStream } from "./event-stream.js"
 import { RaccoonEventHandler } from "./event-handler.js"
 import { RaccoonMessageRouter } from "./message-router.js"
 import { RaccoonProviderConfig } from "./provider-config.js"
+import { RaccoonRulesConfig } from "./rules-config.js"
 import { RaccoonSessionController } from "./session-controller.js"
 import { RaccoonWebviewHost, type RaccoonWebviewSource } from "./webview-host.js"
 
@@ -83,6 +84,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   private readonly eventHandler: RaccoonEventHandler
   private readonly messageRouter: RaccoonMessageRouter
   private readonly config: RaccoonProviderConfig
+  private readonly rules: RaccoonRulesConfig
   private readonly sessions: RaccoonSessionController
   private state: RaccoonState = {
     sessions: [],
@@ -120,6 +122,11 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       pluginLanguage: () => normalizePluginLanguage(vscode.env.language),
     })
     this.state = { ...this.state, ...this.config.initialState() }
+    this.rules = new RaccoonRulesConfig({
+      client: () => this.client(),
+      directory: () => this.directory(),
+      refresh: () => this.refresh(),
+    })
     this.sessions = new RaccoonSessionController({
       client: () => this.client(),
       directory: () => this.directory(),
@@ -188,6 +195,9 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       configureProvider: (providerID, apiKey) => this.config.configureProvider(providerID, apiKey),
       configureAgent: (message) => this.config.configureAgent(message),
       deleteAgent: (name, scope) => this.config.deleteAgent(name, scope),
+      saveRule: (message) => this.rules.saveRule(message),
+      toggleRule: (message) => this.rules.toggleRule(message.scope, message.name, message.enabled),
+      deleteRule: (message) => this.rules.deleteRule(message.scope, message.name),
       connectProvider: (message) => this.config.connectProvider(message),
       cancelProviderConnect: (providerID) => this.config.cancelProviderConnect(providerID),
       fetchCustomProviderModels: (message, source) => this.fetchCustomProviderModels(message, source),

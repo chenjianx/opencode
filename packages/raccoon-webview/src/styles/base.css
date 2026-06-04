@@ -60,5 +60,9 @@
   input {
     font: inherit;
   }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
 }
 

@@ -1396,7 +1396,7 @@ export const layer = Layer.effect(
                 id,
                 {
                   ...model,
-                  id: ProviderV2.ModelID.make(id),
+                  id: ModelV2.ID.make(id),
                   providerID,
                 },
               ]),
