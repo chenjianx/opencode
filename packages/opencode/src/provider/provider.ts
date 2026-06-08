@@ -296,6 +296,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       const profile = configProfile ?? envProfile
 
       const awsAccessKeyId = env["AWS_ACCESS_KEY_ID"]
+      const configApiKey = providerConfig?.options?.apiKey
 
       // TODO: Using process.env directly because Env.set only updates a process.env shallow copy,
       // until the scope of the Env API is clarified (test only or runtime?)
@@ -315,7 +316,14 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI || process.env.AWS_CONTAINER_CREDENTIALS_FULL_URI,
       )
 
-      if (!profile && !awsAccessKeyId && !awsBearerToken && !awsWebIdentityTokenFile && !containerCreds)
+      if (
+        !profile &&
+        !awsAccessKeyId &&
+        !awsBearerToken &&
+        !configApiKey &&
+        !awsWebIdentityTokenFile &&
+        !containerCreds
+      )
         return { autoload: false }
 
       const { fromNodeProviderChain } = yield* Effect.promise(() => import("@aws-sdk/credential-providers"))
@@ -326,7 +334,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
 
       // Only use credential chain if no bearer token exists
       // Bearer token takes precedence over credential chain (profiles, access keys, IAM roles, web identity tokens)
-      if (!awsBearerToken) {
+      if (!awsBearerToken && !configApiKey) {
         // Build credential provider options (only pass profile if specified)
         const credentialProviderOptions = profile ? { profile } : {}
 
@@ -342,6 +350,9 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
       return {
         autoload: true,
         options: providerOptions,
+        vars(options: Record<string, any>) {
+          return { AWS_REGION: options.region ?? defaultRegion }
+        },
         async getModel(sdk: any, modelID: string, options?: Record<string, any>, model?: Model) {
           if (model?.api.npm === "@ai-sdk/amazon-bedrock/mantle") return selectBedrockMantleLanguageModel(sdk, modelID)
 
