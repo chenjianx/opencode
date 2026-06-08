@@ -4,6 +4,7 @@ import type { RaccoonAgentScope, RaccoonRule } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsDialog } from "./settings-dialog"
+import { Button } from "../ui"
 import { MarkdownLite } from "../ui/markdown-lite"
 
 const SCOPES: RaccoonAgentScope[] = ["project", "user"]
@@ -101,14 +102,14 @@ export function SettingsRules(props: {
                       <span className="settings-rules-group-label">{scopeLabel(scope)}</span>
                       <span className="settings-rules-count">{scopeRules.length}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="settings-icon-button settings-rules-add"
+                    <Button
+                      variant="icon"
+                      className="settings-rules-add"
                       title={language.t("settings.rules.new")}
                       onClick={() => createRule(scope)}
                     >
                       <Plus size={15} weight="bold" />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="settings-rules-children">
@@ -122,14 +123,14 @@ export function SettingsRules(props: {
                             key={rule.name}
                             className={`settings-rules-node ${active ? "active" : ""} ${rule.enabled ? "" : "disabled"}`}
                           >
-                            <button
-                              type="button"
-                              className="settings-icon-button settings-rules-danger settings-rules-node-delete"
+                            <Button
+                              variant="icon"
+                              className="settings-rules-danger settings-rules-node-delete"
                               title={language.t("settings.rules.delete")}
                               onClick={() => setPendingDelete(rule)}
                             >
                               <Trash size={14} />
-                            </button>
+                            </Button>
                             <button type="button" className="settings-rules-node-main" onClick={() => editRule(rule)}>
                               <span className="settings-rules-card-name">{rule.name}</span>
                             </button>
@@ -219,12 +220,12 @@ export function SettingsRules(props: {
                 </div>
               </div>
               <div className="settings-rules-editor-footer">
-                <button type="button" className="settings-small-button" onClick={() => setDraft(undefined)}>
+                <Button variant="small" onClick={() => setDraft(undefined)}>
                   {language.t("common.cancel")}
-                </button>
-                <button type="button" className="settings-small-button settings-rules-save" disabled={!canSave} onClick={save}>
+                </Button>
+                <Button variant="small" className="settings-rules-save" disabled={!canSave} onClick={save}>
                   {language.t("settings.actions.save")}
-                </button>
+                </Button>
               </div>
             </>
           ) : (
@@ -241,9 +242,9 @@ export function SettingsRules(props: {
           className="settings-rules-confirm-dialog"
           onClose={() => setPendingDelete(undefined)}
           footer={
-            <button
-              type="button"
-              className="settings-small-button settings-rules-danger"
+            <Button
+              variant="small"
+              className="settings-rules-danger"
               onClick={() => {
                 onDeleteRule(pendingDelete.scope, pendingDelete.name)
                 if (draft?.originalName === pendingDelete.name && draft.scope === pendingDelete.scope) setDraft(undefined)
@@ -251,7 +252,7 @@ export function SettingsRules(props: {
               }}
             >
               {language.t("settings.rules.delete")}
-            </button>
+            </Button>
           }
         >
           <div>{language.t("settings.rules.deleteConfirm", { name: pendingDelete.name })}</div>

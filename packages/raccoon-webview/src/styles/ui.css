@@ -1,0 +1,34 @@
+@layer components {
+  /* Shared button -------------------------------------------------------- */
+  /* Base copied from the previous `.settings-header button, …` rule so the
+     neutral/secondary button looks identical to before. */
+  .ui-button {
+    @apply inline-flex min-h-[28px] cursor-pointer items-center justify-center rounded-[6px] border border-transparent bg-[var(--color-button)] px-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-55;
+  }
+
+  /* Small button: copied from the previous `.settings-small-button`. */
+  .ui-button--small {
+    @apply h-[28px] gap-1.5 rounded-[4px] px-2 text-[12px];
+  }
+
+  /* Icon-only button: copied from the previous `.settings-icon-button`. */
+  .ui-button--icon {
+    @apply h-[28px] w-[28px] shrink-0 rounded-[4px] px-0;
+  }
+
+  /* Primary/affirmative button: copied from `.question-dock-submit`. */
+  .ui-button--primary {
+    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[white] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,black)];
+  }
+
+  /* Ghost/transparent button: matches nav-item / dock-back styling. */
+  .ui-button--ghost {
+    @apply border-transparent bg-transparent text-[var(--color-foreground)] hover:bg-[var(--color-hover)];
+  }
+
+  /* Shared multiline text input. Mirrors `.settings-provider-input` (the
+     shared single-line input class) with multiline sizing. */
+  .ui-textarea {
+    @apply min-h-[72px] w-full resize-y rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 text-[12px] leading-5 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
+  }
+}

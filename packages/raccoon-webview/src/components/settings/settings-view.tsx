@@ -70,6 +70,12 @@ export function SettingsView() {
 
       <div className="settings-shell">
         <nav className="settings-nav" aria-label={language.t("settings.nav.label")}>
+          <button type="button" className={`settings-nav-item ${tab === "providers" ? "active" : ""}`} onClick={() => setTab("providers")}>
+            <span className="settings-nav-icon">
+              <Plugs size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.providers")}</span>
+          </button>
           <button type="button" className={`settings-nav-item ${tab === "models" ? "active" : ""}`} onClick={() => setTab("models")}>
             <span className="settings-nav-icon">
               <SlidersHorizontal size={16} weight="bold" />
@@ -87,12 +93,6 @@ export function SettingsView() {
               <Scroll size={16} weight="bold" />
             </span>
             <span>{language.t("settings.nav.rules")}</span>
-          </button>
-          <button type="button" className={`settings-nav-item ${tab === "providers" ? "active" : ""}`} onClick={() => setTab("providers")}>
-            <span className="settings-nav-icon">
-              <Plugs size={16} weight="bold" />
-            </span>
-            <span>{language.t("settings.nav.providers")}</span>
           </button>
           <button type="button" className={`settings-nav-item ${tab === "language" ? "active" : ""}`} onClick={() => setTab("language")}>
             <span className="settings-nav-icon">

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { DotsThreeVerticalIcon, PencilIcon, TrashIcon, DownloadIcon } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
+import { Button } from "../ui"
 
 function sessionTitle(title: string, untitled: string) {
   if (!title || title === "New session") return untitled
@@ -87,14 +88,9 @@ export function HistoryView(props: { onClose: () => void }) {
               {language.t("history.sessions", { count: filteredSessions.length })}
             </div>
           </div>
-          <button
-            type="button"
-            className="min-h-[28px] shrink-0 rounded-[6px] border border-transparent bg-[var(--color-button)] px-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)]"
-            onClick={props.onClose}
-            aria-label={language.t("common.back")}
-          >
+          <Button className="shrink-0" onClick={props.onClose} aria-label={language.t("common.back")}>
             {language.t("common.back")}
-          </button>
+          </Button>
         </div>
         <input
           className="h-[28px] w-full min-w-0 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[13px] text-[var(--color-input-foreground)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-focus)]"
@@ -210,19 +206,17 @@ export function HistoryView(props: { onClose: () => void }) {
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-[6px] border border-transparent bg-[var(--color-button)] px-3 py-1.5 text-[13px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)]"
+              <Button
+                className="px-3 py-1.5 text-[13px]"
                 onClick={() => {
                   setRenameSessionID(undefined)
                   setRenameTitle("")
                 }}
               >
                 {language.t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                className="rounded-[6px] border border-transparent bg-[var(--color-button)] px-3 py-1.5 text-[13px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)]"
+              </Button>
+              <Button
+                className="px-3 py-1.5 text-[13px]"
                 onClick={() => {
                   if (!renameSessionID) return
                   const title = renameTitle.trim()
@@ -233,7 +227,7 @@ export function HistoryView(props: { onClose: () => void }) {
                 }}
               >
                 {language.t("common.save")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

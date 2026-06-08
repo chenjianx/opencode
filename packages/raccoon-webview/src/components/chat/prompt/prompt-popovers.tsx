@@ -1,6 +1,7 @@
 import type { RefObject } from "react"
 import type { RaccoonFileSearchItem, RaccoonSlashCommand } from "../../../protocol"
 import { useLanguage } from "../../../context/language"
+import { ListboxOption, ListboxPanel } from "../../ui/listbox"
 import { dirName, fileName } from "./file-mention"
 import { commandGroupLabel } from "./prompt-input-utils"
 
@@ -21,32 +22,20 @@ export function PromptCommandList(props: {
 }) {
   const { t } = useLanguage()
   return (
-    <div
-      className="absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-[220px] w-full overflow-y-auto rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-[var(--shadow-md)]"
-      ref={props.containerRef}
-      role="listbox"
-      aria-label="Commands"
-    >
+    <ListboxPanel ariaLabel="Commands" containerRef={props.containerRef}>
       {props.groups.map((group, groupIndex) => (
         <div className={groupIndex === 0 ? "" : "mt-1 border-t border-[var(--color-border)] pt-1"} key={group.source}>
           <div className="px-3 py-1 text-[11px] font-medium leading-4 text-[var(--color-muted)]">
             {t(commandGroupLabel(group.source))}
           </div>
           {group.items.map((item) => (
-            <button
-              ref={(element) => {
+            <ListboxOption
+              key={item.command.name}
+              selected={item.index === props.selected}
+              buttonRef={(element) => {
                 props.itemRefs.current[item.index] = element
               }}
-              type="button"
-              className={`flex w-full items-center gap-2 border-0 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--color-hover)] ${
-                item.index === props.selected
-                  ? "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]"
-                  : "bg-transparent text-[var(--color-foreground)]"
-              }`}
-              key={item.command.name}
-              role="option"
-              aria-selected={item.index === props.selected}
-              onMouseEnter={() => props.onHover(item.index)}
+              onHover={() => props.onHover(item.index)}
               onClick={() => props.onSelect(item.command)}
             >
               <span className="shrink-0 font-semibold">/{item.command.name}</span>
@@ -60,11 +49,11 @@ export function PromptCommandList(props: {
                   {item.command.aliases.map((alias) => `/${alias}`).join(" ")}
                 </span>
               ) : null}
-            </button>
+            </ListboxOption>
           ))}
         </div>
       ))}
-    </div>
+    </ListboxPanel>
   )
 }
 
@@ -77,30 +66,18 @@ export function PromptMentionList(props: {
   onSelect: (item: RaccoonFileSearchItem) => void
 }) {
   return (
-    <div
-      className="absolute bottom-[calc(100%+6px)] left-0 z-30 max-h-[220px] w-full overflow-y-auto rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-[var(--shadow-md)]"
-      ref={props.containerRef}
-      role="listbox"
-      aria-label="File mentions"
-    >
+    <ListboxPanel ariaLabel="File mentions" containerRef={props.containerRef}>
       {props.items.map((item, index) => {
         const directory =
           item.type === "file" || item.type === "folder" || item.type === "opened-file" ? dirName(item.path) : ""
         return (
-          <button
-            ref={(element) => {
+          <ListboxOption
+            key={`${item.type}:${item.path}`}
+            selected={index === props.selected}
+            buttonRef={(element) => {
               props.itemRefs.current[index] = element
             }}
-            type="button"
-            className={`flex w-full items-center gap-2 border-0 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--color-hover)] ${
-              index === props.selected
-                ? "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]"
-                : "bg-transparent text-[var(--color-foreground)]"
-            }`}
-            key={`${item.type}:${item.path}`}
-            role="option"
-            aria-selected={index === props.selected}
-            onMouseEnter={() => props.onHover(index)}
+            onHover={() => props.onHover(index)}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => props.onSelect(item)}
           >
@@ -128,10 +105,10 @@ export function PromptMentionList(props: {
                 ) : null}
               </>
             )}
-          </button>
+          </ListboxOption>
         )
       })}
-    </div>
+    </ListboxPanel>
   )
 }
 
@@ -167,16 +144,10 @@ export function PromptModePicker(props: {
           {props.options.map((mode) => {
             const active = mode.value === props.mode
             return (
-              <button
-                type="button"
-                className={`flex w-full items-center justify-between gap-4 border-0 px-3 py-1.5 text-left text-[12px] hover:bg-[var(--color-hover)] ${
-                  active
-                    ? "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]"
-                    : "bg-transparent text-[var(--color-foreground)]"
-                }`}
+              <ListboxOption
                 key={mode.value}
-                role="option"
-                aria-selected={active}
+                selected={active}
+                className="justify-between gap-4"
                 onClick={() => props.onSelect(mode.value)}
               >
                 <span className="min-w-0">
@@ -188,7 +159,7 @@ export function PromptModePicker(props: {
                   ) : null}
                 </span>
                 {active ? <span className="text-[11px] text-[var(--color-muted)]">✓</span> : null}
-              </button>
+              </ListboxOption>
             )
           })}
         </div>

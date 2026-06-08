@@ -22,6 +22,7 @@ import { mapProviderModels, mapProviders, recountProviders } from "./mapping.js"
 import { ModelStateStore, type ModelSelection, modelKey, modeModelSelections } from "./model-state.js"
 import { ActionTokenStore } from "./action-tokens.js"
 import { collectRules } from "./rules-config.js"
+import { isRaccoonLoggedIn } from "./raccoon-auth-state.js"
 import type { RaccoonWebviewHost, RaccoonWebviewSource } from "./webview-host.js"
 
 type ProviderConfigDeps = {
@@ -127,9 +128,11 @@ export class RaccoonProviderConfig {
       collectRules(active, this.deps.directory(), "project").catch(() => []),
       collectRules(active, this.deps.directory(), "user").catch(() => []),
     ])
+    const raccoonLoggedIn = await isRaccoonLoggedIn()
     this.deps.setState({
       ...this.deps.getState(),
       models,
+      raccoonLoggedIn,
       agents: visibleAgents(agentResponse.data, agentOverrides, agentScopes),
       rules: [...projectRules, ...userRules],
       providers,
@@ -453,6 +456,10 @@ export class RaccoonProviderConfig {
         }
         if (!this.raccoonLoginTokens.isCurrent(undefined, token)) return
 
+        // auth.set during the callback only rewrites auth.json; the cached provider
+        // list still reflects the pre-login state. Dispose the instance so the refresh
+        // below rebuilds it with the new credentials and reports raccoon as connected.
+        await client.instance.dispose({ directory: this.deps.directory() }, { throwOnError: true })
         await this.deps.refresh()
         if (!this.raccoonLoginTokens.isCurrent(undefined, token)) return
         this.deps.webviewHost.post(source, { type: "raccoonLoginFinished" } satisfies ExtensionToWebview)
@@ -472,6 +479,16 @@ export class RaccoonProviderConfig {
     this.deps.setState({ ...this.deps.getState(), loading: false, busy: false })
     this.deps.post()
     this.deps.webviewHost.postRaccoonLoginFinished()
+  }
+
+  async logoutRaccoon() {
+    const client = await this.deps.client()
+    await client.auth.remove({ providerID: "raccoon" }, { throwOnError: true })
+    // Removing credentials only rewrites auth.json; the provider list (and its
+    // `connected` set) is cached in the server instance state and won't change until
+    // the instance is rebuilt. Dispose it so the next refresh reports raccoon as
+    // disconnected. The instance is lazily recreated on the following request.
+    await client.instance.dispose({ directory: this.deps.directory() }, { throwOnError: true })
   }
 
   async configureCustomProvider(message: Extract<WebviewToExtension, { type: "configureCustomProvider" }>) {

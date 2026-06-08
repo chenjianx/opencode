@@ -166,6 +166,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       clearPromptRefresh: (sessionID) => this.sessions.clearPromptRefresh(sessionID),
       scheduleEventRefresh: () => this.scheduleEventRefresh(),
       postMessage: (message) => this.webviewHost.post("chat", message),
+      onReauthRequired: () => this.handleReauthRequired(),
     })
     this.eventStream = new RaccoonEventStream(() => this.client(), (event) => this.eventHandler.handleGlobal(event), (message) =>
       this.output.appendLine(message),
@@ -192,6 +193,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       setProviderEnabled: (providerID, enabled) => this.config.setProviderEnabled(providerID, enabled),
       loginRaccoon: (serverUrl, source) => this.config.loginRaccoon(serverUrl, source),
       cancelRaccoonLogin: () => this.config.cancelRaccoonLogin(),
+      logoutRaccoon: () => this.logoutRaccoon(),
       configureProvider: (providerID, apiKey) => this.config.configureProvider(providerID, apiKey),
       configureAgent: (message) => this.config.configureAgent(message),
       deleteAgent: (name, scope) => this.config.deleteAgent(name, scope),
@@ -228,6 +230,33 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     await this.sessions.refresh()
     this.state = { ...this.state, serverUrl: this.connection.getServerConfig()?.baseUrl, directory: this.directory() }
     this.post()
+  }
+
+  private reauthInFlight = false
+  private async handleReauthRequired() {
+    if (this.reauthInFlight) return
+    const connected = this.state.providers.some((entry) => entry.id === "raccoon" && entry.connected)
+    if (!connected) return
+    this.reauthInFlight = true
+    try {
+      await this.config.logoutRaccoon()
+      await this.refresh()
+    } catch (error) {
+      this.report(error)
+    } finally {
+      this.reauthInFlight = false
+    }
+  }
+
+  // Manual sign-out from the settings panel: close the standalone settings tab so the
+  // user isn't left staring at a login form inside a "Raccoon Settings" tab, then
+  // refresh so the sidebar falls back to the login screen.
+  async logoutRaccoon() {
+    await this.withLoading(async () => {
+      await this.config.logoutRaccoon()
+      this.webviewHost.closeSettings()
+      await this.refresh()
+    })
   }
 
   async selectSession(sessionID: string) {

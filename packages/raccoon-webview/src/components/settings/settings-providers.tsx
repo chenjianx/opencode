@@ -7,6 +7,7 @@ import { RACCOON_LOGIN_URL } from "../../config"
 import { SettingsCustomProviderDialog } from "./settings-custom-provider-dialog"
 import { SettingsDialog } from "./settings-dialog"
 import { SettingsProviderConnectDialog } from "./settings-provider-connect-dialog"
+import { Button } from "../ui"
 import { TextField } from "./settings-common"
 
 const popularProviders = [
@@ -50,6 +51,7 @@ export function SettingsProviders() {
   const [raccoonServerUrl, setRaccoonServerUrl] = useState(RACCOON_LOGIN_URL)
   const [raccoonLoggingIn, setRaccoonLoggingIn] = useState(false)
   const [raccoonLoginError, setRaccoonLoginError] = useState<string>()
+  const [raccoonLogoutConfirm, setRaccoonLogoutConfirm] = useState(false)
   const [customOpen, setCustomOpen] = useState(false)
   const [providerDrafts, setProviderDrafts] = useState<Record<string, ProviderDraft>>({})
   const [connectingProviderID, setConnectingProviderID] = useState<string>()
@@ -128,8 +130,9 @@ export function SettingsProviders() {
   }, [savingCustom, vscode])
 
   const customProviders = session.state.customProviders ?? []
-  const raccoonProvider = session.state.providers.find((entry) => entry.id === "raccoon")
-  const raccoonConnected = raccoonProvider?.connected ?? false
+  // raccoon is a config-source provider, so `connected` is always true. Use the
+  // ground-truth login flag from the extension instead.
+  const raccoonConnected = session.state.raccoonLoggedIn === true
   const providerAuthMethods = session.state.providerAuthMethods ?? {}
   const filteredFetchedModels = useMemo(() => {
     const text = fetchedQuery.trim().toLowerCase()
@@ -296,16 +299,21 @@ export function SettingsProviders() {
             <div className="settings-provider-meta">{language.t("settings.providers.raccoon.note")}</div>
           </div>
           <div className="settings-provider-actions">
-            <button
-              type="button"
-              disabled={raccoonLoggingIn}
-              onClick={() => {
-                setRaccoonLoginError(undefined)
-                setRaccoonDialogOpen(true)
-              }}
-            >
-              {raccoonConnected ? language.t("settings.providers.reconnect") : language.t("settings.providers.connect")}
-            </button>
+            {raccoonConnected ? (
+              <Button disabled={raccoonLoggingIn} onClick={() => setRaccoonLogoutConfirm(true)}>
+                {language.t("settings.providers.raccoon.logout")}
+              </Button>
+            ) : (
+              <Button
+                disabled={raccoonLoggingIn}
+                onClick={() => {
+                  setRaccoonLoginError(undefined)
+                  setRaccoonDialogOpen(true)
+                }}
+              >
+                {language.t("settings.providers.connect")}
+              </Button>
+            )}
           </div>
         </div>
         {raccoonLoginError ? <div className="settings-provider-error">{raccoonLoginError}</div> : null}
@@ -323,9 +331,9 @@ export function SettingsProviders() {
             <div className="settings-provider-meta">{language.t("settings.providers.freeModels.note")}</div>
           </div>
           <div className="settings-provider-actions">
-            <button type="button" onClick={() => session.configureProvider("opencode", "")}>
+            <Button onClick={() => session.configureProvider("opencode", "")}>
               {language.t("settings.providers.enable")}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -351,15 +359,14 @@ export function SettingsProviders() {
                   <div className="settings-provider-meta">{language.t(item.noteKey)}</div>
                 </div>
                 <div className="settings-provider-actions">
-                  <button
-                    type="button"
+                  <Button
                     onClick={() => {
                       setProviderError(undefined)
                       setActiveProvider(item.id)
                     }}
                   >
                     {connected ? language.t("settings.providers.edit") : language.t("settings.providers.configure")}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -380,9 +387,9 @@ export function SettingsProviders() {
               <div className="settings-provider-meta">{language.t("settings.providers.customProvider.note")}</div>
             </div>
             <div className="settings-provider-actions">
-              <button type="button" onClick={openNewCustomProvider}>
+              <Button onClick={openNewCustomProvider}>
                 {language.t("settings.providers.customProvider.add")}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -401,9 +408,9 @@ export function SettingsProviders() {
                   </div>
                 </div>
                 <div className="settings-provider-actions">
-                  <button type="button" onClick={() => editCustomProvider(item.providerID)}>
+                  <Button onClick={() => editCustomProvider(item.providerID)}>
                     {language.t("settings.providers.edit")}
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
@@ -475,11 +482,8 @@ export function SettingsProviders() {
           footerClassName="settings-provider-connect-footer"
           footer={
             <>
-              <button type="button" onClick={closeRaccoonDialog}>
-                {language.t("common.cancel")}
-              </button>
-              <button
-                type="button"
+              <Button onClick={closeRaccoonDialog}>{language.t("common.cancel")}</Button>
+              <Button
                 disabled={raccoonLoggingIn}
                 onClick={() => {
                   setRaccoonLoggingIn(true)
@@ -488,7 +492,7 @@ export function SettingsProviders() {
                 }}
               >
                 {raccoonLoggingIn ? language.t("settings.providers.raccoon.waiting") : language.t("settings.providers.raccoon.openBrowser")}
-              </button>
+              </Button>
             </>
           }
         >
@@ -499,6 +503,30 @@ export function SettingsProviders() {
             onChange={setRaccoonServerUrl}
           />
           {raccoonLoginError ? <div className="settings-dialog-error">{raccoonLoginError}</div> : null}
+        </SettingsDialog>
+      ) : null}
+      {raccoonLogoutConfirm ? (
+        <SettingsDialog
+          titleId="raccoon-logout-confirm"
+          title={language.t("settings.providers.raccoon.logout")}
+          className="settings-raccoon-logout-dialog"
+          onClose={() => setRaccoonLogoutConfirm(false)}
+          footer={
+            <>
+              <Button onClick={() => setRaccoonLogoutConfirm(false)}>{language.t("common.cancel")}</Button>
+              <Button
+                className="settings-rules-danger"
+                onClick={() => {
+                  setRaccoonLogoutConfirm(false)
+                  session.logoutRaccoon()
+                }}
+              >
+                {language.t("settings.providers.raccoon.logout")}
+              </Button>
+            </>
+          }
+        >
+          <div>{language.t("settings.providers.raccoon.logoutConfirm")}</div>
         </SettingsDialog>
       ) : null}
     </>

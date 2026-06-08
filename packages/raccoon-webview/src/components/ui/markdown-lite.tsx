@@ -178,7 +178,13 @@ function components(onOpenFile?: (filePath: string, line?: number, column?: numb
     code(props) {
       const language = languageName(props.className)
       const text = Array.isArray(props.children) ? props.children.join("") : `${props.children ?? ""}`
-      if (!language) {
+      // Treat as a block when it has a language, or when the content spans multiple lines
+      // (fenced code without a language still ends with a newline). Inline code never
+      // contains a newline. Without this, a language-less fenced block (e.g. an ASCII
+      // directory tree) falls through to the inline branch and renders with no <pre>,
+      // collapsing every line into one blob.
+      const isBlock = language !== undefined || text.includes("\n")
+      if (!isBlock) {
         const fileReference = parseFileReference(text.trim())
         return (
           <code

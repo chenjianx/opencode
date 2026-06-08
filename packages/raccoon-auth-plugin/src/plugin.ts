@@ -5,11 +5,18 @@ import * as Log from "@opencode-ai/core/util/log"
 import { createServer, type Server } from "node:http"
 
 const log = Log.create({ service: "raccoon.auth" })
-const DEFAULT_BASE_URL = "http://10.4.196.193:5580"
+const DEFAULT_BASE_URL = "https://xiaohuanxiong.com"
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 const DEFAULT_CONTEXT_LENGTH = 64_000
 const DEFAULT_INPUT_LENGTH = 60_000
 const STANDARD_MODELS = new Set(["raccoon-chat", "raccoon-completion", "raccoon-pro-chat", "raccoon-pro-completion"])
+
+/**
+ * Stable marker embedded in refresh errors when the refresh token is no longer valid.
+ * The VS Code host matches on this to clear stored credentials and force a re-login.
+ * Keep in sync with the literal used in raccoon-vscode.
+ */
+export const RACCOON_REAUTH_REQUIRED = "RACCOON_REAUTH_REQUIRED"
 
 type TokenResponse = {
   data?: {
@@ -34,8 +41,13 @@ type UserInfoResponse = {
     email?: string
     name?: string
     pro?: boolean
+    pro_code_enabled?: boolean
     orgs?: Array<{ id?: string; code?: string; name: string; pro_code_enabled?: boolean }>
   }
+}
+
+function isProUser(user: UserInfoResponse["data"]) {
+  return Boolean(user?.pro || user?.pro_code_enabled || user?.orgs?.some((org) => org.pro_code_enabled))
 }
 
 type ServerSettingsResponse = {
@@ -221,7 +233,14 @@ async function refreshAccessToken(baseUrl: string, refreshToken: string) {
     body: JSON.stringify({ refresh_token: refreshToken }),
   })
   const json = (await response.json().catch(() => ({}))) as TokenResponse
-  if (!response.ok) throw new Error(jsonError(json, `Token refresh failed: ${response.status}`))
+  if (!response.ok) {
+    // 401/403 (or 400 invalid_grant) means the refresh token itself is no longer
+    // valid: the user must sign in again. Tag the error with a stable marker the host
+    // matches on to clear credentials and surface the login screen.
+    const reauth = response.status === 401 || response.status === 403 || response.status === 400
+    const message = jsonError(json, `Token refresh failed: ${response.status}`)
+    throw new Error(reauth ? `${RACCOON_REAUTH_REQUIRED}: ${message}` : message)
+  }
 
   return tokenResult(json)
 }
@@ -239,87 +258,137 @@ function accountIdFromUser(user: UserInfoResponse["data"]) {
   return user?.orgs?.[0]?.code ?? user?.orgs?.[0]?.id ?? user?.id
 }
 
+type Creds = {
+  access: string
+  refresh: string
+  expires: number
+  enterpriseUrl: string
+  accountId?: string
+}
+
+// Refresh-token expiry skew: treat a token as expired slightly early so we never send a
+// request with a token that dies in flight.
+const EXPIRY_SKEW_MS = 60_000
+
+// In-memory cache of the freshest known-good credentials, keyed by login base URL. This
+// guards against stale auth.json reads (getAuth() may return the pre-refresh value) and
+// stops us from re-spending an already-rotated refresh token within this process.
+const credsCache = new Map<string, Creds>()
+// Single-flight refresh: concurrent requests that share the same refresh token collapse
+// into one network refresh, so a rotating refresh token is only spent once.
+const refreshInflight = new Map<string, Promise<LoginResult>>()
+// Base URLs we have already attempted account-id recovery for, to avoid a user_info call
+// on every request when the account has no org.
+const accountIdChecked = new Set<string>()
+
+function tokenExpired(expires: number | undefined) {
+  return !expires || expires - EXPIRY_SKEW_MS <= Date.now()
+}
+
+function refreshAccessTokenOnce(baseUrl: string, refreshToken: string) {
+  const key = `${baseUrl}::${refreshToken}`
+  const existing = refreshInflight.get(key)
+  if (existing) return existing
+  const promise = refreshAccessToken(baseUrl, refreshToken).finally(() => {
+    refreshInflight.delete(key)
+  })
+  refreshInflight.set(key, promise)
+  return promise
+}
+
+async function recoverAccountId(baseUrl: string, access: string) {
+  return accountIdFromUser(
+    await fetchUserInfo(baseUrl, access).catch((error) => {
+      log.warn("failed to recover raccoon account id", { error })
+      return undefined
+    }),
+  )
+}
+
+async function persistCreds(input: PluginInput, creds: Creds) {
+  await input.client.auth
+    .set({
+      path: { id: "raccoon" },
+      body: {
+        type: "oauth",
+        refresh: creds.refresh,
+        access: creds.access,
+        expires: creds.expires,
+        enterpriseUrl: creds.enterpriseUrl,
+        ...(creds.accountId && { accountId: creds.accountId }),
+      },
+    })
+    .catch((error) => log.warn("failed to persist raccoon credentials", { error }))
+}
+
 async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUrl: string) {
   const auth = await getAuth()
   if (auth.type !== "oauth") return
 
-  const loginBaseUrl = auth.enterpriseUrl ?? baseUrl
-  if (auth.expires > Date.now()) {
-    log.info("resolving raccoon account id", {
-      source: auth.accountId ? "auth" : "user_info",
-      hasAuthAccountId: Boolean(auth.accountId),
-      baseUrl: loginBaseUrl,
-    })
-    const accountId =
-      auth.accountId ??
-      accountIdFromUser(
-        await fetchUserInfo(loginBaseUrl, auth.access).catch((error) => {
-          log.warn("failed to recover raccoon account id", { error })
-          return undefined
-        }),
-      )
-    if (accountId && !auth.accountId) {
-      log.info("persisting recovered raccoon account id", {
-        accountId,
-      })
-      await input.client.auth.set({
-        path: { id: "raccoon" },
-        body: {
-          type: "oauth",
-          refresh: auth.refresh,
-          access: auth.access,
-          expires: auth.expires,
-          enterpriseUrl: loginBaseUrl,
-          ...(accountId && { accountId: accountId as string }),
-        },
-      })
-    }
-    log.info("using cached raccoon access token", {
-      expiresAt: new Date(auth.expires).toISOString(),
-      hasAccountId: Boolean(accountId),
-      accountId,
-    })
-    return {
+  const loginBaseUrl = normalizeUrl(auth.enterpriseUrl ?? baseUrl)
+  const cached = credsCache.get(loginBaseUrl)
+  const authAccountId = (auth as any).accountId as string | undefined
+
+  // Prefer the freshest credentials we have; the in-memory cache wins over a possibly
+  // stale auth.json read.
+  let best: Creds | undefined
+  let source: "cache" | "auth" | undefined
+  if (cached && !tokenExpired(cached.expires)) {
+    best = cached
+    source = "cache"
+  } else if (!tokenExpired(auth.expires)) {
+    best = {
       access: auth.access as string,
+      refresh: auth.refresh as string,
+      expires: auth.expires as number,
       enterpriseUrl: loginBaseUrl,
-      accountId: accountId as string | undefined,
+      accountId: authAccountId,
     }
+    source = "auth"
   }
 
+  if (best) {
+    let accountId = best.accountId
+    if (!accountId && !accountIdChecked.has(loginBaseUrl)) {
+      accountIdChecked.add(loginBaseUrl)
+      accountId = await recoverAccountId(loginBaseUrl, best.access)
+      if (accountId) best = { ...best, accountId }
+      if (accountId && !authAccountId) await persistCreds(input, best)
+    }
+    credsCache.set(loginBaseUrl, best)
+    log.info("using raccoon access token", {
+      source,
+      expiresAt: new Date(best.expires).toISOString(),
+      hasAccountId: Boolean(accountId),
+    })
+    return { access: best.access, enterpriseUrl: loginBaseUrl, accountId }
+  }
+
+  // Both the cache and stored credentials are expired: refresh using the freshest refresh
+  // token we know about, deduped so a rotating token is spent only once.
+  const refreshToken = cached?.refresh ?? (auth.refresh as string)
   log.info("refreshing raccoon access token", {
-    expiresAt: new Date(auth.expires).toISOString(),
-    hasAccountId: Boolean(auth.accountId),
+    expiresAt: auth.expires ? new Date(auth.expires).toISOString() : undefined,
   })
-  const refreshed = await refreshAccessToken(loginBaseUrl, auth.refresh)
-  const accountId =
-    auth.accountId ??
-    accountIdFromUser(
-      await fetchUserInfo(loginBaseUrl, refreshed.access).catch((error) => {
-        log.warn("failed to recover raccoon account id after refresh", { error })
-        return undefined
-      }),
-    )
-  log.info("resolved raccoon account id after refresh", {
-    hasAccountId: Boolean(accountId),
+  const refreshed = await refreshAccessTokenOnce(loginBaseUrl, refreshToken)
+  const expires = (parseJwtExp(refreshed.access) ?? Math.floor(Date.now() / 1000) + 3600) * 1000
+  const accountId = authAccountId ?? (await recoverAccountId(loginBaseUrl, refreshed.access))
+  const creds: Creds = {
+    access: refreshed.access,
+    refresh: refreshed.refresh,
+    expires,
+    enterpriseUrl: loginBaseUrl,
     accountId,
-  })
-  await input.client.auth.set({
-    path: { id: "raccoon" },
-    body: {
-      type: "oauth",
-      refresh: refreshed.refresh,
-      access: refreshed.access,
-      expires: (parseJwtExp(refreshed.access) ?? Math.floor(Date.now() / 1000) + 3600) * 1000,
-      enterpriseUrl: loginBaseUrl,
-      ...(accountId && { accountId: accountId as string }),
-    },
+  }
+  credsCache.set(loginBaseUrl, creds)
+  accountIdChecked.add(loginBaseUrl)
+  await persistCreds(input, creds)
+  log.info("refreshed raccoon access token", {
+    expiresAt: new Date(expires).toISOString(),
+    hasAccountId: Boolean(accountId),
   })
 
-  return {
-    access: refreshed.access,
-    enterpriseUrl: loginBaseUrl,
-    accountId: accountId as string | undefined,
-  }
+  return { access: refreshed.access, enterpriseUrl: loginBaseUrl, accountId }
 }
 
 function modelTemplate(input: {
@@ -486,7 +555,11 @@ function rewriteRaccoonRequest(baseUrl: string, orgCode: string | undefined, req
     )
   if (url.origin !== root.origin) {
     url.protocol = root.protocol
-    url.host = root.host
+    url.hostname = root.hostname
+    // Set the port explicitly: assigning `url.host` without a port does NOT clear an
+    // existing port, so switching from e.g. 10.4.196.193:5580 to xiaohuanxiong.com would
+    // otherwise leave a stale :5580 and cause ConnectionRefused.
+    url.port = root.port
   }
 
   const body = typeof init?.body === "string" ? (JSON.parse(init.body) as RaccoonRequestBody) : undefined
@@ -586,6 +659,23 @@ function normalizeRaccoonResponse(response: Response) {
       }
       if (json.is_heartbeat) return undefined
       const normalized = json.data ?? json
+      // Transient/engine errors arrive as a chunk with null choices and a non-zero status
+      // code (e.g. {"choices":null,"status":{"code":9,"message":"engine is not available
+      // temporarily"}}). Surface them as an OpenAI-style error chunk so the SDK reports a
+      // clean message instead of failing schema validation on `choices: null`.
+      const status = (normalized as { status?: { code?: number; message?: string } }).status
+      if (status?.code && status.code !== 0) {
+        return `data: ${JSON.stringify({
+          error: {
+            message: status.message ?? "raccoon engine error",
+            type: "raccoon_error",
+            code: status.code,
+          },
+        })}`
+      }
+      // Coerce missing/null choices to an empty array so metadata-only chunks don't break
+      // the strict OpenAI stream schema.
+      if (!normalized.choices) normalized.choices = []
       for (const choice of normalized.choices ?? []) {
         if (typeof choice.delta === "string") {
           choice.delta = { ...(choice.role ? { role: choice.role } : {}), content: choice.delta }
@@ -730,17 +820,23 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
         }
 
         const loginBaseUrl = normalizeUrl(ctx.auth.enterpriseUrl ?? baseUrl)
-        const user = await fetchUserInfo(loginBaseUrl, ctx.auth.access).catch(() => undefined)
-        const authWithAccount = ctx.auth as typeof ctx.auth & { accountId?: string }
-        const accountId = authWithAccount.accountId ?? accountIdFromUser(user)
-        const serverModels = await fetchServerProfileModels(loginBaseUrl, ctx.auth.access, accountId).catch((error) => {
+        // Refresh first: model discovery must not run with an expired access token, or it
+        // silently falls back to the non-pro model list.
+        const current = await getAccess(() => Promise.resolve(ctx.auth), _input, baseUrl).catch((error) => {
+          log.warn("failed to refresh raccoon token for model discovery", { error })
+          return undefined
+        })
+        const access = current?.access ?? (ctx.auth.access as string)
+        const accountId = current?.accountId
+        const user = await fetchUserInfo(loginBaseUrl, access).catch(() => undefined)
+        const serverModels = await fetchServerProfileModels(loginBaseUrl, access, accountId).catch((error) => {
           log.warn("failed to fetch raccoon profiles", { error })
           return undefined
         })
 
         return Object.keys(serverModels ?? {}).length
           ? serverModels!
-          : fallbackModels(loginBaseUrl, user?.pro || user?.orgs?.some((org) => org.pro_code_enabled), accountId)
+          : fallbackModels(loginBaseUrl, isProUser(user), accountId)
       },
     },
     auth: {
@@ -823,7 +919,13 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
                   const code = requestUrl.searchParams.get("authorization_code") ?? requestUrl.searchParams.get("code")
                   if (!code) throw new Error("Missing authorization code")
                   const tokens = await exchangeCode(loginBaseUrl, code)
-                  const user = await fetchUserInfo(loginBaseUrl, tokens.access)
+                  // user_info is only used to derive the optional accountId; a transient
+                  // failure here must not abort an otherwise successful login (accountId is
+                  // recovered later by getAccess on the first request).
+                  const user = await fetchUserInfo(loginBaseUrl, tokens.access).catch((error) => {
+                    log.warn("failed to fetch raccoon user info during login", { error })
+                    return undefined
+                  })
                   const accountId = accountIdFromUser(user)
                   const exp = parseJwtExp(tokens.access)
                   resolve({

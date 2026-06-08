@@ -9,6 +9,7 @@ import type {
   RaccoonPermissionConfig,
 } from "../../protocol"
 import { useLanguage } from "../../context/language"
+import { Button } from "../ui"
 import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow, Select, TextInput } from "./settings-common"
 import { PermissionEditor, PermissionRuleset } from "./permission-editor"
@@ -169,9 +170,11 @@ export function SettingsAgents(props: {
   const [creating, setCreating] = useState(false)
   const [importError, setImportError] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Built-in (native) agents that are hidden are not surfaced in the list.
+  const visibleAgents = useMemo(() => agents.filter((agent) => !(agent.native && agent.hidden)), [agents])
   const selected = useMemo(
-    () => agents.find((agent) => agent.name === selectedName) ?? agents[0],
-    [agents, selectedName],
+    () => agents.find((agent) => agent.name === selectedName) ?? visibleAgents[0],
+    [agents, visibleAgents, selectedName],
   )
   const [draft, setDraft] = useState(() => agentDraft(selected))
   const [baseline, setBaseline] = useState(() => draftSnapshot(draft))
@@ -180,8 +183,8 @@ export function SettingsAgents(props: {
   useEffect(() => {
     if (creating) return
     if (selectedName && agents.some((agent) => agent.name === selectedName)) return
-    setSelectedName(agents[0]?.name ?? "")
-  }, [agents, selectedName, creating])
+    setSelectedName(visibleAgents[0]?.name ?? "")
+  }, [agents, visibleAgents, selectedName, creating])
 
   useEffect(() => {
     // A Discard (resetToken bump) always cancels an in-progress create and
@@ -189,7 +192,7 @@ export function SettingsAgents(props: {
     if (props.resetToken !== resetTokenRef.current) {
       resetTokenRef.current = props.resetToken
       setCreating(false)
-      const base = agents.find((agent) => agent.name === selectedName) ?? agents[0]
+      const base = agents.find((agent) => agent.name === selectedName) ?? visibleAgents[0]
       const next = agentDraft(base)
       setDraft(next)
       setBaseline(draftSnapshot(next))
@@ -297,23 +300,23 @@ export function SettingsAgents(props: {
               event.currentTarget.value = ""
             }}
           />
-          <button type="button" className="settings-small-button" title={language.t("settings.agents.import")} onClick={() => fileInputRef.current?.click()}>
+          <Button variant="small" title={language.t("settings.agents.import")} onClick={() => fileInputRef.current?.click()}>
             <UploadSimple size={14} weight="bold" />
             <span>{language.t("settings.agents.import")}</span>
-          </button>
-          <button type="button" className="settings-small-button" onClick={() => selectDraft(newDraft(agents), true)}>
+          </Button>
+          <Button variant="small" onClick={() => selectDraft(newDraft(agents), true)}>
             <Plus size={14} weight="bold" />
             <span>{language.t("settings.agents.new")}</span>
-          </button>
+          </Button>
         </div>
       </div>
       {importError ? <div className="mb-2 text-[11px] text-[var(--color-error)]">{importError}</div> : null}
       <div className="settings-agent-shell">
         <div className="settings-card settings-agent-list">
-          {agents.length === 0 ? (
+          {visibleAgents.length === 0 ? (
             <div className="px-3 py-4 text-[12px] text-[var(--color-muted)]">{language.t("settings.agents.empty")}</div>
           ) : (
-            agents.map((agent) => (
+            visibleAgents.map((agent) => (
               <button
                 type="button"
                 key={agent.name}
@@ -342,25 +345,24 @@ export function SettingsAgents(props: {
             </div>
             <div className="settings-agent-panel-actions">
               {selected && !creating ? (
-                <button type="button" className="settings-small-button" title={language.t("settings.agents.duplicate")} onClick={() => selectDraft(duplicateDraft(selected, agents), true)}>
+                <Button variant="small" title={language.t("settings.agents.duplicate")} onClick={() => selectDraft(duplicateDraft(selected, agents), true)}>
                   <Copy size={14} weight="bold" />
                   <span>{language.t("settings.agents.action.duplicate")}</span>
-                </button>
+                </Button>
               ) : null}
-              <button type="button" className="settings-small-button" title={language.t("settings.agents.export")} onClick={exportAgent}>
+              <Button variant="small" title={language.t("settings.agents.export")} onClick={exportAgent}>
                 <DownloadSimple size={14} weight="bold" />
                 <span>{language.t("settings.agents.export")}</span>
-              </button>
+              </Button>
               {selected && !creating ? (
-                <button
-                  type="button"
-                  className="settings-small-button"
+                <Button
+                  variant="small"
                   title={selected.native ? language.t("settings.agents.reset") : language.t("settings.agents.delete")}
                   onClick={() => onDeleteAgent(selected.name, draft.scope)}
                 >
                   {selected.native ? <ArrowCounterClockwise size={14} weight="bold" /> : <Trash size={14} weight="bold" />}
                   <span>{selected.native ? language.t("settings.agents.action.reset") : language.t("settings.agents.action.delete")}</span>
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>

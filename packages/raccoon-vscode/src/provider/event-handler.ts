@@ -48,7 +48,11 @@ type EventHandlerDeps = {
   clearPromptRefresh: (sessionID: string) => void
   scheduleEventRefresh: () => void
   postMessage: (message: ExtensionToWebview) => void
+  onReauthRequired: () => void
 }
+
+// Keep in sync with RACCOON_REAUTH_REQUIRED in @opencode-ai/raccoon-auth-plugin.
+const RACCOON_REAUTH_REQUIRED = "RACCOON_REAUTH_REQUIRED"
 
 export class RaccoonEventHandler {
   constructor(private readonly deps: EventHandlerDeps) {}
@@ -75,6 +79,9 @@ export class RaccoonEventHandler {
       this.deps.removeSession(event.properties.info.id)
       this.deps.post()
       return
+    }
+    if (event.type === "session.error" && this.isReauthError(event.properties.error)) {
+      this.deps.onReauthRequired()
     }
     if (eventSessionID(event) !== this.deps.getState().activeSessionID) return
     if (event.type === "message.updated") {
@@ -175,5 +182,14 @@ export class RaccoonEventHandler {
 
   private setState(state: Partial<RaccoonState>) {
     this.deps.setState({ ...this.deps.getState(), ...state })
+  }
+
+  private isReauthError(error: unknown) {
+    if (!error) return false
+    try {
+      return JSON.stringify(error).includes(RACCOON_REAUTH_REQUIRED)
+    } catch {
+      return false
+    }
   }
 }

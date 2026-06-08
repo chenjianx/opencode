@@ -4,6 +4,7 @@ import { useLanguage } from "../../context/language"
 import type { I18nKey } from "../../i18n/en"
 import type { RaccoonPermissionAction, RaccoonPermissionConfig, RaccoonPermissionRule } from "../../protocol"
 import { SettingsRow } from "./settings-common"
+import { Button } from "../ui"
 import { titleCase } from "./utils"
 import {
   addExceptionPatch,
@@ -271,9 +272,9 @@ function GranularToolRow(props: {
                       {exc.pattern}
                     </div>
                     <ActionSelect level={exc.action} onChange={(lvl) => props.onExceptionChange(exc.pattern, lvl)} />
-                    <button type="button" className="settings-icon-button" title={language.t("settings.agents.permissions.remove")} onClick={() => props.onExceptionRemove(exc.pattern)}>
+                    <Button variant="icon" title={language.t("settings.agents.permissions.remove")} onClick={() => props.onExceptionRemove(exc.pattern)}>
                       <X size={12} weight="bold" />
-                    </button>
+                    </Button>
                   </div>
                 ))
               : null}
@@ -297,9 +298,9 @@ function GranularToolRow(props: {
               }}
               placeholder={language.t(props.tool.granular.placeholderKey)}
             />
-            <button type="button" className="settings-icon-button" title={language.t("common.cancel")} onClick={cancel}>
+            <Button variant="icon" title={language.t("common.cancel")} onClick={cancel}>
               <X size={12} weight="bold" />
-            </button>
+            </Button>
           </div>
         ) : (
           <button
@@ -350,9 +351,9 @@ export function PermissionRuleset(props: { agent: string; rules: RaccoonPermissi
         </span>
         <span className="ml-1 text-[12px] font-medium text-[var(--color-foreground)]">{language.t("settings.agents.permissions.calculated")}</span>
         <span className="ml-2 text-[11px] text-[var(--color-muted)]">{language.t("settings.agents.permissions.count", { count: props.rules.length })}</span>
-        <button type="button" className="settings-icon-button ml-auto" title={language.t("settings.agents.permissions.copy")} onClick={copy}>
+        <Button variant="icon" className="ml-auto" title={language.t("settings.agents.permissions.copy")} onClick={copy}>
           {copied ? <Check size={14} weight="bold" /> : <Copy size={14} weight="bold" />}
-        </button>
+        </Button>
       </div>
 
       {expanded ? (

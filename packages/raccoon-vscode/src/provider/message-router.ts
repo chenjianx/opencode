@@ -25,6 +25,7 @@ type MessageRouterDeps = {
   setProviderEnabled: (providerID: string, enabled: boolean) => Promise<void>
   loginRaccoon: (serverUrl: string | undefined, source: RaccoonWebviewSource) => Promise<void>
   cancelRaccoonLogin: () => void
+  logoutRaccoon: () => Promise<void>
   configureProvider: (providerID: string, apiKey: string) => Promise<void>
   configureAgent: (message: Extract<WebviewToExtension, { type: "configureAgent" }>) => Promise<void>
   deleteAgent: (name: string, scope: Extract<WebviewToExtension, { type: "deleteAgent" }>["scope"]) => Promise<void>
@@ -140,6 +141,10 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "cancelRaccoonLogin") {
       this.deps.cancelRaccoonLogin()
+      return
+    }
+    if (message.type === "logoutRaccoon") {
+      await this.deps.logoutRaccoon()
       return
     }
     if (message.type === "configureProvider") {

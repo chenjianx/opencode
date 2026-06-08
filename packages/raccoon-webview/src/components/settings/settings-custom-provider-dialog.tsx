@@ -1,6 +1,7 @@
 import { X } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { SettingsDialog } from "./settings-dialog"
+import { Button } from "../ui"
 import { TextField, TextInput } from "./settings-common"
 
 type CustomProviderDraft = {
@@ -43,16 +44,16 @@ export function SettingsCustomProviderDialog(props: {
       footer={
         <>
           {props.onDelete ? (
-            <button type="button" disabled={props.savingCustom} onClick={props.onDelete}>
+            <Button disabled={props.savingCustom} onClick={props.onDelete}>
               {language.t("settings.customProvider.delete")}
-            </button>
+            </Button>
           ) : null}
-          <button type="button" disabled={props.savingCustom} onClick={props.onClose}>
+          <Button disabled={props.savingCustom} onClick={props.onClose}>
             {language.t("common.cancel")}
-          </button>
-          <button type="button" disabled={props.savingCustom} onClick={props.onSave}>
+          </Button>
+          <Button disabled={props.savingCustom} onClick={props.onSave}>
             {props.savingCustom ? language.t("common.saving") : language.t("settings.customProvider.save")}
-          </button>
+          </Button>
         </>
       }
     >
@@ -91,9 +92,9 @@ export function SettingsCustomProviderDialog(props: {
                 <div className="settings-dialog-section-title">{language.t("settings.customProvider.models")}</div>
                 <div className="settings-dialog-section-description">{language.t("settings.customProvider.models.description")}</div>
               </div>
-              <button type="button" className="settings-dialog-secondary" disabled={props.fetchingModels} onClick={props.onFetchModels}>
+              <Button disabled={props.fetchingModels} onClick={props.onFetchModels}>
                 {props.fetchingModels ? language.t("settings.customProvider.fetching") : language.t("settings.customProvider.fetch")}
-              </button>
+              </Button>
             </div>
             {props.fetchError ? <div className="settings-dialog-error">{props.fetchError}</div> : null}
             {props.fetchStatus ? <div className="settings-dialog-note">{props.fetchStatus}</div> : null}
@@ -106,9 +107,9 @@ export function SettingsCustomProviderDialog(props: {
                     placeholder={language.t("settings.customProvider.searchFetched")}
                     onChange={props.onFetchedQueryChange}
                   />
-                  <button type="button" className="settings-dialog-secondary" onClick={props.onAddFetchedModels}>
+                  <Button onClick={props.onAddFetchedModels}>
                     {language.t("settings.customProvider.addSelected", { count: props.selectedFetched.size })}
-                  </button>
+                  </Button>
                 </div>
                 <div className="settings-dialog-fetched-list">
                   {props.filteredFetchedModels.map((model) => (
@@ -167,8 +168,8 @@ export function SettingsCustomProviderDialog(props: {
                   />
                   <span>{language.t("settings.customProvider.image")}</span>
                 </label>
-                <button
-                  type="button"
+                <Button
+                  variant="icon"
                   className="settings-dialog-icon-button"
                   disabled={props.custom.models.length <= 1}
                   onClick={() =>
@@ -180,18 +181,16 @@ export function SettingsCustomProviderDialog(props: {
                   aria-label={language.t("settings.customProvider.removeModel")}
                 >
                   <X size={12} weight="bold" />
-                </button>
+                </Button>
               </div>
             ))}
-            <button
-              type="button"
-              className="settings-dialog-secondary"
+            <Button
               onClick={() =>
                 props.onCustomChange((current) => ({ ...current, models: [...current.models, { id: "", name: "", supportsImage: false }] }))
               }
             >
               {language.t("settings.customProvider.addModel")}
-            </button>
+            </Button>
           </div>
     </SettingsDialog>
   )

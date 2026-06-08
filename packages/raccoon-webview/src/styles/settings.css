@@ -57,18 +57,6 @@
     @apply mt-0.5 text-[12px] text-[var(--color-muted)];
   }
 
-  .settings-header button,
-  .settings-actions button,
-  .settings-small-button,
-  .settings-icon-button,
-  .settings-provider-actions button,
-  .settings-provider-config button,
-  .settings-dialog-footer button,
-  .settings-dialog-secondary,
-  .settings-dialog-icon-button {
-    @apply min-h-[28px] rounded-[6px] border border-transparent bg-[var(--color-button)] px-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-55;
-  }
-
   .settings-nav {
     @apply w-[136px] shrink-0 border-r border-[var(--color-border)] px-1.5 py-2;
   }
@@ -123,14 +111,6 @@
 
   .settings-actions-buttons {
     @apply flex gap-2;
-  }
-
-  .settings-small-button {
-    @apply inline-flex h-[28px] items-center gap-1.5 rounded-[4px] px-2 text-[12px];
-  }
-
-  .settings-icon-button {
-    @apply inline-flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[4px] px-0;
   }
 
   .settings-agent-shell {
@@ -478,6 +458,22 @@
   }
 
   .settings-rules-confirm-dialog .settings-dialog-footer {
+    @apply justify-end;
+  }
+
+  .settings-raccoon-logout-dialog {
+    @apply self-center max-w-[340px];
+  }
+
+  .settings-raccoon-logout-dialog .settings-dialog-header {
+    @apply justify-between;
+  }
+
+  .settings-raccoon-logout-dialog .settings-dialog-body {
+    @apply px-3 py-3 text-[12px] leading-5 text-[var(--color-foreground)];
+  }
+
+  .settings-raccoon-logout-dialog .settings-dialog-footer {
     @apply justify-end;
   }
 

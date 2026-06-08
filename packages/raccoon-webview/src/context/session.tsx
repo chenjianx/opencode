@@ -74,6 +74,7 @@ type SessionActionsContextValue = {
   setProviderEnabled: (providerID: string, enabled: boolean) => void
   loginRaccoon: (serverUrl?: string) => void
   cancelRaccoonLogin: () => void
+  logoutRaccoon: () => void
   configureProvider: (providerID: string, apiKey: string) => void
   configureAgent: (
     name: string,
@@ -410,6 +411,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       },
       loginRaccoon: (serverUrl) => vscode.postMessage({ type: "loginRaccoon", serverUrl }),
       cancelRaccoonLogin: () => vscode.postMessage({ type: "cancelRaccoonLogin" }),
+      logoutRaccoon: () => vscode.postMessage({ type: "logoutRaccoon" }),
       configureProvider: (providerID, apiKey) => vscode.postMessage({ type: "configureProvider", providerID, apiKey }),
       configureAgent: (name, agent, scope) => vscode.postMessage({ type: "configureAgent", name, agent, scope }),
       deleteAgent: (name, scope) => vscode.postMessage({ type: "deleteAgent", name, scope }),

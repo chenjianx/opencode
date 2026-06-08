@@ -1,6 +1,7 @@
 import type { RaccoonProviderAuthMethod } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { SettingsDialog } from "./settings-dialog"
+import { Button } from "../ui"
 import { SelectField, TextField } from "./settings-common"
 
 type ProviderDraft = {
@@ -53,16 +54,14 @@ export function SettingsProviderConnectDialog(props: {
       footerClassName="settings-provider-connect-footer"
       footer={
         <>
-          <button type="button" onClick={props.onClose}>
-            {language.t("common.cancel")}
-          </button>
-          <button type="button" onClick={props.onConnect} disabled={props.connecting}>
+          <Button onClick={props.onClose}>{language.t("common.cancel")}</Button>
+          <Button onClick={props.onConnect} disabled={props.connecting}>
             {props.connecting
               ? language.t("settings.providers.connect.connecting")
               : method.type === "oauth"
                 ? language.t("settings.providers.connect.connectProvider")
                 : language.t("settings.providers.connect.saveProvider")}
-          </button>
+          </Button>
         </>
       }
     >

@@ -251,6 +251,7 @@ export type RaccoonState = {
   view?: RaccoonView
   serverUrl?: string
   directory?: string
+  raccoonLoggedIn?: boolean
   pluginLanguageMode?: RaccoonPluginLanguageMode
   pluginLanguage?: RaccoonPluginLanguage
   activeSessionID?: string
@@ -299,6 +300,7 @@ export type WebviewToExtension =
   | { type: "setProviderEnabled"; providerID: string; enabled: boolean }
   | { type: "loginRaccoon"; serverUrl?: string }
   | { type: "cancelRaccoonLogin" }
+  | { type: "logoutRaccoon" }
   | { type: "configureProvider"; providerID: string; apiKey: string }
   | {
       type: "configureAgent"
