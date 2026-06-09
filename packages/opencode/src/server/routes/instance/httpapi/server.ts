@@ -77,6 +77,7 @@ import { controlHandlers } from "./handlers/control"
 import { controlPlaneHandlers } from "./handlers/control-plane"
 import { experimentalHandlers } from "./handlers/experimental"
 import { fileHandlers } from "./handlers/file"
+import { fimHandlers } from "./handlers/fim"
 import { globalHandlers } from "./handlers/global"
 import { instanceHandlers } from "./handlers/instance"
 import { mcpHandlers } from "./handlers/mcp"
@@ -143,6 +144,7 @@ const instanceApiRoutes = HttpApiBuilder.layer(InstanceHttpApi).pipe(
     configHandlers,
     experimentalHandlers,
     fileHandlers,
+    fimHandlers,
     instanceHandlers,
     mcpHandlers,
     projectHandlers,

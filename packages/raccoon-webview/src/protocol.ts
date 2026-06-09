@@ -271,6 +271,7 @@ export type RaccoonState = {
     modelID: string
   }
   modeModels?: Partial<Record<ChatMode, { providerID: string; modelID: string }>>
+  autocompleteEnabled?: boolean
   mode: ChatMode
   loading: boolean
   busy?: boolean
@@ -294,6 +295,7 @@ export type WebviewToExtension =
   | { type: "runSlashCommand"; name: string }
   | { type: "setMode"; mode: ChatMode }
   | { type: "setPluginLanguage"; language: RaccoonPluginLanguageMode }
+  | { type: "setAutocompleteEnabled"; enabled: boolean }
   | { type: "setModel"; model: { providerID: string; modelID: string } }
   | { type: "setModeModel"; mode: ChatMode; model: { providerID: string; modelID: string } }
   | { type: "setModelEnabled"; model: { providerID: string; modelID: string }; enabled: boolean }

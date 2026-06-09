@@ -15,7 +15,7 @@ import { isConsoleManagedProvider } from "../util/provider-origin"
 import { useConnected } from "./use-connected"
 import { useBindings } from "../keymap"
 import { useClipboard } from "../context/clipboard"
-import { RaccoonBranding } from "@/raccoon/branding" // raccoon_change - provider branding extracted to src/raccoon
+import { RaccoonBranding } from "@opencode-ai/core/raccoon/branding" // raccoon_change - provider branding shared from core/src/raccoon
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   opencode: 1,

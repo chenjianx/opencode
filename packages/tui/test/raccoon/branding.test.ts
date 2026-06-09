@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
-import { providerOptions } from "../../src/cli/cmd/tui/component/dialog-provider"
+import { providerOptions } from "../../src/component/dialog-provider"
 
-// raccoon_change - tests for raccoon provider branding (src/raccoon/branding.ts),
+// raccoon_change - tests for raccoon provider branding (core/src/raccoon/branding.ts),
 // kept out of the upstream provider-options test to minimize merge conflicts.
 
 describe("raccoon provider branding", () => {

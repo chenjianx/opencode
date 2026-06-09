@@ -2329,6 +2329,15 @@ export type File = {
   status: "added" | "deleted" | "modified"
 }
 
+export type FimRequest = {
+  prefix: string
+  suffix?: string
+  model?: string
+  language?: string
+  maxTokens?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  temperature?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+}
+
 export type Path = {
   home: string
   state: string
@@ -6206,6 +6215,34 @@ export type FileStatusResponses = {
 }
 
 export type FileStatusResponse = FileStatusResponses[keyof FileStatusResponses]
+
+export type FimCompleteData = {
+  body?: FimRequest
+  path?: never
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/fim"
+}
+
+export type FimCompleteErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+}
+
+export type FimCompleteError = FimCompleteErrors[keyof FimCompleteErrors]
+
+export type FimCompleteResponses = {
+  /**
+   * Success
+   */
+  200: string
+}
+
+export type FimCompleteResponse = FimCompleteResponses[keyof FimCompleteResponses]
 
 export type InstanceDisposeData = {
   body?: never

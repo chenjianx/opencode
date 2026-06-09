@@ -16,7 +16,7 @@ import { Process } from "@/util/process"
 import { errorMessage } from "@/util/error"
 import { text } from "node:stream/consumers"
 import { Effect, Option } from "effect"
-import { RaccoonBranding } from "@/raccoon/branding" // raccoon_change - provider branding extracted to src/raccoon
+import { RaccoonBranding } from "@opencode-ai/core/raccoon/branding" // raccoon_change - provider branding shared from core/src/raccoon
 
 type PluginAuth = NonNullable<Hooks["auth"]>
 

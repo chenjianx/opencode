@@ -3,6 +3,7 @@ import { functionActionLabels } from "./i18n.js"
 import { RaccoonCodeLensProvider } from "./code-lens/index.js"
 import { RaccoonProvider } from "./provider/index.js"
 import { RaccoonConnectionService } from "./services/cli-backend/index.js"
+import { registerAutocompleteProvider } from "./services/autocomplete/index.js"
 
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel("Raccoon")
@@ -62,6 +63,16 @@ export function activate(context: vscode.ExtensionContext) {
     ),
     vscode.languages.registerCodeLensProvider({ scheme: "file" }, new RaccoonCodeLensProvider(provider, output)),
   )
+
+  registerAutocompleteProvider(context, connection)
+
+  // Connect to the backend eagerly so inline completion works without first
+  // opening the chat panel. Errors are non-fatal — the manager retries on the
+  // connection state change and completions stay silent until connected.
+  const initialDirectory = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd()
+  void connection.connect(initialDirectory).catch((error) => {
+    output.appendLine(`initial backend connect failed: ${String(error)}`)
+  })
 }
 
 export function deactivate() {}

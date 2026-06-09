@@ -68,6 +68,7 @@ type SessionActionsContextValue = {
   runSlashCommand: (name: string) => void
   setMode: (mode: ChatMode) => void
   setPluginLanguage: (language: RaccoonPluginLanguageMode) => void
+  setAutocompleteEnabled: (enabled: boolean) => void
   setModel: (model: { providerID: string; modelID: string }) => void
   setModeModel: (mode: ChatMode, model: { providerID: string; modelID: string }) => void
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
@@ -377,6 +378,10 @@ export function SessionProvider(props: { children: ReactNode }) {
           return { ...current, pluginLanguageMode: language, pluginLanguage: language }
         })
         vscode.postMessage({ type: "setPluginLanguage", language })
+      },
+      setAutocompleteEnabled: (enabled) => {
+        setState((current) => ({ ...current, autocompleteEnabled: enabled }))
+        vscode.postMessage({ type: "setAutocompleteEnabled", enabled })
       },
       setModel: (model) => {
         setState((current) => ({ ...current, selectedModel: model }))

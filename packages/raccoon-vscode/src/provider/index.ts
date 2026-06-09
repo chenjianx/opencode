@@ -71,12 +71,17 @@ function normalizePluginLanguage(value: string | undefined): RaccoonPluginLangua
   return "en"
 }
 
+function readAutocompleteEnabled(): boolean {
+  return vscode.workspace.getConfiguration("raccoon.autocomplete").get<boolean>("enableAutoTrigger") ?? true
+}
+
 export class RaccoonProvider implements vscode.WebviewViewProvider {
   static readonly viewType = "raccoon.chat"
 
   private readonly didChangeState = new vscode.EventEmitter<void>()
   private eventRefreshTimer?: ReturnType<typeof setTimeout>
   private unsubscribeState?: () => void
+  private readonly autocompleteConfigListener: vscode.Disposable
   private readonly pendingPartDeltas = new Map<string, string>()
   private readonly streams = new RaccoonStreamScheduler((message) => this.webviewHost.post("chat", message))
   private readonly webviewHost: RaccoonWebviewHost
@@ -96,6 +101,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     loading: true,
     pluginLanguageMode: "auto",
     pluginLanguage: normalizePluginLanguage(vscode.env.language),
+    autocompleteEnabled: readAutocompleteEnabled(),
   }
 
   constructor(
@@ -106,6 +112,13 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     private readonly storage?: vscode.Memento,
   ) {
     this.unsubscribeState = this.connection.onStateChange((state) => this.onConnectionState(state))
+    this.autocompleteConfigListener = vscode.workspace.onDidChangeConfiguration((event) => {
+      if (!event.affectsConfiguration("raccoon.autocomplete.enableAutoTrigger")) return
+      const enabled = readAutocompleteEnabled()
+      if (enabled === this.state.autocompleteEnabled) return
+      this.state = { ...this.state, autocompleteEnabled: enabled }
+      this.post()
+    })
     this.webviewHost = new RaccoonWebviewHost(this.extensionUri, this.connection, (message, source) => void this.handle(message, source))
     this.config = new RaccoonProviderConfig({
       client: () => this.client(),
@@ -187,6 +200,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       runSlashCommand: (name, source) => this.sessions.runSlashCommand(name, source),
       setMode: (mode) => this.config.setMode(mode),
       setPluginLanguage: (language) => this.config.setPluginLanguage(language),
+      setAutocompleteEnabled: (enabled) => this.setAutocompleteEnabled(enabled),
       setModel: (model) => this.config.setModel(model),
       setModeModel: (mode, model) => this.config.setModeModel(mode, model),
       setModelEnabled: (model, enabled) => this.config.setModelEnabled(model, enabled),
@@ -326,6 +340,14 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       await this.sessions.createSession(this.state.mode)
     }
     await this.sessions.sendMessage(createPrompt(type, context, this.state.pluginLanguage), this.state.mode, this.state.selectedModel)
+  }
+
+  async setAutocompleteEnabled(enabled: boolean) {
+    await vscode.workspace
+      .getConfiguration("raccoon.autocomplete")
+      .update("enableAutoTrigger", enabled, vscode.ConfigurationTarget.Global)
+    this.state = { ...this.state, autocompleteEnabled: enabled }
+    this.post()
   }
 
   getState() {
@@ -596,6 +618,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
 
   dispose() {
     this.unsubscribeState?.()
+    this.autocompleteConfigListener.dispose()
     this.sessions.dispose()
     this.streams.dispose()
     void this.stopEventStream()

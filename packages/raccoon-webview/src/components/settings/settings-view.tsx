@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
-import { Plugs, Robot, Scroll, SlidersHorizontal, Translate } from "@phosphor-icons/react"
+import { MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
 import { SettingsAgents } from "./settings-agents"
+import { SettingsAutocomplete } from "./settings-autocomplete"
 import { SettingsRules } from "./settings-rules"
 import { SettingsLanguage } from "./settings-language"
 import { SettingsModels } from "./settings-models"
@@ -18,7 +19,7 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "language">("models")
+  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "language" | "autocomplete">("models")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.selectedModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
@@ -100,6 +101,12 @@ export function SettingsView() {
             </span>
             <span>{language.t("settings.nav.language")}</span>
           </button>
+          <button type="button" className={`settings-nav-item ${tab === "autocomplete" ? "active" : ""}`} onClick={() => setTab("autocomplete")}>
+            <span className="settings-nav-icon">
+              <MagicWand size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.autocomplete")}</span>
+          </button>
         </nav>
 
         <div className="settings-content">
@@ -124,6 +131,11 @@ export function SettingsView() {
             />
           ) : tab === "language" ? (
             <SettingsLanguage pluginLanguageMode={draftPluginLanguageMode} onPluginLanguageChange={setDraftPluginLanguageMode} />
+          ) : tab === "autocomplete" ? (
+            <SettingsAutocomplete
+              enabled={session.state.autocompleteEnabled ?? true}
+              onEnabledChange={session.setAutocompleteEnabled}
+            />
           ) : tab === "rules" ? (
             <SettingsRules
               rules={session.state.rules ?? []}

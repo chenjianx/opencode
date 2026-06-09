@@ -19,6 +19,7 @@ type MessageRouterDeps = {
   runSlashCommand: (name: string, source: RaccoonWebviewSource) => Promise<void>
   setMode: (mode: ChatMode) => void
   setPluginLanguage: (language: RaccoonPluginLanguageMode) => void
+  setAutocompleteEnabled: (enabled: boolean) => Promise<void> | void
   setModel: (model: ModelSelection | undefined) => Promise<void>
   setModeModel: (mode: ChatMode, model: ModelSelection) => Promise<void>
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => Promise<void>
@@ -117,6 +118,10 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "setPluginLanguage") {
       await this.deps.setPluginLanguage(message.language)
+      return
+    }
+    if (message.type === "setAutocompleteEnabled") {
+      await this.deps.setAutocompleteEnabled(message.enabled)
       return
     }
     if (message.type === "setModel") {

@@ -102,6 +102,26 @@
         "command": "raccoon.commentFunction",
         "title": "%raccoon.commands.commentFunction.title%",
         "category": "%raccoon.commands.category%"
+      },
+      {
+        "command": "raccoon.autocomplete.generateSuggestions",
+        "title": "Raccoon: Trigger Inline Completion",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.autocomplete.cancelSuggestions",
+        "title": "Raccoon: Cancel Inline Completion",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.autocomplete.reload",
+        "title": "Raccoon: Reload Autocomplete",
+        "category": "Raccoon"
+      },
+      {
+        "command": "raccoon.autocomplete.disable",
+        "title": "Raccoon: Disable Autocomplete",
+        "category": "Raccoon"
       }
     ],
     "submenus": [
@@ -184,9 +204,38 @@
           "type": "string",
           "default": "opencode",
           "description": "%raccoon.configuration.opencodeCommand.description%"
+        },
+        "raccoon.autocomplete.enableAutoTrigger": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable inline (ghost text) autocomplete suggestions as you type."
+        },
+        "raccoon.autocomplete.model": {
+          "type": "string",
+          "default": "raccoon-pro-completion",
+          "enum": ["raccoon-pro-completion", "raccoon-completion"],
+          "description": "The completion model used for inline autocomplete."
+        },
+        "raccoon.autocomplete.debug": {
+          "type": "boolean",
+          "default": true,
+          "description": "Log inline completion diagnostics to the 'Raccoon Autocomplete' output channel."
         }
       }
-    }
+    },
+    "keybindings": [
+      {
+        "command": "raccoon.autocomplete.generateSuggestions",
+        "key": "ctrl+l",
+        "mac": "cmd+l",
+        "when": "editorTextFocus && !editorHasSelection"
+      },
+      {
+        "command": "raccoon.autocomplete.cancelSuggestions",
+        "key": "escape",
+        "when": "editorTextFocus && raccoon.autocomplete.hasSuggestions"
+      }
+    ]
   },
   "scripts": {
     "build:cli": "bun run script/local-bin.ts",

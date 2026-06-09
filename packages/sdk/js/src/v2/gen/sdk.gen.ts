@@ -70,6 +70,9 @@ import type {
   FileReadResponses,
   FileStatusErrors,
   FileStatusResponses,
+  FimCompleteErrors,
+  FimCompleteResponses,
+  FimRequest,
   FindFilesErrors,
   FindFilesResponses,
   FindSymbolsErrors,
@@ -1885,6 +1888,45 @@ export class File extends HeyApiClient {
       url: "/file/status",
       ...options,
       ...params,
+    })
+  }
+}
+
+export class Fim extends HeyApiClient {
+  /**
+   * Inline FIM completion
+   *
+   * Stream a fill-in-the-middle text completion for inline autocomplete.
+   */
+  public complete<ThrowOnError extends boolean = false>(
+    parameters?: {
+      directory?: string
+      workspace?: string
+      fimRequest?: FimRequest
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+            { key: "fimRequest", map: "body" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).sse.post<FimCompleteResponses, FimCompleteErrors, ThrowOnError>({
+      url: "/fim",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
@@ -5859,6 +5901,11 @@ export class OpencodeClient extends HeyApiClient {
   private _file?: File
   get file(): File {
     return (this._file ??= new File({ client: this.client }))
+  }
+
+  private _fim?: Fim
+  get fim(): Fim {
+    return (this._fim ??= new Fim({ client: this.client }))
   }
 
   private _instance?: Instance
