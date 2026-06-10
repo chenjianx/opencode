@@ -9,7 +9,6 @@ import { InstanceState } from "@/effect/instance-state"
 import { assertExternalDirectoryEffect } from "./external-directory"
 import { Instruction } from "../session/instruction"
 import { isPdfAttachment, sniffAttachmentMime } from "@/util/media"
-import { Reference } from "@/reference/reference"
 import { RaccoonRead } from "@/raccoon/read" // raccoon_change - directory inlining extracted to src/raccoon
 
 const DEFAULT_READ_LIMIT = 2000
