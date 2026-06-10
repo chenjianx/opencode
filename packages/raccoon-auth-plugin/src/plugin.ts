@@ -1,10 +1,8 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 import type { Model, Provider } from "@opencode-ai/sdk/v2"
 import open from "open"
-import * as Log from "@opencode-ai/core/util/log"
 import { createServer, type Server } from "node:http"
 
-const log = Log.create({ service: "raccoon.auth" })
 const DEFAULT_BASE_URL = "https://xiaohuanxiong.com"
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000
 const DEFAULT_CONTEXT_LENGTH = 64_000
@@ -150,17 +148,10 @@ async function probeInvalidArguments(url: URL, init: RequestInit, body: RaccoonR
     const response = await fetch(url, {
       ...init,
       body: JSON.stringify(item.body),
-    }).catch((error) => {
-      log.warn("raccoon invalid args probe failed", { name: item.name, error })
+    }).catch(() => {
       return undefined
     })
     if (!response) continue
-    log.info("raccoon invalid args probe", {
-      name: item.name,
-      status: response.status,
-      ok: response.ok,
-      summary: summarizeRequestBody(item.body),
-    })
     await response.body?.cancel().catch(() => undefined)
   }
 }
@@ -298,8 +289,7 @@ function refreshAccessTokenOnce(baseUrl: string, refreshToken: string) {
 
 async function recoverAccountId(baseUrl: string, access: string) {
   return accountIdFromUser(
-    await fetchUserInfo(baseUrl, access).catch((error) => {
-      log.warn("failed to recover raccoon account id", { error })
+    await fetchUserInfo(baseUrl, access).catch(() => {
       return undefined
     }),
   )
@@ -318,7 +308,7 @@ async function persistCreds(input: PluginInput, creds: Creds) {
         ...(creds.accountId && { accountId: creds.accountId }),
       },
     })
-    .catch((error) => log.warn("failed to persist raccoon credentials", { error }))
+    .catch(() => undefined)
 }
 
 async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUrl: string) {
@@ -356,20 +346,12 @@ async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUr
       if (accountId && !authAccountId) await persistCreds(input, best)
     }
     credsCache.set(loginBaseUrl, best)
-    log.info("using raccoon access token", {
-      source,
-      expiresAt: new Date(best.expires).toISOString(),
-      hasAccountId: Boolean(accountId),
-    })
     return { access: best.access, enterpriseUrl: loginBaseUrl, accountId }
   }
 
   // Both the cache and stored credentials are expired: refresh using the freshest refresh
   // token we know about, deduped so a rotating token is spent only once.
   const refreshToken = cached?.refresh ?? (auth.refresh as string)
-  log.info("refreshing raccoon access token", {
-    expiresAt: auth.expires ? new Date(auth.expires).toISOString() : undefined,
-  })
   const refreshed = await refreshAccessTokenOnce(loginBaseUrl, refreshToken)
   const expires = (parseJwtExp(refreshed.access) ?? Math.floor(Date.now() / 1000) + 3600) * 1000
   const accountId = authAccountId ?? (await recoverAccountId(loginBaseUrl, refreshed.access))
@@ -383,10 +365,6 @@ async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUr
   credsCache.set(loginBaseUrl, creds)
   accountIdChecked.add(loginBaseUrl)
   await persistCreds(input, creds)
-  log.info("refreshed raccoon access token", {
-    expiresAt: new Date(expires).toISOString(),
-    hasAccountId: Boolean(accountId),
-  })
 
   return { access: refreshed.access, enterpriseUrl: loginBaseUrl, accountId }
 }
@@ -823,14 +801,12 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
         // Refresh first: model discovery must not run with an expired access token, or it
         // silently falls back to the non-pro model list.
         const current = await getAccess(() => Promise.resolve(ctx.auth), _input, baseUrl).catch((error) => {
-          log.warn("failed to refresh raccoon token for model discovery", { error })
           return undefined
         })
         const access = current?.access ?? (ctx.auth.access as string)
         const accountId = current?.accountId
         const user = await fetchUserInfo(loginBaseUrl, access).catch(() => undefined)
         const serverModels = await fetchServerProfileModels(loginBaseUrl, access, accountId).catch((error) => {
-          log.warn("failed to fetch raccoon profiles", { error })
           return undefined
         })
 
@@ -862,14 +838,6 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
             })
             const requestBody =
               typeof request.init?.body === "string" ? (JSON.parse(request.init.body) as RaccoonRequestBody) : undefined
-            log.info("raccoon api request", {
-              path: request.url.pathname,
-              hasAccountId: Boolean(current.accountId),
-              accountId: current.accountId,
-              hasOrgCodeHeader: new Headers(request.init?.headers).has("x-org-code"),
-              orgCodeHeader: new Headers(request.init?.headers).get("x-org-code") ?? undefined,
-              body: requestBody ? summarizeRequestBody(requestBody) : undefined,
-            })
             const baseInit = request.init ?? {}
             const response = await fetch(request.url, baseInit)
             if (response.status === 400 && requestBody) await probeInvalidArguments(request.url, baseInit, requestBody)
@@ -923,7 +891,6 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
                   // failure here must not abort an otherwise successful login (accountId is
                   // recovered later by getAccess on the first request).
                   const user = await fetchUserInfo(loginBaseUrl, tokens.access).catch((error) => {
-                    log.warn("failed to fetch raccoon user info during login", { error })
                     return undefined
                   })
                   const accountId = accountIdFromUser(user)
@@ -933,12 +900,6 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
                     refresh: tokens.refresh,
                     accountId,
                     enterpriseUrl: loginBaseUrl,
-                  })
-                  log.info("raccoon login completed", {
-                    baseUrl: loginBaseUrl,
-                    email: user?.email,
-                    accountId,
-                    expiresAt: exp ? new Date(exp * 1000).toISOString() : undefined,
                   })
                 } catch (error) {
                   reject(error instanceof Error ? error : new Error(String(error)))

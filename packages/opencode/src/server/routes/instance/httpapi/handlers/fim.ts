@@ -1,14 +1,11 @@
 import { Provider } from "@/provider/provider"
 import { ProviderV2 } from "@opencode-ai/core/provider"
-import * as Log from "@opencode-ai/core/util/log"
 import { Effect, Schema, Stream } from "effect"
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder, HttpApiError } from "effect/unstable/httpapi"
 import * as Sse from "effect/unstable/encoding/Sse"
 import { FimRequest } from "../groups/fim"
 import { InstanceHttpApi } from "../api"
-
-const log = Log.create({ service: "fim" })
 
 const RACCOON_PROVIDER_ID = "raccoon"
 const DEFAULT_COMPLETION_MODEL = "raccoon-pro-completion"
@@ -162,7 +159,7 @@ export const fimHandlers = HttpApiBuilder.group(InstanceHttpApi, "fim", (handler
         const baseURL: string | undefined = typeof options.baseURL === "string" ? options.baseURL : info?.models?.[modelID]?.api?.url
 
         if (!baseURL) {
-          log.warn("raccoon provider not configured for fim")
+          yield* Effect.logWarning("raccoon provider not configured for fim")
           const errorChunk: FimChunk = { type: "error", message: "raccoon provider not configured" }
           return HttpServerResponse.stream(
             Stream.make(errorChunk).pipe(
