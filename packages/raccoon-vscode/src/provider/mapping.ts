@@ -1,6 +1,9 @@
 import type { Message, Part, Provider, Session } from "@opencode-ai/sdk/v2/client"
 import type { RaccoonMessage, RaccoonMessagePart, RaccoonModel, RaccoonProviderInfo, RaccoonSession } from "@opencode-ai/raccoon-webview"
+import { AUTOCOMPLETE_MODELS } from "../services/autocomplete/models.js"
 import { modelKey } from "./model-state.js"
+
+const autocompleteModelIDs = new Set(AUTOCOMPLETE_MODELS.map((model) => model.id))
 
 export type SessionMessageWithParts = {
   info: Message
@@ -120,6 +123,7 @@ export function mapMessage(message: SessionMessageWithParts): RaccoonMessage[] {
 export function mapProviderModels(provider: Provider, connected: boolean, disabledModels: Set<string>): RaccoonModel[] {
   const selectable = connected || provider.source === "config"
   return Object.values(provider.models)
+    .filter((model) => !autocompleteModelIDs.has(model.id))
     .map((model) => ({
       providerID: provider.id,
       providerName: provider.name,

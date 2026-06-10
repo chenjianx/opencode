@@ -2,6 +2,26 @@
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.
 
+# raccoon_change markers
+
+- Apply these marker rules to edits under `packages/core` and `packages/opencode`.
+- **Prefer the extraction layer.** Put raccoon-specific logic in `src/raccoon/`
+  (mirroring kilocode's `src/kilocode/`). Upstream files should only keep a
+  single `import { Raccoon* } from "@/raccoon/..."` plus a one-line seam (a
+  spread, a flag, a helper call). This keeps the bulk of our code out of
+  upstream merge conflicts.
+- Only inline logic into an upstream file when it genuinely cannot be
+  externalized (e.g. passing a flag into an upstream function, or spreading into
+  an upstream object literal).
+- When editing files under `packages/core` or `packages/opencode`, mark any
+  changed lines with `// raccoon_change` comments.
+- Use a single-line `// raccoon_change - ...` comment for a one-line change.
+- Use `// raccoon_change start - ...` and `// raccoon_change end` around a
+  multi-line change block.
+- Keep the note short and specific about what changed.
+- For tests, prefer adding raccoon-specific cases under `test/raccoon/` rather
+  than editing upstream test files.
+
 ## Commits and PR Titles
 
 Use conventional commit-style messages and PR titles: `type(scope): summary`.

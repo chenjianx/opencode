@@ -610,6 +610,18 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       this.post()
       return
     }
+    if (state === "connected") {
+      this.state = {
+        ...this.state,
+        loading: false,
+        busy: false,
+        error: undefined,
+        serverUrl: this.connection.getServerConfig()?.baseUrl,
+        directory: this.directory(),
+      }
+      this.post()
+      return
+    }
     if (state === "error" || state === "disconnected") {
       this.state = { ...this.state, loading: false, busy: false, error: `Backend ${state}` }
       this.post()

@@ -2,5 +2,6 @@ export type ConnectionState = "connecting" | "connected" | "disconnected" | "err
 
 export type ServerConfig = {
   baseUrl: string
+  headers?: Record<string, string>
   port?: number
 }

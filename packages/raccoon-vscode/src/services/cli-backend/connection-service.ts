@@ -25,6 +25,8 @@ export class RaccoonConnectionService implements vscode.Disposable {
     try {
       await this.connectPromise
     } catch (error) {
+      this.client = null
+      this.config = null
       this.setState("error")
       throw error
     } finally {
@@ -59,6 +61,7 @@ export class RaccoonConnectionService implements vscode.Disposable {
     this.client = null
     this.config = null
     this.serverManager.dispose()
+    this.setState("disconnected")
     this.stateListeners.clear()
   }
 
@@ -68,6 +71,7 @@ export class RaccoonConnectionService implements vscode.Disposable {
     this.config = { baseUrl: server.url, port: server.port }
     this.client = createOpencodeClient({
       baseUrl: server.url,
+      headers: server.headers,
       throwOnError: true,
       directory,
     })
