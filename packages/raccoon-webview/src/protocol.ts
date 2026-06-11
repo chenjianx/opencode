@@ -262,11 +262,16 @@ export type RaccoonState = {
   rules?: RaccoonRule[]
   models: RaccoonModel[]
   providers: RaccoonProviderInfo[]
+  defaults?: Record<string, string>
   commands?: RaccoonCommand[]
   slashCommands?: RaccoonSlashCommand[]
   providerAuthMethods?: Record<string, RaccoonProviderAuthMethod[]>
   customProviders?: RaccoonCustomProvider[]
   selectedModel?: {
+    providerID: string
+    modelID: string
+  }
+  defaultModel?: {
     providerID: string
     modelID: string
   }
@@ -297,7 +302,7 @@ export type WebviewToExtension =
   | { type: "setPluginLanguage"; language: RaccoonPluginLanguageMode }
   | { type: "setAutocompleteEnabled"; enabled: boolean }
   | { type: "setModel"; model: { providerID: string; modelID: string } }
-  | { type: "setModeModel"; mode: ChatMode; model: { providerID: string; modelID: string } }
+  | { type: "setModeModel"; mode: ChatMode; model?: { providerID: string; modelID: string } }
   | { type: "setModelEnabled"; model: { providerID: string; modelID: string }; enabled: boolean }
   | { type: "setProviderEnabled"; providerID: string; enabled: boolean }
   | { type: "loginRaccoon"; serverUrl?: string }

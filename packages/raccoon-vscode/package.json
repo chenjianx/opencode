@@ -10,23 +10,7 @@
     "vscode": "^1.94.0"
   },
   "categories": ["Other"],
-  "activationEvents": [
-    "onStartupFinished",
-    "onView:raccoon.chat",
-    "onCommand:raccoon.openChat",
-    "onCommand:raccoon.newSession",
-    "onCommand:raccoon.pickSession",
-    "onCommand:raccoon.openSettings",
-    "onCommand:raccoon.explainCode",
-    "onCommand:raccoon.fixCode",
-    "onCommand:raccoon.improveCode",
-    "onCommand:raccoon.addToContext",
-    "onCommand:raccoon.openFunctionActions",
-    "onCommand:raccoon.askFunction",
-    "onCommand:raccoon.optimizeFunction",
-    "onCommand:raccoon.refactorFunction",
-    "onCommand:raccoon.commentFunction"
-  ],
+  "activationEvents": ["onStartupFinished"],
   "main": "./dist/extension.cjs",
   "contributes": {
     "icons": {

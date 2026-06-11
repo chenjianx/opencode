@@ -428,8 +428,10 @@ function modelTemplate(input: {
 
 function fallbackModels(baseUrl: string, pro?: boolean, orgScopeId?: string): Record<string, Model> {
   const chat = orgScopeId || pro ? "raccoon-pro-chat" : "raccoon-chat"
-  const completion = orgScopeId || pro ? "raccoon-pro-completion" : "raccoon-completion"
 
+  // Completion models (raccoon-(pro-)completion) are FIM/autocomplete-only and are consumed
+  // directly by the editor plugin's autocomplete via /fim — never selected as a chat model.
+  // Omit them so they don't leak into the CLI / TUI model picker.
   return {
     [chat]: modelTemplate({
       id: chat,
@@ -438,18 +440,18 @@ function fallbackModels(baseUrl: string, pro?: boolean, orgScopeId?: string): Re
       contextLength: DEFAULT_CONTEXT_LENGTH,
       orgScopeId,
     }),
-    [completion]: modelTemplate({
-      id: completion,
-      name: orgScopeId || pro ? "Raccoon Complete Pro" : "Raccoon Complete",
-      baseUrl,
-      contextLength: DEFAULT_CONTEXT_LENGTH,
-      orgScopeId,
-    }),
   }
+}
+
+function isAutocompleteOnly(model: ProfileModel) {
+  return Boolean(model.roles?.length) && model.roles!.every((role) => role === "autocomplete")
 }
 
 function fromProfileModel(baseUrl: string, model: ProfileModel): Model | undefined {
   if (!model.model) return
+  // Autocomplete-only profiles are FIM/completion models for the editor plugin; keep them out
+  // of the chat model list exposed to the CLI / TUI.
+  if (isAutocompleteOnly(model)) return
 
   return modelTemplate({
     id: model.model,

@@ -1,3 +1,11 @@
+# Language (语言要求 / 最高优先级)
+
+- **必须始终使用简体中文**与用户对话。所有面向用户的文字——包括解释、状态更新、总结、提问、报错说明——都必须用中文。
+- 即使用户用英文提问，或本文档其余部分为英文，也必须用中文回复。这条规则优先级最高，不受对话语言影响。
+- 例外：代码本身、命令、文件路径、commit message、PR 标题、以及代码中的标识符保持原样（通常为英文），不要翻译。
+
+# General
+
 - To regenerate the JavaScript SDK, run `./packages/sdk/js/script/build.ts`.
 - The default branch in this repo is `dev`.
 - Local `main` ref may not exist; use `dev` or `origin/dev` for diffs.

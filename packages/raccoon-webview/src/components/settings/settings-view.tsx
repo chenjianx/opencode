@@ -21,7 +21,7 @@ export function SettingsView() {
   const session = useSession()
   const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "language" | "autocomplete">("models")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
-  const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.selectedModel)
+  const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.defaultModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
   const [agentDirty, setAgentDirty] = useState(false)
   const [agentSave, setAgentSave] = useState<(() => void) | undefined>()
@@ -29,22 +29,22 @@ export function SettingsView() {
   const handleAgentSave = useCallback((next: (() => void) | undefined) => setAgentSave(() => next), [])
 
   useEffect(() => {
-    setDraftSelectedModel(session.state.selectedModel)
+    setDraftSelectedModel(session.state.defaultModel)
     setDraftModeModels(session.state.modeModels ?? {})
     setDraftPluginLanguageMode(session.state.pluginLanguageMode ?? "auto")
-  }, [session.state.selectedModel, session.state.modeModels, session.state.pluginLanguageMode])
+  }, [session.state.defaultModel, session.state.modeModels, session.state.pluginLanguageMode])
 
   const connectedModels = session.state.models.filter((model) => model.connected)
   const modeAgents = session.state.agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
   const modes = modeAgents.map((agent) => agent.name)
   const dirty =
-    !sameModel(draftSelectedModel, session.state.selectedModel) ||
+    !sameModel(draftSelectedModel, session.state.defaultModel) ||
     modes.some((mode) => !sameModel(draftModeModels[mode], session.state.modeModels?.[mode])) ||
     draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto") ||
     agentDirty
 
   const discard = () => {
-    setDraftSelectedModel(session.state.selectedModel)
+    setDraftSelectedModel(session.state.defaultModel)
     setDraftModeModels(session.state.modeModels ?? {})
     setDraftPluginLanguageMode(session.state.pluginLanguageMode ?? "auto")
     setAgentDirty(false)
@@ -52,10 +52,10 @@ export function SettingsView() {
   }
 
   const save = () => {
-    if (draftSelectedModel && !sameModel(draftSelectedModel, session.state.selectedModel)) session.setModel(draftSelectedModel)
+    if (draftSelectedModel && !sameModel(draftSelectedModel, session.state.defaultModel)) session.setModel(draftSelectedModel)
     modes
-      .filter((mode) => draftModeModels[mode] && !sameModel(draftModeModels[mode], session.state.modeModels?.[mode]))
-      .forEach((mode) => session.setModeModel(mode, draftModeModels[mode]!))
+      .filter((mode) => !sameModel(draftModeModels[mode], session.state.modeModels?.[mode]))
+      .forEach((mode) => session.setModeModel(mode, draftModeModels[mode]))
     if (draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto")) session.setPluginLanguage(draftPluginLanguageMode)
     if (agentDirty) agentSave?.()
   }
@@ -118,6 +118,7 @@ export function SettingsView() {
               modeModels={draftModeModels}
               onSelectedModelChange={setDraftSelectedModel}
               onModeModelChange={(mode, model) => setDraftModeModels((current) => ({ ...current, [mode]: model }))}
+              onModeModelClear={(mode) => setDraftModeModels((current) => ({ ...current, [mode]: undefined }))}
             />
           ) : tab === "agents" ? (
             <SettingsAgents

@@ -18,11 +18,9 @@ export function SettingsModels(props: {
   modeModels: Partial<Record<string, ModelSelection>>
   onSelectedModelChange: (model: ModelSelection) => void
   onModeModelChange: (mode: string, model: ModelSelection) => void
+  onModeModelClear: (mode: string) => void
 }) {
   const language = useLanguage()
-  const selectedModel = props.connectedModels.find(
-    (model) => model.providerID === props.selectedModel?.providerID && model.modelID === props.selectedModel?.modelID,
-  )
   const modeModel = (mode: string) =>
     props.connectedModels.find(
       (model) =>
@@ -46,32 +44,37 @@ export function SettingsModels(props: {
             maxWidth={255}
           />
         </SettingsRow>
-        {props.agents.map((agent) => (
-          <SettingsRow
-            key={agent.name}
-            title={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
-            description={
-              agent.description
-                ? `${agent.description} ${language.t("settings.models.current", {
-                    model: labelOf(modeModel(agent.name) ?? selectedModel, language.t("settings.models.notSet")),
-                  })}`
-                : language.t("settings.models.current", {
-                    model: labelOf(modeModel(agent.name) ?? selectedModel, language.t("settings.models.notSet")),
-                  })
-            }
-          >
-            <ModelPicker
-              value={props.modeModels[agent.name] ?? props.selectedModel}
-              models={props.connectedModels}
-              onChange={(model) => props.onModeModelChange(agent.name, model)}
-              ariaLabel={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
-              placeholder={language.t("settings.models.noModel")}
-              compact
-              placement="bottom"
-              maxWidth={255}
-            />
-          </SettingsRow>
-        ))}
+      </div>
+
+      <h4>{language.t("settings.models.modes.title")}</h4>
+      <div className="settings-card settings-model-card">
+        {props.agents.map((agent) => {
+          const configured = modeModel(agent.name)
+          const status = props.modeModels[agent.name]
+            ? language.t("settings.models.current", { model: labelOf(configured, language.t("settings.models.notSet")) })
+            : language.t("settings.models.usesDefault")
+          return (
+            <SettingsRow
+              key={agent.name}
+              title={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
+              description={agent.description ? `${agent.description} ${status}` : status}
+            >
+              <ModelPicker
+                value={props.modeModels[agent.name]}
+                models={props.connectedModels}
+                onChange={(model) => props.onModeModelChange(agent.name, model)}
+                ariaLabel={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
+                placeholder={language.t("settings.models.noModel")}
+                allowUnset
+                unsetLabel={language.t("settings.models.unconfigured")}
+                onUnset={() => props.onModeModelClear(agent.name)}
+                compact
+                placement="bottom"
+                maxWidth={255}
+              />
+            </SettingsRow>
+          )
+        })}
       </div>
     </>
   )

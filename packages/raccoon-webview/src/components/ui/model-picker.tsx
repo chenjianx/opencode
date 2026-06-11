@@ -31,12 +31,15 @@ export function ModelPicker(props: {
   compact?: boolean
   placement?: "top" | "bottom"
   maxWidth?: number
+  allowUnset?: boolean
+  unsetLabel?: string
+  onUnset?: () => void
 }) {
   const language = useLanguage()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const current = props.models.find((model) => model.providerID === props.value?.providerID && model.modelID === props.value?.modelID)
-  const currentLabel = current ? modelLabel(current) : props.placeholder
+  const currentLabel = current ? modelLabel(current) : props.allowUnset && !props.value ? props.unsetLabel ?? props.placeholder : props.placeholder
   const maxWidth = props.maxWidth
 
   const compact = props.compact ?? false
@@ -112,9 +115,26 @@ export function ModelPicker(props: {
             />
           </div>
           <div className="max-h-[260px] overflow-y-auto py-1">
+            {props.allowUnset ? (
+              <button
+                type="button"
+                className={`flex w-full items-center gap-1.5 border-0 px-3 py-1.5 text-left text-[12px] cursor-pointer hover:bg-[var(--color-hover)] ${
+                  !props.value ? "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]" : "bg-transparent text-[var(--color-foreground)]"
+                }`}
+                role="option"
+                aria-selected={!props.value}
+                onClick={() => {
+                  props.onUnset?.()
+                  api.close()
+                  setQuery("")
+                }}
+              >
+                <span className="overflow-hidden text-ellipsis font-semibold">{props.unsetLabel ?? props.placeholder}</span>
+              </button>
+            ) : null}
             {groups.length === 0 ? <div className="px-3 py-3 text-center text-[12px] text-[var(--color-muted)]">{language.t("modelPicker.empty")}</div> : null}
             {groups.map(([providerID, models]: [string, RaccoonModel[]], index) => (
-              <div className={index === 0 ? "" : "mt-1 border-t border-[var(--color-border)] pt-1"} key={providerID}>
+              <div className={index === 0 && !props.allowUnset ? "" : "mt-1 border-t border-[var(--color-border)] pt-1"} key={providerID}>
                 <div className="px-3 py-1 text-[11px] font-medium leading-4 text-[var(--color-muted)]">
                   {models[0]?.providerName ?? providerID}
                 </div>

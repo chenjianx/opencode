@@ -58,6 +58,7 @@ export class RaccoonProviderConfig {
   initialState() {
     return {
       selectedModel: this.selectedModel,
+      defaultModel: this.selectedModel,
       modeModels: this.modeModels,
       pluginLanguageMode: this.pluginLanguageMode,
       pluginLanguage: this.resolvePluginLanguage(),
@@ -68,13 +69,12 @@ export class RaccoonProviderConfig {
     return this.modeModels[mode]
   }
 
-  selectModel(models: RaccoonModel[], defaults: Record<string, string>, mode = this.deps.getState().mode) {
+  // The persisted default model, resolved against the enabled model list. Unlike
+  // `selectModel`, this ignores both the per-mode override and the live `state.selectedModel`
+  // (which tracks the active mode in chat) so it stays stable when the user switches modes.
+  resolveDefaultModel(models: RaccoonModel[], defaults: Record<string, string>) {
     const enabledModels = models.filter((model) => model.enabled && model.connected)
-    const modeModel = this.modeModels[mode]
-    if (modeModel && enabledModels.some((model) => modelKey(model) === modelKey(modeModel))) {
-      return modeModel
-    }
-    const selectedModel = this.deps.getState().selectedModel ?? this.selectedModel
+    const selectedModel = this.selectedModel
     if (selectedModel && enabledModels.some((model) => modelKey(model) === modelKey(selectedModel))) {
       return selectedModel
     }
@@ -83,6 +83,15 @@ export class RaccoonProviderConfig {
     const firstModel = enabledModels[0]
     if (!firstModel) return undefined
     return { providerID: firstModel.providerID, modelID: firstModel.modelID }
+  }
+
+  selectModel(models: RaccoonModel[], defaults: Record<string, string>, mode = this.deps.getState().mode) {
+    const enabledModels = models.filter((model) => model.enabled && model.connected)
+    const modeModel = this.modeModels[mode]
+    if (modeModel && enabledModels.some((model) => modelKey(model) === modelKey(modeModel))) {
+      return modeModel
+    }
+    return this.resolveDefaultModel(models, defaults)
   }
 
   async loadModels(client?: OpencodeClient) {
@@ -133,6 +142,7 @@ export class RaccoonProviderConfig {
       ...this.deps.getState(),
       models,
       raccoonLoggedIn,
+      defaults: configResponse.data.default,
       agents: visibleAgents(agentResponse.data, agentOverrides, agentScopes),
       rules: [...projectRules, ...userRules],
       providers,
@@ -149,6 +159,7 @@ export class RaccoonProviderConfig {
       providerAuthMethods: this.providerAuthMethods,
       customProviders,
       selectedModel: this.selectModel(models, configResponse.data.default),
+      defaultModel: this.resolveDefaultModel(models, configResponse.data.default),
       modeModels: this.modeModels,
       pluginLanguageMode: this.pluginLanguageMode,
       pluginLanguage: this.resolvePluginLanguage(),
@@ -562,14 +573,20 @@ export class RaccoonProviderConfig {
     this.deps.webviewHost.postCustomProviderSaved(id)
   }
 
-  async setModeModel(mode: ChatMode, model: ModelSelection) {
-    this.modeModels = { ...this.modeModels, [mode]: model }
+  async setModeModel(mode: ChatMode, model?: ModelSelection) {
+    if (model) {
+      this.modeModels = { ...this.modeModels, [mode]: model }
+    } else {
+      const next = { ...this.modeModels }
+      delete next[mode]
+      this.modeModels = next
+    }
     await this.modelState.write(await this.deps.client(), { selected: this.selectedModel, model: this.modeModels })
     await this.deps.storage?.update("raccoon.modeModels", undefined)
       this.deps.setState({
         ...this.deps.getState(),
         modeModels: this.modeModels,
-        selectedModel: mode === this.deps.getState().mode ? model : this.deps.getState().selectedModel,
+        selectedModel: model && mode === this.deps.getState().mode ? model : this.deps.getState().selectedModel,
         pluginLanguageMode: this.pluginLanguageMode,
         pluginLanguage: this.resolvePluginLanguage(),
       })
@@ -580,7 +597,7 @@ export class RaccoonProviderConfig {
     this.deps.setState({
       ...this.deps.getState(),
       mode,
-      selectedModel: this.selectModel(this.deps.getState().models, {}, mode),
+      selectedModel: this.selectModel(this.deps.getState().models, this.deps.getState().defaults ?? {}, mode),
       pluginLanguageMode: this.pluginLanguageMode,
       pluginLanguage: this.resolvePluginLanguage(),
     })
@@ -593,6 +610,7 @@ export class RaccoonProviderConfig {
     this.deps.setState({
       ...this.deps.getState(),
       selectedModel: model,
+      defaultModel: model,
       modeModels: this.modeModels,
       pluginLanguageMode: this.pluginLanguageMode,
       pluginLanguage: this.resolvePluginLanguage(),

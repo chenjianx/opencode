@@ -70,7 +70,7 @@ type SessionActionsContextValue = {
   setPluginLanguage: (language: RaccoonPluginLanguageMode) => void
   setAutocompleteEnabled: (enabled: boolean) => void
   setModel: (model: { providerID: string; modelID: string }) => void
-  setModeModel: (mode: ChatMode, model: { providerID: string; modelID: string }) => void
+  setModeModel: (mode: ChatMode, model?: { providerID: string; modelID: string }) => void
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
   setProviderEnabled: (providerID: string, enabled: boolean) => void
   loginRaccoon: (serverUrl?: string) => void
@@ -284,6 +284,28 @@ export function SessionProvider(props: { children: ReactNode }) {
       }
       if (message.type === "terminalContextResult" || message.type === "terminalContextError") return
       if (message.type === "gitChangesContextResult" || message.type === "gitChangesContextError") return
+      if (message.type === "raccoonLoginFinished") {
+        // Only an actual login completion fires this. The extension posts the refreshed
+        // `state` (with raccoon connected) before this message, so stateRef holds the
+        // logged-in model list/defaults here. Default the selection to Raccoon, preferring
+        // the server default for the "raccoon" provider.
+        if (message.error) return
+        const current = stateRef.current
+        const raccoonModels = current.models.filter((model) => model.providerID === "raccoon" && model.enabled && model.connected)
+        if (raccoonModels.length === 0) return
+        const defaultModelID = current.defaults?.["raccoon"]
+        const preferred = raccoonModels.find((model) => model.modelID === defaultModelID) ?? raccoonModels[0]
+        if (!preferred) return
+        if (current.defaultModel?.providerID === preferred.providerID && current.defaultModel?.modelID === preferred.modelID) return
+        const model = { providerID: preferred.providerID, modelID: preferred.modelID }
+        setState((state) => {
+          const next = { ...state, selectedModel: model, defaultModel: model }
+          vscode.setState(next)
+          return next
+        })
+        vscode.postMessage({ type: "setModel", model })
+        return
+      }
     })
 
     vscode.postMessage({ type: "webviewReady" })
@@ -369,7 +391,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       },
       runSlashCommand: (name) => vscode.postMessage({ type: "runSlashCommand", name }),
       setMode: (mode) => {
-        setState((current) => ({ ...current, mode, selectedModel: current.modeModels?.[mode] ?? current.selectedModel }))
+        setState((current) => ({ ...current, mode, selectedModel: current.modeModels?.[mode] ?? current.defaultModel ?? current.selectedModel }))
         vscode.postMessage({ type: "setMode", mode })
       },
       setPluginLanguage: (language) => {
@@ -384,15 +406,20 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({ type: "setAutocompleteEnabled", enabled })
       },
       setModel: (model) => {
-        setState((current) => ({ ...current, selectedModel: model }))
+        setState((current) => ({ ...current, selectedModel: model, defaultModel: model }))
         vscode.postMessage({ type: "setModel", model })
       },
       setModeModel: (mode, model) => {
-        setState((current) => ({
-          ...current,
-          selectedModel: mode === current.mode ? model : current.selectedModel,
-          modeModels: { ...current.modeModels, [mode]: model },
-        }))
+        setState((current) => {
+          const modeModels = { ...current.modeModels }
+          if (model) modeModels[mode] = model
+          else delete modeModels[mode]
+          return {
+            ...current,
+            selectedModel: model && mode === current.mode ? model : current.selectedModel,
+            modeModels,
+          }
+        })
         vscode.postMessage({ type: "setModeModel", mode, model })
       },
       setModelEnabled: (model, enabled) => {
