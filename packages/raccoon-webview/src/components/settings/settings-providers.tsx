@@ -7,6 +7,7 @@ import { RACCOON_LOGIN_URL } from "../../config"
 import { SettingsCustomProviderDialog } from "./settings-custom-provider-dialog"
 import { SettingsDialog } from "./settings-dialog"
 import { SettingsProviderConnectDialog } from "./settings-provider-connect-dialog"
+import { ProviderIcon } from "./provider-icons"
 import { Button } from "../ui"
 import { TextField } from "./settings-common"
 
@@ -17,6 +18,10 @@ const popularProviders = [
   { id: "openrouter", name: "OpenRouter", noteKey: "settings.providers.openrouter.note" },
   { id: "copilot", name: "GitHub Copilot", noteKey: "settings.providers.copilot.note" },
 ] as const
+
+// raccoon (login) and opencode (free models) get their own pinned cards at the
+// top, so they are excluded from the dynamic connected/popular sections.
+const builtinProviderIDs = new Set(["raccoon", "opencode"])
 
 const emptyCustomModel = () => ({ id: "", name: "", supportsImage: false })
 
@@ -56,6 +61,7 @@ export function SettingsProviders() {
   const [providerDrafts, setProviderDrafts] = useState<Record<string, ProviderDraft>>({})
   const [connectingProviderID, setConnectingProviderID] = useState<string>()
   const [providerError, setProviderError] = useState<string>()
+  const [pendingAction, setPendingAction] = useState<{ kind: "disconnect" | "delete"; providerID: string; name: string }>()
   const [custom, setCustom] = useState<{
     providerID: string
     name: string
@@ -134,6 +140,22 @@ export function SettingsProviders() {
   // ground-truth login flag from the extension instead.
   const raccoonConnected = session.state.raccoonLoggedIn === true
   const providerAuthMethods = session.state.providerAuthMethods ?? {}
+
+  const customProviderIDs = useMemo(() => new Set(customProviders.map((item) => item.providerID)), [customProviders])
+  const isCustomProvider = (id: string) => customProviderIDs.has(id)
+  const sourceTag = (id: string, source?: string) => {
+    if (isCustomProvider(id)) return language.t("settings.providers.custom")
+    if (source === "env") return language.t("settings.providers.tag.environment")
+    if (source === "api") return language.t("settings.providers.tag.apiKey")
+    if (source === "config") return language.t("settings.providers.tag.config")
+    return language.t("settings.providers.tag.apiKey")
+  }
+  const connectedProviders = useMemo(
+    () => session.state.providers.filter((item) => item.connected && !builtinProviderIDs.has(item.id)),
+    [session.state.providers],
+  )
+  const connectedIDs = useMemo(() => new Set(connectedProviders.map((item) => item.id)), [connectedProviders])
+  const unconnectedPopular = popularProviders.filter((item) => !connectedIDs.has(item.id))
   const filteredFetchedModels = useMemo(() => {
     const text = fetchedQuery.trim().toLowerCase()
     if (!text) return fetchedModels ?? []
@@ -189,11 +211,24 @@ export function SettingsProviders() {
     session.configureCustomProvider({ ...custom, providerID, name, baseURL, models, editing: !!editingProviderID })
   }
 
-  const deleteCustomProvider = () => {
-    if (!editingProviderID) return
+  const deleteCustomProvider = (providerID: string) => {
+    if (!providerID) return
     setSaveError(undefined)
     setSavingCustom(true)
-    vscode.postMessage({ type: "deleteCustomProvider", providerID: editingProviderID })
+    vscode.postMessage({ type: "deleteCustomProvider", providerID })
+  }
+
+  const confirmPendingAction = () => {
+    if (!pendingAction) return
+    const { kind, providerID } = pendingAction
+    setPendingAction(undefined)
+    if (kind === "delete") {
+      deleteCustomProvider(providerID)
+      return
+    }
+    setProviderError(undefined)
+    setConnectingProviderID(providerID)
+    session.disconnectProvider(providerID)
   }
 
   const editCustomProvider = (providerID: string) => {
@@ -286,6 +321,8 @@ export function SettingsProviders() {
   return (
     <>
       <h3>{language.t("settings.providers.title")}</h3>
+
+      {/* Raccoon — the default service the plugin must be logged into. Pinned. */}
       <div className="settings-card settings-provider-feature">
         <div className="settings-provider-row">
           <div className="settings-provider-mark">RC</div>
@@ -319,63 +356,85 @@ export function SettingsProviders() {
         {raccoonLoginError ? <div className="settings-provider-error">{raccoonLoginError}</div> : null}
       </div>
 
-      <div className="settings-card settings-provider-feature">
-        <div className="settings-provider-row">
-          <div className="settings-provider-mark">OC</div>
-          <div className="settings-provider-main">
-            <div className="settings-provider-name-row">
-              <span className="settings-provider-name">{language.t("settings.providers.freeModels")}</span>
-              <span className="settings-provider-status connected">{language.t("settings.providers.available")}</span>
-              <span className="settings-provider-tag">{language.t("settings.providers.free")}</span>
-            </div>
-            <div className="settings-provider-meta">{language.t("settings.providers.freeModels.note")}</div>
-          </div>
-          <div className="settings-provider-actions">
-            <Button onClick={() => session.configureProvider("opencode", "")}>
-              {language.t("settings.providers.enable")}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <h4>{language.t("settings.providers.common")}</h4>
+      <h4>{language.t("settings.providers.section.connected")}</h4>
       <div className="settings-card">
-        {popularProviders.map((item) => {
-          const provider = session.state.providers.find((entry) => entry.id === item.id)
-          const connected = provider?.connected ?? false
-          const authMethods = providerAuthMethods[item.id]
-          const methods: RaccoonProviderAuthMethod[] = authMethods && authMethods.length > 0 ? authMethods : [apiKeyMethod]
-          return (
-            <div className="settings-provider-block" key={item.id}>
-              <div className="settings-provider-row">
-                <div className="settings-provider-mark">{item.name.slice(0, 2).toUpperCase()}</div>
-                <div className="settings-provider-main">
-                  <div className="settings-provider-name-row">
-                    <span className="settings-provider-name">{item.name}</span>
-                    <span className={`settings-provider-status ${connected ? "connected" : ""}`}>
-                      {connected ? language.t("common.configured") : language.t("common.notConfigured")}
-                    </span>
+        {connectedProviders.length > 0 ? (
+          connectedProviders.map((item) => {
+            const custom = isCustomProvider(item.id)
+            return (
+              <div className="settings-provider-block" key={item.id}>
+                <div className="settings-provider-row">
+                  <div className="settings-provider-mark">
+                    <ProviderIcon id={item.id} name={item.name} />
                   </div>
-                  <div className="settings-provider-meta">{language.t(item.noteKey)}</div>
-                </div>
-                <div className="settings-provider-actions">
-                  <Button
-                    onClick={() => {
-                      setProviderError(undefined)
-                      setActiveProvider(item.id)
-                    }}
-                  >
-                    {connected ? language.t("settings.providers.edit") : language.t("settings.providers.configure")}
-                  </Button>
+                  <div className="settings-provider-main">
+                    <div className="settings-provider-name-row">
+                      <span className="settings-provider-name">{item.name}</span>
+                      <span className="settings-provider-tag">{sourceTag(item.id, item.source)}</span>
+                    </div>
+                    <div className="settings-provider-meta">
+                      {language.t("settings.providers.customProvider.models", { count: item.modelCount })}
+                    </div>
+                  </div>
+                  <div className="settings-provider-actions">
+                    {custom ? (
+                      <>
+                        <Button onClick={() => editCustomProvider(item.id)}>
+                          {language.t("settings.providers.edit")}
+                        </Button>
+                        <Button
+                          onClick={() => setPendingAction({ kind: "delete", providerID: item.id, name: item.name })}
+                        >
+                          {language.t("common.delete")}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        disabled={connectingProviderID === item.id}
+                        onClick={() => setPendingAction({ kind: "disconnect", providerID: item.id, name: item.name })}
+                      >
+                        {language.t("settings.providers.disconnect")}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })
+        ) : (
+          <div className="settings-provider-empty">{language.t("settings.providers.connected.empty")}</div>
+        )}
       </div>
 
-      <h4>{language.t("settings.providers.custom.title")}</h4>
+      <h4>{language.t("settings.providers.section.popular")}</h4>
       <div className="settings-card">
+        {unconnectedPopular.map((item) => (
+          <div className="settings-provider-block" key={item.id}>
+            <div className="settings-provider-row">
+              <div className="settings-provider-mark">
+                <ProviderIcon id={item.id} name={item.name} />
+              </div>
+              <div className="settings-provider-main">
+                <div className="settings-provider-name-row">
+                  <span className="settings-provider-name">{item.name}</span>
+                </div>
+                <div className="settings-provider-meta">{language.t(item.noteKey)}</div>
+              </div>
+              <div className="settings-provider-actions">
+                <Button
+                  onClick={() => {
+                    setProviderError(undefined)
+                    setActiveProvider(item.id)
+                  }}
+                >
+                  {language.t("settings.providers.connect")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* Custom provider entry lives at the bottom of the popular list. */}
         <div className="settings-provider-block">
           <div className="settings-provider-row">
             <div className="settings-provider-mark">+</div>
@@ -387,35 +446,10 @@ export function SettingsProviders() {
               <div className="settings-provider-meta">{language.t("settings.providers.customProvider.note")}</div>
             </div>
             <div className="settings-provider-actions">
-              <Button onClick={openNewCustomProvider}>
-                {language.t("settings.providers.customProvider.add")}
-              </Button>
+              <Button onClick={openNewCustomProvider}>{language.t("settings.providers.customProvider.add")}</Button>
             </div>
           </div>
         </div>
-        {customProviders.length > 0 ? (
-          <div className="settings-provider-list">
-            {customProviders.map((item) => (
-              <div className="settings-provider-row" key={item.providerID}>
-                <div className="settings-provider-mark">{item.name.slice(0, 2).toUpperCase()}</div>
-                <div className="settings-provider-main">
-                  <div className="settings-provider-name-row">
-                    <span className="settings-provider-name">{item.name}</span>
-                    <span className="settings-provider-tag">{language.t("settings.providers.custom")}</span>
-                  </div>
-                  <div className="settings-provider-meta">
-                    {item.providerID} · {language.t("settings.providers.customProvider.models", { count: item.models.length })}
-                  </div>
-                </div>
-                <div className="settings-provider-actions">
-                  <Button onClick={() => editCustomProvider(item.providerID)}>
-                    {language.t("settings.providers.edit")}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </div>
       {customOpen ? (
         <SettingsCustomProviderDialog
@@ -433,7 +467,6 @@ export function SettingsProviders() {
           onFetchModels={fetchCustomModels}
           onAddFetchedModels={addFetchedModels}
           onSave={saveCustomProvider}
-          onDelete={editingProviderID ? deleteCustomProvider : undefined}
           onFetchedQueryChange={setFetchedQuery}
           onSelectedFetchedChange={setSelectedFetched}
           onCustomChange={setCustom}
@@ -513,20 +546,46 @@ export function SettingsProviders() {
           onClose={() => setRaccoonLogoutConfirm(false)}
           footer={
             <>
-              <Button onClick={() => setRaccoonLogoutConfirm(false)}>{language.t("common.cancel")}</Button>
               <Button
-                className="settings-rules-danger"
                 onClick={() => {
                   setRaccoonLogoutConfirm(false)
                   session.logoutRaccoon()
                 }}
               >
-                {language.t("settings.providers.raccoon.logout")}
+                {language.t("common.confirm")}
               </Button>
+              <Button onClick={() => setRaccoonLogoutConfirm(false)}>{language.t("common.cancel")}</Button>
             </>
           }
         >
           <div>{language.t("settings.providers.raccoon.logoutConfirm")}</div>
+        </SettingsDialog>
+      ) : null}
+      {pendingAction ? (
+        <SettingsDialog
+          titleId="provider-action-confirm"
+          title={
+            pendingAction.kind === "delete"
+              ? language.t("settings.customProvider.delete")
+              : language.t("settings.providers.disconnect")
+          }
+          className="settings-raccoon-logout-dialog"
+          onClose={() => setPendingAction(undefined)}
+          footer={
+            <>
+              <Button onClick={confirmPendingAction}>{language.t("common.confirm")}</Button>
+              <Button onClick={() => setPendingAction(undefined)}>{language.t("common.cancel")}</Button>
+            </>
+          }
+        >
+          <div>
+            {language.t(
+              pendingAction.kind === "delete"
+                ? "settings.providers.deleteConfirm"
+                : "settings.providers.disconnectConfirm",
+              { name: pendingAction.name },
+            )}
+          </div>
         </SettingsDialog>
       ) : null}
     </>

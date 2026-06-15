@@ -27,7 +27,6 @@ export function SettingsCustomProviderDialog(props: {
   onFetchModels: () => void
   onAddFetchedModels: () => void
   onSave: () => void
-  onDelete?: () => void
   onFetchedQueryChange: (value: string) => void
   onSelectedFetchedChange: (value: Set<string>) => void
   onCustomChange: (updater: (current: CustomProviderDraft) => CustomProviderDraft) => void
@@ -43,11 +42,6 @@ export function SettingsCustomProviderDialog(props: {
       className="settings-custom-provider-dialog"
       footer={
         <>
-          {props.onDelete ? (
-            <Button disabled={props.savingCustom} onClick={props.onDelete}>
-              {language.t("settings.customProvider.delete")}
-            </Button>
-          ) : null}
           <Button disabled={props.savingCustom} onClick={props.onClose}>
             {language.t("common.cancel")}
           </Button>

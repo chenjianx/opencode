@@ -35,7 +35,18 @@ type MessageRouterDeps = {
   deleteRule: (message: Extract<WebviewToExtension, { type: "deleteRule" }>) => Promise<void>
   connectProvider: (message: Extract<WebviewToExtension, { type: "connectProvider" }>) => Promise<void>
   cancelProviderConnect: (providerID?: string) => void
+  disconnectProvider: (providerID: string) => Promise<void>
   fetchCustomProviderModels: (message: Extract<WebviewToExtension, { type: "fetchCustomProviderModels" }>, source: RaccoonWebviewSource) => Promise<void>
+  fetchMcpMarketplace: (force: boolean | undefined, source: RaccoonWebviewSource) => Promise<void>
+  installMcpMarketplaceItem: (message: Extract<WebviewToExtension, { type: "installMcpMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
+  removeMcpMarketplaceItem: (message: Extract<WebviewToExtension, { type: "removeMcpMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
+  addMcpServerManual: (message: Extract<WebviewToExtension, { type: "addMcpServerManual" }>, source: RaccoonWebviewSource) => Promise<void>
+  fetchMcpInstalled: (source: RaccoonWebviewSource) => Promise<void>
+  setMcpServerEnabled: (message: Extract<WebviewToExtension, { type: "setMcpServerEnabled" }>, source: RaccoonWebviewSource) => Promise<void>
+  connectMcpServer: (message: Extract<WebviewToExtension, { type: "connectMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
+  disconnectMcpServer: (message: Extract<WebviewToExtension, { type: "disconnectMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
+  removeMcpServer: (message: Extract<WebviewToExtension, { type: "removeMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
+  updateMcpServer: (message: Extract<WebviewToExtension, { type: "updateMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
   configureCustomProvider: (message: Extract<WebviewToExtension, { type: "configureCustomProvider" }>) => Promise<void>
   requestFileSearch: (requestID: string, query: string, kind?: "file" | "folder") => Promise<void>
   openFile: (filePath: string, line?: number, column?: number) => void
@@ -184,8 +195,52 @@ export class RaccoonMessageRouter {
       this.deps.cancelProviderConnect(message.providerID)
       return
     }
+    if (message.type === "disconnectProvider") {
+      await this.deps.disconnectProvider(message.providerID)
+      return
+    }
     if (message.type === "fetchCustomProviderModels") {
       await this.deps.fetchCustomProviderModels(message, source)
+      return
+    }
+    if (message.type === "fetchMcpMarketplace") {
+      await this.deps.fetchMcpMarketplace(message.force, source)
+      return
+    }
+    if (message.type === "installMcpMarketplaceItem") {
+      await this.deps.installMcpMarketplaceItem(message, source)
+      return
+    }
+    if (message.type === "removeMcpMarketplaceItem") {
+      await this.deps.removeMcpMarketplaceItem(message, source)
+      return
+    }
+    if (message.type === "addMcpServerManual") {
+      await this.deps.addMcpServerManual(message, source)
+      return
+    }
+    if (message.type === "fetchMcpInstalled") {
+      await this.deps.fetchMcpInstalled(source)
+      return
+    }
+    if (message.type === "setMcpServerEnabled") {
+      await this.deps.setMcpServerEnabled(message, source)
+      return
+    }
+    if (message.type === "connectMcpServer") {
+      await this.deps.connectMcpServer(message, source)
+      return
+    }
+    if (message.type === "disconnectMcpServer") {
+      await this.deps.disconnectMcpServer(message, source)
+      return
+    }
+    if (message.type === "removeMcpServer") {
+      await this.deps.removeMcpServer(message, source)
+      return
+    }
+    if (message.type === "updateMcpServer") {
+      await this.deps.updateMcpServer(message, source)
       return
     }
     if (message.type === "configureCustomProvider") {

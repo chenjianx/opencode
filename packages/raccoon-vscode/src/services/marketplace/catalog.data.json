@@ -1,0 +1,2149 @@
+[
+  {
+    "id": "apify",
+    "name": "apify",
+    "title": "Apify Actors",
+    "description": "Enables AI assistants to interact with Apify's web scraping and automation actors, providing access to tools for data extraction, web searching, social media analysis, and more.",
+    "version": "",
+    "repositoryUrl": "https://github.com/apify/actors-mcp-server",
+    "remotes": [
+      {
+        "type": "streamable-http",
+        "url": "https://actors-mcp-server.apify.actor/sse"
+      }
+    ],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@apify/actors-mcp-server",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@apify/actors-mcp-server"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "APIFY_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_apify_api_token",
+        "description": "Apify API Token"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package",
+      "remote"
+    ]
+  },
+  {
+    "id": "atlassian",
+    "name": "atlassian",
+    "title": "Atlassian",
+    "description": "Comprehensive MCP server for Atlassian tools (Confluence and Jira) supporting both Cloud and Server/Data Center deployments with multiple authentication methods including API tokens, Personal Access Tokens, and OAuth 2.0.",
+    "version": "",
+    "repositoryUrl": "https://github.com/sooperset/mcp-atlassian",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-atlassian",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "--from",
+          "mcp-atlassian==0.11.9",
+          "--hash",
+          "sha256:1ba6a171b5299e554d4e0eff98279e74cdc4eb1c12c8e62be924103d9cd38e5e",
+          "mcp-atlassian"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "CONFLUENCE_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "https://your-company.atlassian.net/wiki",
+        "description": "Confluence URL"
+      },
+      {
+        "name": "CONFLUENCE_USERNAME",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your.email@company.com",
+        "description": "Confluence Username"
+      },
+      {
+        "name": "CONFLUENCE_API_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_confluence_api_token",
+        "description": "Confluence API Token"
+      },
+      {
+        "name": "JIRA_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "https://your-company.atlassian.net",
+        "description": "Jira URL"
+      },
+      {
+        "name": "JIRA_USERNAME",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your.email@company.com",
+        "description": "Jira Username"
+      },
+      {
+        "name": "JIRA_API_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_jira_api_token",
+        "description": "Jira API Token"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "aws-kb-retrieval-server",
+    "name": "aws-kb-retrieval-server",
+    "title": "AWS Knowledge Base",
+    "description": "Retrieves information from AWS Knowledge Base using Bedrock Agent Runtime, supporting RAG-based queries with customizable result counts.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/aws-kb-retrieval-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-aws-kb-retrieval",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-aws-kb-retrieval"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "AWS_ACCESS_KEY_ID",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_aws_access_key_id",
+        "description": "AWS Access Key ID"
+      },
+      {
+        "name": "AWS_SECRET_ACCESS_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_aws_secret_access_key",
+        "description": "AWS Secret Access Key"
+      },
+      {
+        "name": "AWS_REGION",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "us-east-1",
+        "description": "AWS Region"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "azure-devops",
+    "name": "azure-devops",
+    "title": "Azure DevOps",
+    "description": "Official Microsoft MCP server for Azure DevOps integration, bringing comprehensive Azure DevOps functionality directly to your AI agents. Supports work items, repositories, builds, releases, test plans, and search across your Azure DevOps organization with 50+ tools for complete DevOps automation.",
+    "version": "",
+    "repositoryUrl": "https://github.com/microsoft/azure-devops-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@azure-devops/mcp@1.0.0",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@azure-devops/mcp@1.0.0",
+          "--hash",
+          "sha1:742d3aa74ec8a13283a62c77c9fc5c2a0d276624",
+          "{{AZURE_DEVOPS_ORG}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "AZURE_DEVOPS_ORG",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "contoso",
+        "description": "Azure DevOps Organization"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "brave-search",
+    "name": "brave-search",
+    "title": "Brave Search",
+    "description": "Integrates Brave Search API to provide comprehensive web and local search capabilities with smart filtering, pagination, and automatic fallbacks.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/brave-search",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-brave-search",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-brave-search"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "BRAVE_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_brave_api_key_here",
+        "description": "Brave API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "browserbase",
+    "name": "browserbase",
+    "title": "Browserbase",
+    "description": "Cloud browser automation server enabling LLMs to interact with web pages, take screenshots, extract data, and execute JavaScript using Browserbase and Puppeteer.",
+    "version": "",
+    "repositoryUrl": "https://github.com/browserbase/mcp-server-browserbase",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@browserbasehq/mcp",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "@browserbasehq/mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "BROWSERBASE_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_browserbase_api_key",
+        "description": "Browserbase API Key"
+      },
+      {
+        "name": "BROWSERBASE_PROJECT_ID",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your_browserbase_project_id",
+        "description": "Browserbase Project ID"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "clickup",
+    "name": "clickup",
+    "title": "ClickUp",
+    "description": "Comprehensive ClickUp MCP server for project management integration with AI through Model Context Protocol. Supports task management, time tracking, workspace organization, document management, member management, and tag operations with 36 available tools for complete ClickUp automation.",
+    "version": "",
+    "repositoryUrl": "https://github.com/TaazKareem/clickup-mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@taazkareem/clickup-mcp-server@0.8.4",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@taazkareem/clickup-mcp-server@0.8.4",
+          "--hash",
+          "sha512:TuWPCubHFrRNbghj34th+QFdOqwGljs0QP55s+d73JhsFVoKaXFuS4c5bHat8qwV9UyF6hAeX87UP0SmeH/QRg=="
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "CLICKUP_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "pk_your_clickup_api_key",
+        "description": "ClickUp API Key"
+      },
+      {
+        "name": "CLICKUP_TEAM_ID",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your_team_id",
+        "description": "ClickUp Team ID"
+      },
+      {
+        "name": "DOCUMENT_SUPPORT",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "true",
+        "description": "Document Support"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "cloudflare",
+    "name": "cloudflare",
+    "title": "Cloudflare",
+    "description": "Manages Cloudflare resources including Workers, KV stores, R2 storage, D1 databases, and analytics through natural language interactions.",
+    "version": "",
+    "repositoryUrl": "https://github.com/cloudflare/mcp-server-cloudflare",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "mcp-remote",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "mcp-remote",
+          "https://observability.mcp.cloudflare.com/sse"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "e2b",
+    "name": "e2b",
+    "title": "Code Interpreter",
+    "description": "Adds secure code execution capabilities to Claude Desktop using E2B Sandbox, supporting both JavaScript and Python environments.",
+    "version": "",
+    "repositoryUrl": "https://github.com/e2b-dev/mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@e2b/mcp-server",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@e2b/mcp-server"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "E2B_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_e2b_api_key",
+        "description": "E2B API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "codegen",
+    "name": "codegen",
+    "title": "Codegen",
+    "description": "Enables parsing codebases and executing codemods through standardized model inference, supporting various LLM providers via integration with the Codegen SDK.",
+    "version": "",
+    "repositoryUrl": "https://github.com/codegen-sh/codegen-sdk/tree/develop/codegen-examples/examples/codegen-mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "codegen-mcp-server",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "--from",
+          "git+https://github.com/codegen-sh/codegen-sdk.git#egg=codegen-mcp-server&subdirectory=codegen-examples/examples/codegen-mcp-server",
+          "codegen-mcp-server"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "composer-trade",
+    "name": "composer-trade",
+    "title": "Composer",
+    "description": "Official Composer MCP server that enables creation of automated investing strategies, backtesting, strategy discovery, portfolio monitoring, and live trading through the Composer platform.",
+    "version": "",
+    "repositoryUrl": "https://github.com/invest-composer/composer-trade-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "composer-trade-mcp",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "composer-trade-mcp==0.1.4",
+          "--hash",
+          "sha256:37d8fcfd6ddc9c8155633f755159f3fcb1a63e7acc2a32513613341a851c84e2"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "COMPOSER_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_composer_api_key",
+        "description": "Composer API Key"
+      },
+      {
+        "name": "COMPOSER_SECRET_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_composer_secret_key",
+        "description": "Composer Secret Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "context7",
+    "name": "context7",
+    "title": "Context7",
+    "description": "Up-to-date code documentation for LLMs and AI code editors. Provides version-specific documentation and code examples straight from the source, eliminating outdated or hallucinated API information.",
+    "version": "",
+    "repositoryUrl": "https://github.com/upstash/context7",
+    "remotes": [
+      {
+        "type": "streamable-http",
+        "url": "https://mcp.context7.com/mcp"
+      }
+    ],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@upstash/context7-mcp",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@upstash/context7-mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "DEFAULT_MINIMUM_TOKENS",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "6000",
+        "description": "Default Minimum Tokens"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package",
+      "remote"
+    ]
+  },
+  {
+    "id": "dbt",
+    "name": "dbt",
+    "title": "dbt",
+    "description": "A MCP server for interacting with dbt, providing AI agents with context from dbt Core, dbt Fusion, and dbt Platform. Supports SQL execution, Semantic Layer queries, project discovery, dbt CLI operations, Admin API management, code generation, and column-level lineage tracing.",
+    "version": "",
+    "repositoryUrl": "https://github.com/dbt-labs/dbt-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "dbt-mcp",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "dbt-mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "DBT_HOST",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "cloud.getdbt.com",
+        "description": "dbt Host"
+      },
+      {
+        "name": "DBT_PROJECT_DIR",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "/path/to/your/dbt/project",
+        "description": "dbt Project Directory"
+      },
+      {
+        "name": "DBT_PATH",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "/path/to/your/dbt/executable",
+        "description": "dbt Executable Path"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "esignatures",
+    "name": "esignatures",
+    "title": "eSignatures",
+    "description": "Manages digital contract workflows including creation, sending, and template management for electronic signatures through the eSignatures platform.",
+    "version": "",
+    "repositoryUrl": "https://github.com/esignaturescom/mcp-server-esignatures",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-esignatures",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-esignatures"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "ESIGNATURES_SECRET_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_esignatures_api_secret_token",
+        "description": "eSignatures Secret Token"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "exa",
+    "name": "exa",
+    "title": "Exa Search",
+    "description": "Enables AI assistants to perform real-time web searches using Exa's AI Search API, providing structured results with titles, URLs, and content snippets.",
+    "version": "",
+    "repositoryUrl": "https://github.com/exa-labs/exa-mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "exa-mcp-server",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "exa-mcp-server"
+        ]
+      },
+      {
+        "registryType": "npm",
+        "identifier": "mcp-remote",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "mcp-remote",
+          "https://mcp.exa.ai/mcp?exaApiKey={{EXA_API_KEY}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "EXA_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_exa_api_key_here",
+        "description": "Exa API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "figma-dev-mode",
+    "name": "figma-dev-mode",
+    "title": "Figma Dev Mode",
+    "description": "Brings Figma directly into your workflow by providing important design information and context to AI agents generating code from Figma design files. Enables code generation from selected frames, design context extraction, and Code Connect integration.",
+    "version": "",
+    "repositoryUrl": "https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Dev-Mode-MCP-Server",
+    "remotes": [
+      {
+        "type": "streamable-http",
+        "url": "http://127.0.0.1:3845/sse"
+      }
+    ],
+    "packages": [],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "remote"
+    ]
+  },
+  {
+    "id": "filesystem",
+    "name": "filesystem",
+    "title": "File System",
+    "description": "Provides comprehensive filesystem operations including reading, writing, moving files, directory management, and advanced file editing with pattern matching and formatting capabilities.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-filesystem",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "{{ALLOWED_DIRECTORY}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "ALLOWED_DIRECTORY",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "/Users/username/Documents",
+        "description": "Allowed Directory"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "firebase",
+    "name": "firebase",
+    "title": "Firebase",
+    "description": "The Firebase MCP server allows AI-powered development tools to work with your Firebase projects. It can create and manage Firebase projects, manage Authentication users, work with data in Cloud Firestore and Data Connect, retrieve schemas, understand security rules, and send messages with Cloud Messaging.",
+    "version": "",
+    "repositoryUrl": "https://firebase.google.com/docs/cli/mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "firebase-tools@14.15.2",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "firebase-tools@14.15.2",
+          "experimental:mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "git",
+    "name": "git",
+    "title": "Git Tools",
+    "description": "Provides Git repository interaction and automation tools for reading, searching, and manipulating Git repositories through commands like status, diff, commit, branch management, and more.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/git",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-git",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-git",
+          "--repository",
+          "{{REPOSITORY_PATH}}"
+        ]
+      },
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/inspector",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/inspector",
+          "uvx",
+          "mcp-server-git",
+          "--repository",
+          "{{REPOSITORY_PATH}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "REPOSITORY_PATH",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "/path/to/git/repo",
+        "description": "Repository Path"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "github",
+    "name": "github",
+    "title": "GitHub",
+    "description": "GitHub's official MCP Server that provides seamless integration with GitHub APIs, enabling advanced automation and interaction capabilities for developers and tools.",
+    "version": "",
+    "repositoryUrl": "https://github.com/github/github-mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-github",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-github"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (classic PAT from https://github.com/settings/tokens/new)",
+        "description": "GitHub Personal Access Token"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "gitlab",
+    "name": "gitlab",
+    "title": "GitLab",
+    "description": "Enables comprehensive GitLab project management including file operations, issue tracking, merge requests, and repository management through the GitLab API.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/gitlab",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-gitlab",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-gitlab"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "GITLAB_PERSONAL_ACCESS_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_gitlab_personal_access_token",
+        "description": "GitLab Personal Access Token"
+      },
+      {
+        "name": "GITLAB_API_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "https://gitlab.com/api/v4",
+        "description": "GitLab API URL"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "git-mcp",
+    "name": "git-mcp",
+    "title": "GitMCP",
+    "description": "GitMCP is a free, open-source, remote MCP server that transforms any GitHub project (repositories or GitHub pages) into a documentation hub. It enables AI tools like Cursor to access up-to-date documentation and code, even if the LLM has never encountered them, thereby eliminating code hallucinations seamlessly.",
+    "version": "",
+    "repositoryUrl": "https://github.com/idosal/git-mcp",
+    "remotes": [
+      {
+        "type": "streamable-http",
+        "url": "https://gitmcp.io/{{OWNER}}/{{REPO}}"
+      }
+    ],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "mcp-remote@0.1.29",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "mcp-remote@0.1.29",
+          "https://gitmcp.io/{{OWNER}}/{{REPO}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "OWNER",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "microsoft",
+        "description": "Owner"
+      },
+      {
+        "name": "REPO",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "typescript",
+        "description": "Repo"
+      }
+    ],
+    "transportTypes": [
+      "package",
+      "remote"
+    ]
+  },
+  {
+    "id": "gdrive",
+    "name": "gdrive",
+    "title": "Google Drive",
+    "description": "Enables searching, listing, and reading files from Google Drive, with automatic export of Google Workspace files to common formats like Markdown, CSV, and PNG.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/gdrive",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-gdrive",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-gdrive"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "GDRIVE_CREDENTIALS_PATH",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "/path/to/.gdrive-server-credentials.json",
+        "description": "Google Drive Credentials Path"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "google-maps",
+    "name": "google-maps",
+    "title": "Google Maps",
+    "description": "Provides comprehensive access to Google Maps services including geocoding, place search, directions, distance calculations, and elevation data through the Google Maps API.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/google-maps",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-google-maps",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-google-maps"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "GOOGLE_MAPS_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_google_maps_api_key",
+        "description": "Google Maps API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "google-maps-platform-code-assist",
+    "name": "google-maps-platform-code-assist",
+    "title": "Google Maps Platform Code Assist",
+    "description": "Official Google Maps Platform MCP for AI-powered code assistance. Provides tools to generate client-side and server-side code for Maps, Routes, and Places APIs, helping developers build geospatial applications faster.",
+    "version": "",
+    "repositoryUrl": "https://github.com/googlemaps/platform-ai",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@googlemaps/code-assist-mcp@0.2.0",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@googlemaps/code-assist-mcp@0.2.0"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "google-workspace",
+    "name": "google-workspace",
+    "title": "Google Workspace",
+    "description": "Control Gmail, Google Calendar, Docs, Sheets, Slides, Chat, Forms, Tasks, Search & Drive with AI. The most feature-complete Google Workspace / G Suite MCP server.",
+    "version": "",
+    "repositoryUrl": "https://github.com/taylorwilsdon/google_workspace_mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "workspace-mcp",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "--from",
+          "workspace-mcp==1.4.7",
+          "--hash",
+          "sha256:4e98810f46bd370007e7c9a9337bcaf47cb91e21fed8fb59cf7c68d5a539a49f",
+          "workspace-mcp",
+          "--tool-tier",
+          "core"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "GOOGLE_OAUTH_CLIENT_ID",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your-google-oauth-client-id",
+        "description": "Google OAuth Client ID"
+      },
+      {
+        "name": "GOOGLE_OAUTH_CLIENT_SECRET",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your-google-oauth-client-secret",
+        "description": "Google OAuth Client Secret"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "ida-pro",
+    "name": "ida-pro",
+    "title": "IDA Pro",
+    "description": "An MCP server for interacting with the IDA Pro disassembler.",
+    "version": "",
+    "repositoryUrl": "https://github.com/mrexodia/ida-pro-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "ida-pro-mcp",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "--from",
+          "git+https://github.com/mrexodia/ida-pro-mcp.git@f0af9fba733fb60fc13365b297b10c82db3771d7",
+          "ida-pro-mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "kagi",
+    "name": "kagi",
+    "title": "Kagi Search",
+    "description": "Integrates Kagi's advanced search API to provide AI assistants with up-to-date web search capabilities and accurate information retrieval.",
+    "version": "",
+    "repositoryUrl": "https://github.com/kagisearch/kagimcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "kagimcp",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "kagimcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "KAGI_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_kagi_api_key_here",
+        "description": "Kagi API Key"
+      },
+      {
+        "name": "KAGI_SUMMARIZER_ENGINE",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "cecil",
+        "description": "Kagi Summarizer Engine"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "memory",
+    "name": "memory",
+    "title": "Knowledge Graph Memory",
+    "description": "A persistent memory system using a local knowledge graph that enables AI assistants to remember information about users across conversations through entities, relations, and observations.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/memory",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-memory",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-memory"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "MEMORY_FILE_PATH",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "/path/to/custom/memory.json",
+        "description": "Memory File Path"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "microsoft-learn",
+    "name": "microsoft-learn",
+    "title": "Microsoft Learn",
+    "description": "Official Microsoft Learn MCP server that provides access to Microsoft Learn content, including documentation, tutorials, and learning paths.",
+    "version": "",
+    "repositoryUrl": "https://github.com/microsoftdocs/mcp",
+    "remotes": [
+      {
+        "type": "streamable-http",
+        "url": "https://learn.microsoft.com/api/mcp"
+      }
+    ],
+    "packages": [],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "remote"
+    ]
+  },
+  {
+    "id": "motherduck",
+    "name": "motherduck",
+    "title": "MotherDuck",
+    "description": "Enables database operations with MotherDuck and local DuckDB, providing tools for connection initialization, schema reading, and query execution.",
+    "version": "",
+    "repositoryUrl": "https://github.com/motherduckdb/mcp-server-motherduck",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-motherduck",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-motherduck",
+          "--db-path",
+          "md:",
+          "--motherduck-token",
+          "{{MOTHERDUCK_TOKEN}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "MOTHERDUCK_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_motherduck_token_here",
+        "description": "MotherDuck Token"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "n8n-mcp",
+    "name": "n8n-mcp",
+    "title": "n8n-MCP",
+    "description": "A Model Context Protocol (MCP) server that provides AI assistants with comprehensive access to n8n node documentation, properties, and operations. Deploy in minutes to give Claude and other AI assistants deep knowledge about n8n's 525+ workflow automation nodes.",
+    "version": "",
+    "repositoryUrl": "https://github.com/czlonkowski/n8n-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "n8n-mcp@2.12.2",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "n8n-mcp@2.12.2"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "N8N_API_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "https://your-n8n-instance.com",
+        "description": "n8n API URL"
+      },
+      {
+        "name": "N8N_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your-api-key",
+        "description": "n8n API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "neon",
+    "name": "neon",
+    "title": "Neon Database",
+    "description": "Enables natural language interaction with Neon PostgreSQL databases, supporting project management, schema migrations, SQL queries, and database operations through the Neon API.",
+    "version": "",
+    "repositoryUrl": "https://github.com/neondatabase/mcp-server-neon",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "mcp-remote",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "mcp-remote",
+          "https://mcp.neon.tech/sse"
+        ]
+      },
+      {
+        "registryType": "npm",
+        "identifier": "@neondatabase/mcp-server-neon",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@neondatabase/mcp-server-neon",
+          "start",
+          "{{NEON_API_KEY}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "NEON_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_neon_api_key",
+        "description": "Neon API Key"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "nia",
+    "name": "nia",
+    "title": "Nia",
+    "description": "Nia is an API and MCP layer that gives agents continuously updated context from libraries, research papers, and docs, so they don't hallucinate and you skip manual ingestion.",
+    "version": "",
+    "repositoryUrl": "https://docs.trynia.ai",
+    "remotes": [
+      {
+        "type": "streamable-http",
+        "url": "https://apigcp.trynia.ai/mcp"
+      }
+    ],
+    "packages": [],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "remote"
+    ]
+  },
+  {
+    "id": "notion",
+    "name": "notion",
+    "title": "Notion",
+    "description": "Official Notion MCP Server that provides seamless integration with Notion APIs, enabling advanced automation and interaction capabilities for managing pages, databases, comments, and content within Notion workspaces.",
+    "version": "",
+    "repositoryUrl": "https://github.com/makenotion/notion-mcp-server",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@notionhq/notion-mcp-server",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@notionhq/notion-mcp-server"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "OPENAPI_MCP_HEADERS",
+        "isRequired": true,
+        "isSecret": false
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "oxylabs",
+    "name": "oxylabs",
+    "title": "Oxylabs Scraper",
+    "description": "Advanced web scraping tool using Oxylabs Web Scraper API, supporting JavaScript rendering, HTML parsing, and content transformation with flexible parsing options.",
+    "version": "",
+    "repositoryUrl": "https://github.com/oxylabs/oxylabs-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "oxylabs-mcp",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "oxylabs-mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "OXYLABS_USERNAME",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your_oxylabs_username",
+        "description": "Oxylabs Username"
+      },
+      {
+        "name": "OXYLABS_PASSWORD",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_oxylabs_password",
+        "description": "Oxylabs Password"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "playwright",
+    "name": "playwright",
+    "title": "Playwright",
+    "description": "Official Microsoft MCP server providing browser automation capabilities using Playwright. Enables LLMs to interact with web pages through structured accessibility snapshots, bypassing the need for screenshots or visually-tuned models. Supports fast and lightweight automation with deterministic tool application.",
+    "version": "",
+    "repositoryUrl": "https://github.com/microsoft/playwright-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@playwright/mcp@0.0.38",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@playwright/mcp@0.0.38"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "postgres",
+    "name": "postgres",
+    "title": "PostgreSQL Reader",
+    "description": "Provides read-only access to PostgreSQL databases, allowing LLMs to inspect database schemas and execute read-only queries within protected transactions.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/postgres",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-postgres",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-postgres",
+          "{{POSTGRESQL_URL}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "POSTGRESQL_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "postgresql://user:password@localhost:5432/mydb",
+        "description": "PostgreSQL URL"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "postgrest",
+    "name": "postgrest",
+    "title": "Postgrest",
+    "description": "Enables database operations on PostgreSQL through PostgREST, supporting SQL-to-REST conversion and direct API requests for querying and modifying data.",
+    "version": "",
+    "repositoryUrl": "https://github.com/supabase-community/mcp-supabase/tree/HEAD/packages/mcp-server-postgrest",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@supabase/mcp-server-postgrest@0.0.11",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@supabase/mcp-server-postgrest@0.0.11",
+          "--apiUrl",
+          "{{POSTGREST_API_URL}}",
+          "--apiKey",
+          "{{POSTGREST_API_KEY}}",
+          "--schema",
+          "{{POSTGREST_SCHEMA}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "POSTGREST_API_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "https://your-project-ref.supabase.co/rest/v1",
+        "description": "PostgREST API URL"
+      },
+      {
+        "name": "POSTGREST_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_postgrest_api_key",
+        "description": "PostgREST API Key"
+      },
+      {
+        "name": "POSTGREST_SCHEMA",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "public",
+        "description": "PostgREST Schema"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "puppeteer",
+    "name": "puppeteer",
+    "title": "Puppeteer",
+    "description": "Provides browser automation capabilities using Puppeteer, enabling web page interaction, screenshots, and JavaScript execution in a real browser environment.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/puppeteer",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-puppeteer",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-puppeteer"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "qdrant",
+    "name": "qdrant",
+    "title": "Qdrant",
+    "description": "A semantic memory layer enabling storage and retrieval of vector-based memories using the Qdrant vector search engine, with support for both cloud and local deployments.",
+    "version": "",
+    "repositoryUrl": "https://github.com/qdrant/mcp-server-qdrant",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-qdrant",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-qdrant"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "QDRANT_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "https://xyz-example.eu-central.aws.cloud.qdrant.io:6333",
+        "description": "Qdrant URL"
+      },
+      {
+        "name": "QDRANT_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_qdrant_api_key",
+        "description": "Qdrant API Key"
+      },
+      {
+        "name": "COLLECTION_NAME",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "your-collection-name",
+        "description": "Collection Name"
+      },
+      {
+        "name": "EMBEDDING_MODEL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "sentence-transformers/all-MiniLM-L6-v2",
+        "description": "Embedding Model"
+      },
+      {
+        "name": "QDRANT_LOCAL_PATH",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "/path/to/qdrant/database",
+        "description": "Qdrant Local Path"
+      },
+      {
+        "name": "FASTMCP_PORT",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "8000",
+        "description": "FastMCP Port"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "raygun",
+    "name": "raygun",
+    "title": "Raygun",
+    "description": "Provides comprehensive access to Raygun's error tracking, crash reporting, and real user monitoring features through API integration, enabling management of applications, errors, deployments, and performance metrics.",
+    "version": "",
+    "repositoryUrl": "https://github.com/MindscapeHQ/mcp-server-raygun",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@raygun.io/mcp-server-raygun",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@raygun.io/mcp-server-raygun"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "RAYGUN_PAT_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_raygun_pat_token",
+        "description": "Raygun PAT Token"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "redis",
+    "name": "redis",
+    "title": "Redis",
+    "description": "Provides access to Redis key-value stores, enabling operations like setting, getting, deleting, and listing keys with optional expiration time support.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/redis",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-redis",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-redis",
+          "--url",
+          "{{REDIS_URL}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "REDIS_URL",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "redis://localhost:6379",
+        "description": "Redis URL"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "riza",
+    "name": "riza",
+    "title": "Riza",
+    "description": "Provides a secure code interpreter for executing LLM-generated code, with features for creating, saving, managing, and executing code tools in an isolated environment.",
+    "version": "",
+    "repositoryUrl": "https://github.com/riza-io/riza-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@riza-io/riza-mcp",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "@riza-io/riza-mcp"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "RIZA_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_riza_api_key",
+        "description": "Riza API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "sentry",
+    "name": "sentry",
+    "title": "Sentry",
+    "description": "Retrieves and analyzes error reports, stacktraces, and debugging information from Sentry.io, enabling AI assistants to inspect and understand application issues.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sentry",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-sentry",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-sentry",
+          "--auth-token",
+          "{{SENTRY_AUTH_TOKEN}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "SENTRY_AUTH_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your_sentry_auth_token_here",
+        "description": "Sentry Auth Token"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "sequentialthinking",
+    "name": "sequentialthinking",
+    "title": "Sequential Thinking",
+    "description": "A structured problem-solving tool that enables step-by-step analysis, thought revision, and branching logic for complex reasoning tasks.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-sequential-thinking",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-sequential-thinking"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "slack",
+    "name": "slack",
+    "title": "Slack",
+    "description": "Enables AI assistants to interact with Slack workspaces, providing tools for messaging, channel management, reactions, user profiles, and thread management.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/slack",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@modelcontextprotocol/server-slack",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@modelcontextprotocol/server-slack"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "SLACK_BOT_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "xoxb-your-bot-token",
+        "description": "Slack Bot Token"
+      },
+      {
+        "name": "SLACK_TEAM_ID",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "T01234567",
+        "description": "Slack Team ID"
+      },
+      {
+        "name": "SLACK_CHANNEL_IDS",
+        "isRequired": true,
+        "isSecret": false,
+        "placeholder": "C01234567,C76543210",
+        "description": "Slack Channel IDs"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "sqlite",
+    "name": "sqlite",
+    "title": "SQLite",
+    "description": "Provides database interaction and business intelligence capabilities through SQLite, enabling SQL queries, data analysis, and automated business insight generation.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers-archived/tree/main/src/sqlite",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-sqlite",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-sqlite",
+          "--db-path",
+          "{{DB_PATH}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "DB_PATH",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "/path/to/database.db",
+        "description": "Database Path"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "stripe",
+    "name": "stripe",
+    "title": "Stripe",
+    "description": "Enables AI agents to interact with Stripe APIs, supporting operations like customer management, payment processing, product creation, and invoice handling through function calling.",
+    "version": "",
+    "repositoryUrl": "https://github.com/stripe/agent-toolkit",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@stripe/mcp",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@stripe/mcp",
+          "--tools=all",
+          "--api-key={{STRIPE_SECRET_KEY}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "STRIPE_SECRET_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "sk_test_your_stripe_secret_key",
+        "description": "Stripe Secret Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "supabase",
+    "name": "supabase",
+    "title": "Supabase",
+    "description": "The official Supabase MCP server connects your AI tools to Supabase to perform tasks like launching databases, managing tables, fetching config, and querying data on your behalf.",
+    "version": "",
+    "repositoryUrl": "https://supabase.com/docs/guides/mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@supabase/mcp-server-supabase@0.5.5",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@supabase/mcp-server-supabase@0.5.5",
+          "--access-token",
+          "{{SUPABASE_ACCESS_TOKEN}}"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [
+      {
+        "name": "SUPABASE_ACCESS_TOKEN",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "sbp_your_supabase_pat",
+        "description": "Supabase Personal Access Token"
+      }
+    ],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "tavily",
+    "name": "tavily",
+    "title": "Tavily",
+    "description": "Enables real-time web search and data extraction capabilities through Tavily's API, providing AI assistants with filtered search results and intelligent content extraction from web pages.",
+    "version": "",
+    "repositoryUrl": "https://github.com/tavily-ai/tavily-mcp",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "tavily-mcp@0.2.3",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "tavily-mcp@0.2.3"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [
+      {
+        "name": "TAVILY_API_KEY",
+        "isRequired": true,
+        "isSecret": true,
+        "placeholder": "your-tavily-apikey-here",
+        "description": "Tavily API Key"
+      }
+    ],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "time",
+    "name": "time",
+    "title": "Time",
+    "description": "Provides time and timezone conversion capabilities using IANA timezone names, with automatic system timezone detection and support for current time queries.",
+    "version": "",
+    "repositoryUrl": "https://github.com/modelcontextprotocol/servers/tree/main/src/time",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "pypi",
+        "identifier": "mcp-server-time",
+        "runtimeHint": "uvx",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "uvx",
+          "mcp-server-time"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  },
+  {
+    "id": "youtube",
+    "name": "youtube",
+    "title": "YouTube Subtitles",
+    "description": "Downloads and extracts YouTube video subtitles using yt-dlp, enabling AI assistants to analyze and summarize video content through subtitle text.",
+    "version": "",
+    "repositoryUrl": "https://github.com/anaisbetts/mcp-youtube",
+    "remotes": [],
+    "packages": [
+      {
+        "registryType": "npm",
+        "identifier": "@anaisbetts/mcp-installer",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@anaisbetts/mcp-installer",
+          "@anaisbetts/mcp-youtube"
+        ]
+      },
+      {
+        "registryType": "npm",
+        "identifier": "@anaisbetts/mcp-youtube",
+        "transport": {
+          "type": "stdio"
+        },
+        "runtimeArguments": [
+          "npx",
+          "-y",
+          "@anaisbetts/mcp-youtube"
+        ]
+      }
+    ],
+    "headers": [],
+    "environmentVariables": [],
+    "variables": [],
+    "transportTypes": [
+      "package"
+    ]
+  }
+]

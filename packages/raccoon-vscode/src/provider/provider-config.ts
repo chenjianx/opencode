@@ -416,6 +416,44 @@ export class RaccoonProviderConfig {
     })
   }
 
+  // Disconnect a standard (API key / OAuth) provider: drop its stored
+  // credentials and add it to `disabled_providers` so it disappears from the
+  // list even when an env credential is present. Mirrors `logoutRaccoon`: the
+  // provider list is cached in the server instance, so dispose it before
+  // refreshing. Reuses the `providerConnectFinished` message so the webview can
+  // clear its loading state (and surface any error).
+  async disconnectProvider(providerID: string) {
+    try {
+      const client = await this.deps.client()
+      const configResponse = await client.config.get({ directory: this.deps.directory() }, { throwOnError: true })
+      await client.auth.remove({ providerID }, { throwOnError: true })
+      await client.config.update(
+        {
+          directory: this.deps.directory(),
+          config: {
+            disabled_providers: [
+              ...(configResponse.data.disabled_providers ?? []).filter((id) => id !== providerID),
+              providerID,
+            ],
+          },
+        },
+        { throwOnError: true },
+      )
+      await client.instance.dispose({ directory: this.deps.directory() }, { throwOnError: true })
+      await this.deps.refresh()
+      this.deps.webviewHost.post("settings", {
+        type: "providerConnectFinished",
+        providerID,
+      } satisfies ExtensionToWebview)
+    } catch (error) {
+      this.deps.webviewHost.post("settings", {
+        type: "providerConnectFinished",
+        providerID,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
   async loginRaccoon(serverUrl: string | undefined, source: RaccoonWebviewSource) {
     const token = this.raccoonLoginTokens.issue()
     await this.deps
@@ -502,6 +540,14 @@ export class RaccoonProviderConfig {
     await client.instance.dispose({ directory: this.deps.directory() }, { throwOnError: true })
   }
 
+  private async globalConfigFile() {
+    const client = await this.deps.client()
+    const pathInfo = await client.path.get({ directory: this.deps.directory() }, { throwOnError: true })
+    const configDir = pathInfo.data?.config
+    if (!configDir) throw new Error("Unable to resolve the global opencode config directory")
+    return pickConfigFile(configDir, GLOBAL_CONFIG_FILES, "opencode.json")
+  }
+
   async configureCustomProvider(message: Extract<WebviewToExtension, { type: "configureCustomProvider" }>) {
     const providerID = message.providerID.trim()
     const name = message.name.trim()
@@ -522,31 +568,45 @@ export class RaccoonProviderConfig {
         { throwOnError: true },
       )
     }
+    const providerValue = {
+      api: baseURL,
+      npm: "@ai-sdk/openai-compatible",
+      name,
+      options: { baseURL },
+      models: Object.fromEntries(
+        models.map((model) => [
+          model.id,
+          {
+            name: model.name,
+            ...(model.supportsImage
+              ? { modalities: { input: ["text", "image"] as Array<"text" | "image">, output: ["text"] as Array<"text"> } }
+              : {}),
+          },
+        ]),
+      ),
+    }
+    // Order matters. opencode merges the global config from several files into
+    // an infinite-TTL cache that only invalidates when `global.config.update`
+    // writes a real change, and that update is merge-only (it cannot drop a
+    // removed model — it would merge the stale entry back in).
+    //   1. Remove the provider from the file first, so no stale models survive.
+    //   2. Re-add the exact target via the SDK update: merging into the now-empty
+    //      slot writes precisely `providerValue` AND forces cache invalidation.
+    const file = await this.globalConfigFile()
+    await writeProviderToFile(file, providerID, undefined)
     await client.global.config.update(
       {
         config: {
           disabled_providers: (configResponse.data.disabled_providers ?? []).filter((id) => id !== providerID),
-          provider: {
-            [providerID]: {
-              api: baseURL,
-              npm: "@ai-sdk/openai-compatible",
-              name,
-              options: { baseURL },
-              models: Object.fromEntries(
-                models.map((model) => [
-                  model.id,
-                  {
-                    name: model.name,
-                    ...(model.supportsImage ? { modalities: { input: ["text", "image"], output: ["text"] } } : {}),
-                  },
-                ]),
-              ),
-            },
-          },
+          provider: { [providerID]: providerValue },
         },
       },
       { throwOnError: true },
     )
+    // Dispose so the next refresh reloads the rewritten file (global dispose
+    // also tears down the per-instance config the provider list is built from).
+    await client.global.dispose({ throwOnError: true })
+    await this.reloadInstanceConfig()
     models.forEach((model) => this.disabledModels.delete(modelKey({ providerID, modelID: model.id })))
     await this.deps.storage?.update("raccoon.disabledModels", [...this.disabledModels])
     await this.deps.refresh()
@@ -558,15 +618,25 @@ export class RaccoonProviderConfig {
     if (!id) throw new Error("Custom provider ID is required")
     const client = await this.deps.client()
     const configResponse = await client.global.config.get({ throwOnError: true })
+    // Remove the provider from the file first (the authoritative delete — the
+    // merge-only SDK update cannot remove a key). Then force the infinite-TTL
+    // global config cache to invalidate by adding the id to `disabled_providers`,
+    // which is a real change. Crucially, a disabled provider is hidden from the
+    // list, so even if the cache briefly races on stale content the provider
+    // never reappears (a renamed-provider sentinel would show up instead). The
+    // stale id left in `disabled_providers` is harmless and is filtered out again
+    // if the same provider is recreated.
+    await writeProviderToFile(await this.globalConfigFile(), id, undefined)
     await client.global.config.update(
       {
         config: {
-          disabled_providers: (configResponse.data.disabled_providers ?? []).filter((item) => item !== id),
-          provider: { [id]: undefined } as Record<string, never>,
+          disabled_providers: [...(configResponse.data.disabled_providers ?? []).filter((item) => item !== id), id],
         },
       },
       { throwOnError: true },
     )
+    await client.global.dispose({ throwOnError: true })
+    await this.reloadInstanceConfig()
     this.disabledModels = new Set([...this.disabledModels].filter((key) => !key.startsWith(`${id}/`)))
     await this.deps.storage?.update("raccoon.disabledModels", [...this.disabledModels])
     await this.deps.refresh()
@@ -692,6 +762,41 @@ async function writeAgentToFile(file: string, name: string, value: OpencodeAgent
   const updated = applyEdits(
     source,
     modify(source, ["agent", name], value, {
+      formattingOptions: {
+        insertSpaces: true,
+        tabSize: 2,
+      },
+    }),
+  )
+  await fs.mkdir(nodePath.dirname(file), { recursive: true })
+  await fs.writeFile(file, updated.endsWith("\n") ? updated : `${updated}\n`)
+  return true
+}
+
+// Set, replace, or (when value is undefined) delete `provider[id]` in a JSON
+// config file. We read/modify/write the JSON ourselves (rather than via the
+// merge-only SDK) so removing a provider actually drops the key and removing a
+// model from a provider clears the stale model entry instead of merging it back.
+// A parse error on existing content is surfaced instead of clobbering the file.
+async function writeProviderToFile(file: string, id: string, value: unknown | undefined) {
+  let raw: string | undefined
+  try {
+    raw = await fs.readFile(file, "utf8")
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err
+  }
+  if (value === undefined && !raw) return false
+  const source = raw?.trim() ? raw : "{}"
+  const config = parseConfig(source, file)
+  const current = config.provider
+  const exists =
+    current && typeof current === "object" && !Array.isArray(current)
+      ? Object.hasOwn(current as Record<string, unknown>, id)
+      : false
+  if (value === undefined && !exists) return false
+  const updated = applyEdits(
+    source,
+    modify(source, ["provider", id], value, {
       formattingOptions: {
         insertSpaces: true,
         tabSize: 2,

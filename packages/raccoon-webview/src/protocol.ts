@@ -221,6 +221,94 @@ export type RaccoonQuestionRequest = {
 
 export type RaccoonPermissionReply = "once" | "always" | "reject"
 
+export type RaccoonMarketplaceScope = "project" | "user"
+
+export type RaccoonMarketplaceHeader = {
+  name: string
+  description?: string
+  placeholder?: string
+  isRequired?: boolean
+  isSecret?: boolean
+}
+
+export type RaccoonMarketplaceEnvironmentVariable = RaccoonMarketplaceHeader
+
+export type RaccoonMarketplaceVariable = RaccoonMarketplaceHeader
+
+export type RaccoonMarketplaceRemote = {
+  type: string
+  url: string
+  headers?: RaccoonMarketplaceHeader[]
+}
+
+export type RaccoonMarketplacePackage = {
+  registryType: string
+  identifier: string
+  version?: string
+  runtimeHint?: string
+  transport?: {
+    type: string
+  }
+  runtimeArguments?: string[]
+  environmentVariables?: RaccoonMarketplaceEnvironmentVariable[]
+}
+
+export type RaccoonMarketplaceMcpItem = {
+  id: string
+  name: string
+  title?: string
+  description: string
+  version: string
+  websiteUrl?: string
+  repositoryUrl?: string
+  remotes: RaccoonMarketplaceRemote[]
+  packages: RaccoonMarketplacePackage[]
+  headers: RaccoonMarketplaceHeader[]
+  environmentVariables: RaccoonMarketplaceEnvironmentVariable[]
+  variables: RaccoonMarketplaceVariable[]
+  transportTypes: Array<"remote" | "package">
+  publishedAt?: string
+  updatedAt?: string
+}
+
+export type RaccoonMarketplaceInstalledMetadata = {
+  project: Record<string, { type: "mcp" }>
+  user: Record<string, { type: "mcp" }>
+}
+
+export type RaccoonMcpLocalConfig = {
+  type: "local"
+  command: string[]
+  cwd?: string
+  environment?: Record<string, string>
+  enabled?: boolean
+  timeout?: number
+}
+
+export type RaccoonMcpRemoteConfig = {
+  type: "remote"
+  url: string
+  headers?: Record<string, string>
+  enabled?: boolean
+  timeout?: number
+}
+
+export type RaccoonMcpServerConfig = RaccoonMcpLocalConfig | RaccoonMcpRemoteConfig
+
+export type RaccoonMcpStatus =
+  | { status: "connected" }
+  | { status: "disabled" }
+  | { status: "failed"; error: string }
+  | { status: "needs_auth" }
+  | { status: "needs_client_registration"; error: string }
+
+export type RaccoonInstalledMcp = {
+  id: string
+  scope: RaccoonMarketplaceScope
+  config: RaccoonMcpServerConfig
+  status?: RaccoonMcpStatus
+}
+
 export type RaccoonPermissionRequest = {
   id: string
   sessionID: string
@@ -262,6 +350,18 @@ export type RaccoonState = {
   rules?: RaccoonRule[]
   models: RaccoonModel[]
   providers: RaccoonProviderInfo[]
+  mcpMarketplace?: {
+    items: RaccoonMarketplaceMcpItem[]
+    installed: RaccoonMarketplaceInstalledMetadata
+    loading?: boolean
+    errors?: string[]
+    lastFetchedAt?: number
+  }
+  mcpInstalled?: {
+    servers: RaccoonInstalledMcp[]
+    loading?: boolean
+    error?: string
+  }
   defaults?: Record<string, string>
   commands?: RaccoonCommand[]
   slashCommands?: RaccoonSlashCommand[]
@@ -327,7 +427,28 @@ export type WebviewToExtension =
       inputs?: Record<string, string>
     }
   | { type: "cancelProviderConnect"; providerID?: string }
+  | { type: "disconnectProvider"; providerID: string }
   | { type: "fetchCustomProviderModels"; requestID: string; baseURL: string; apiKey?: string }
+  | { type: "fetchMcpMarketplace"; force?: boolean }
+  | {
+      type: "installMcpMarketplaceItem"
+      item: RaccoonMarketplaceMcpItem
+      options: {
+        scope: RaccoonMarketplaceScope
+        transport?: "remote" | "package"
+        headers?: Record<string, string>
+        environment?: Record<string, string>
+        variables?: Record<string, string>
+      }
+    }
+  | { type: "removeMcpMarketplaceItem"; item: RaccoonMarketplaceMcpItem; scope: RaccoonMarketplaceScope }
+  | { type: "addMcpServerManual"; id: string; config: RaccoonMcpServerConfig; scope: RaccoonMarketplaceScope }
+  | { type: "fetchMcpInstalled" }
+  | { type: "setMcpServerEnabled"; id: string; scope: RaccoonMarketplaceScope; enabled: boolean }
+  | { type: "connectMcpServer"; id: string }
+  | { type: "disconnectMcpServer"; id: string }
+  | { type: "removeMcpServer"; id: string; scope: RaccoonMarketplaceScope }
+  | { type: "updateMcpServer"; id: string; scope: RaccoonMarketplaceScope; config: RaccoonMcpServerConfig }
   | { type: "requestFileSearch"; requestID: string; query: string; kind?: "file" | "folder" }
   | { type: "openFile"; filePath: string; line?: number; column?: number }
   | { type: "openImage"; url: string; filename?: string; mime?: string }
@@ -367,6 +488,17 @@ export type ExtensionToWebview =
       error?: string
       auth?: boolean
     }
+  | {
+      type: "mcpMarketplaceData"
+      items: RaccoonMarketplaceMcpItem[]
+      installed: RaccoonMarketplaceInstalledMetadata
+      errors?: string[]
+    }
+  | { type: "mcpMarketplaceInstallResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
+  | { type: "mcpMarketplaceRemoveResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
+  | { type: "mcpManualAddResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
+  | { type: "mcpInstalledData"; servers: RaccoonInstalledMcp[]; error?: string }
+  | { type: "mcpServerActionResult"; id: string; success: boolean; error?: string }
   | {
       type: "fileSearchResult"
       requestID: string

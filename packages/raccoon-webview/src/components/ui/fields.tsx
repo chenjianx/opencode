@@ -60,7 +60,7 @@ export function Textarea(props: {
 
 /** Labeled text field: `<label><span/><input/><small/></label>` used across the settings dialogs. */
 export function TextField(props: {
-  label: ReactNode
+  label?: ReactNode
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -71,7 +71,7 @@ export function TextField(props: {
 }) {
   return (
     <label className={`settings-dialog-field ${props.className ?? ""}`.trim()}>
-      <span>{props.label}</span>
+      {props.label ? <span>{props.label}</span> : null}
       <TextInput
         value={props.value}
         onChange={props.onChange}

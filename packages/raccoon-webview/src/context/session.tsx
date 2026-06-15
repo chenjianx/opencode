@@ -28,6 +28,10 @@ const initialState: RaccoonState = {
   commands: [],
   slashCommands: [],
   customProviders: [],
+  mcpMarketplace: {
+    items: [],
+    installed: { project: {}, user: {} },
+  },
   mode: "build",
   loading: true,
 }
@@ -93,6 +97,7 @@ type SessionActionsContextValue = {
     inputs?: Record<string, string>
   }) => void
   cancelProviderConnect: (providerID?: string) => void
+  disconnectProvider: (providerID: string) => void
   configureCustomProvider: (input: {
     providerID: string
     name: string
@@ -128,6 +133,7 @@ function normalizeState(state: RaccoonState): RaccoonState {
     commands: state.commands ?? [],
     slashCommands: state.slashCommands ?? [],
     customProviders: state.customProviders ?? [],
+    mcpMarketplace: state.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } },
     providerAuthMethods: state.providerAuthMethods ?? {},
   }
 }
@@ -196,6 +202,38 @@ export function SessionProvider(props: { children: ReactNode }) {
       if (message.type === "providerConnectFinished") {
         setState((current) => {
           const next = { ...current, error: message.error ?? current.error, loading: false, busy: false }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "mcpMarketplaceData") {
+        setState((current) => {
+          const next = {
+            ...current,
+            mcpMarketplace: {
+              items: message.items,
+              installed: message.installed,
+              loading: false,
+              errors: message.errors,
+              lastFetchedAt: Date.now(),
+            },
+          }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "mcpInstalledData") {
+        setState((current) => {
+          const next = {
+            ...current,
+            mcpInstalled: {
+              servers: message.servers,
+              loading: false,
+              error: message.error,
+            },
+          }
           vscode.setState(next)
           return next
         })
@@ -453,6 +491,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       deleteRule: (scope, name) => vscode.postMessage({ type: "deleteRule", scope, name }),
       connectProvider: (input) => vscode.postMessage({ type: "connectProvider", ...input }),
       cancelProviderConnect: (providerID) => vscode.postMessage({ type: "cancelProviderConnect", providerID }),
+      disconnectProvider: (providerID) => vscode.postMessage({ type: "disconnectProvider", providerID }),
       configureCustomProvider: (input) => vscode.postMessage({ type: "configureCustomProvider", ...input }),
       sendMessage: (text, files, model) => {
         const trimmed = text.trim()

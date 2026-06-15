@@ -190,7 +190,7 @@
   }
 
   .settings-provider-feature {
-    @apply mb-3;
+    @apply mb-2;
   }
 
   .settings-provider-block {
@@ -198,11 +198,23 @@
   }
 
   .settings-provider-row {
-    @apply flex items-center gap-3 px-3 py-[11px];
+    @apply flex min-h-[52px] items-center gap-3 px-3 py-[11px];
+  }
+
+  .settings-provider-actions {
+    @apply flex shrink-0 items-center gap-2;
+  }
+
+  .settings-provider-empty {
+    @apply px-3 py-4 text-[12px] text-[var(--color-muted)];
   }
 
   .settings-provider-mark {
     @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-button)] text-[12px] font-semibold text-[var(--color-muted)];
+  }
+
+  .settings-provider-logo {
+    @apply h-[18px] w-[18px] text-[var(--color-foreground)];
   }
 
   .settings-provider-main {
@@ -221,13 +233,25 @@
     @apply mt-0.5 text-[12px] text-[var(--color-muted)];
   }
 
-  .settings-provider-status,
-  .settings-provider-tag {
-    @apply rounded-[999px] bg-[var(--color-button)] px-2 py-0.5 text-[11px] text-[var(--color-muted)];
+  .settings-provider-status {
+    @apply inline-flex items-center gap-1 text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-provider-status::before {
+    content: "";
+    @apply h-[6px] w-[6px] shrink-0 rounded-full bg-[var(--color-muted)];
   }
 
   .settings-provider-status.connected {
     @apply text-[var(--color-focus)];
+  }
+
+  .settings-provider-status.connected::before {
+    @apply bg-[var(--color-focus)];
+  }
+
+  .settings-provider-tag {
+    @apply rounded-[999px] border border-[var(--color-border)] px-2 py-0.5 text-[11px] text-[var(--color-muted)];
   }
 
   .settings-provider-config {
@@ -268,6 +292,309 @@
   .settings-provider-error,
   .settings-dialog-error {
     @apply border-t border-[var(--color-border)] px-3 py-2 text-[12px] text-[var(--color-error)];
+  }
+
+  .settings-section-header {
+    @apply mb-3 flex flex-wrap items-start justify-between gap-3;
+  }
+
+  .settings-section-header p {
+    @apply m-0 text-[12px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-mcp {
+    @apply flex min-h-0 flex-col;
+  }
+
+  .settings-mcp-toolbar {
+    @apply mb-3 flex flex-wrap gap-2;
+  }
+
+  .settings-mcp-search-wrap {
+    @apply relative min-w-[220px] flex-1;
+  }
+
+  .settings-mcp-search-icon {
+    @apply pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)];
+  }
+
+  .settings-mcp-search {
+    @apply w-full pl-8;
+  }
+
+  .settings-mcp-filter {
+    @apply w-[150px];
+  }
+
+  .settings-mcp-layout {
+    @apply grid min-h-[420px] grid-cols-[minmax(220px,320px)_minmax(0,1fr)] overflow-hidden rounded-[6px] border border-[var(--color-border)] max-[760px]:grid-cols-1;
+  }
+
+  .settings-mcp-list {
+    @apply min-h-0 overflow-auto border-r border-[var(--color-border)] max-[760px]:max-h-[320px] max-[760px]:border-b max-[760px]:border-r-0;
+  }
+
+  .settings-mcp-item {
+    @apply flex w-full items-start gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-3 text-left transition-colors last:border-b-0 hover:bg-[var(--color-hover)];
+  }
+
+  .settings-mcp-item.active {
+    @apply bg-[var(--color-button)];
+    box-shadow: inset 3px 0 0 var(--color-focus);
+  }
+
+  .settings-mcp-avatar {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border text-[11px] font-semibold;
+  }
+
+  .settings-mcp-avatar.lg {
+    @apply h-11 w-11 rounded-[10px] text-[15px];
+  }
+
+  .settings-mcp-item-main {
+    @apply flex min-w-0 flex-1 flex-col gap-1;
+  }
+
+  .settings-mcp-item-titlerow {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .settings-mcp-item-title {
+    @apply min-w-0 truncate text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-item-description {
+    @apply overflow-hidden text-[11px] leading-4 text-[var(--color-muted)];
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .settings-mcp-item-meta {
+    @apply flex flex-wrap gap-1;
+  }
+
+  .settings-mcp-chip {
+    @apply inline-flex items-center gap-1 rounded-[5px] border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 text-[10px] text-[var(--color-muted)];
+  }
+
+  .settings-mcp-installed {
+    @apply inline-flex shrink-0 items-center gap-1 rounded-[999px] bg-[var(--color-success,#3fb950)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-success,#3fb950)];
+  }
+
+  .settings-mcp-installed-list {
+    @apply flex flex-col overflow-auto rounded-[6px] border border-[var(--color-border)];
+  }
+
+  .settings-mcp-installed-item {
+    @apply border-b border-[var(--color-border)] last:border-b-0;
+  }
+
+  .settings-mcp-installed-row {
+    @apply flex items-center justify-between gap-2 px-3 py-2.5;
+  }
+
+  .settings-mcp-installed-main {
+    @apply flex min-w-0 flex-1 items-center gap-2 bg-transparent text-left;
+  }
+
+  .settings-mcp-installed-name {
+    @apply truncate text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-installed-scope,
+  .settings-mcp-installed-type {
+    @apply inline-flex shrink-0 items-center rounded-[999px] bg-[var(--color-button)] px-2 py-0.5 text-[10px] text-[var(--color-muted)];
+  }
+
+  .settings-mcp-installed-actions {
+    @apply flex shrink-0 items-center gap-2;
+  }
+
+  .settings-mcp-installed-detail {
+    @apply flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3;
+  }
+
+  .settings-mcp-status {
+    @apply inline-flex shrink-0 items-center justify-center;
+  }
+
+  .settings-mcp-status.connected {
+    @apply text-[var(--color-success,#3fb950)];
+  }
+
+  .settings-mcp-status.failed {
+    @apply text-[var(--color-error,#f85149)];
+  }
+
+  .settings-mcp-status.needs-auth {
+    @apply text-[var(--color-warning,#d29922)];
+  }
+
+  .settings-mcp-status.disabled {
+    @apply text-[var(--color-muted)];
+  }
+
+  .settings-mcp-detail {
+    @apply min-w-0 overflow-auto px-4 py-3;
+  }
+
+  .settings-mcp-detail-header {
+    @apply flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] pb-3;
+  }
+
+  .settings-mcp-detail-heading {
+    @apply flex min-w-0 items-center gap-3;
+  }
+
+  .settings-mcp-detail-heading-text {
+    @apply min-w-0;
+  }
+
+  .settings-mcp-detail-header h4 {
+    @apply m-0 truncate text-[15px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-detail-header p {
+    @apply m-0 mt-1 break-all font-mono text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-mcp-actions {
+    @apply flex shrink-0 gap-2;
+  }
+
+  .settings-mcp-description {
+    @apply my-3 text-[12px] leading-5 text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-tags {
+    @apply mb-3 flex flex-wrap gap-1.5;
+  }
+
+  .settings-mcp-tags span {
+    @apply inline-flex items-center gap-1 rounded-[999px] bg-[var(--color-button)] px-2 py-0.5 text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-mcp-links {
+    @apply mb-3 flex flex-wrap gap-2 text-[12px];
+  }
+
+  .settings-mcp-links a {
+    @apply text-[var(--color-focus)] underline-offset-2 hover:underline;
+  }
+
+  .settings-mcp-transport {
+    @apply flex flex-col gap-3;
+  }
+
+  .settings-mcp-transport > div {
+    @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2.5;
+  }
+
+  .settings-mcp-transport-title {
+    @apply mb-2 text-[12px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-transport code {
+    @apply mb-1 block break-all rounded-[4px] bg-[var(--color-button)] px-2 py-1 font-mono text-[11px] text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-transport p,
+  .settings-empty {
+    @apply m-0 text-[12px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-empty {
+    @apply p-3;
+  }
+
+  .settings-mcp-install-dialog {
+    @apply self-center w-[min(680px,calc(100vw-28px))] max-h-[min(620px,100%)];
+  }
+
+  .settings-mcp-install-dialog .settings-dialog-body {
+    @apply flex flex-col gap-3;
+  }
+
+  /* Fields default to flex-1 for the horizontal provider-config row; in this
+     vertical dialog body that makes each one stretch to fill the height. Keep
+     them at their natural height instead. */
+  .settings-mcp-install-dialog .settings-dialog-field {
+    @apply flex-none;
+  }
+
+  .settings-mcp-install-dialog .settings-dialog-field .settings-provider-input,
+  .settings-mcp-install-dialog .settings-dialog-field .settings-select {
+    @apply w-full;
+  }
+
+  .settings-mcp-preview {
+    @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2;
+  }
+
+  .settings-mcp-preview pre {
+    @apply m-0 max-h-[220px] overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-4 text-[var(--color-foreground)];
+  }
+
+  /* MCP sub-tabs, manual add, and richer detail ------------------------- */
+  .settings-mcp-shell {
+    @apply flex h-full min-h-0 flex-col gap-3;
+  }
+
+  .settings-mcp-tabs {
+    @apply flex gap-1 border-b border-[var(--color-border)];
+  }
+
+  .settings-mcp-tab {
+    @apply -mb-px border-b-2 border-transparent px-3 py-2 text-[12px] font-medium text-[var(--color-muted)];
+  }
+
+  .settings-mcp-tab.active {
+    @apply border-[var(--color-focus)] text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-modes {
+    @apply flex gap-1;
+  }
+
+  .settings-mcp-mode {
+    @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-1.5 text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-mcp-mode.active {
+    @apply border-[var(--color-focus)] bg-[var(--color-button)] text-[var(--color-foreground)];
+  }
+
+  .settings-mcp-json {
+    @apply min-h-[180px] w-full resize-y font-mono text-[12px] leading-4;
+  }
+
+  .settings-mcp-headers {
+    @apply flex flex-col gap-2 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2.5;
+  }
+
+  .settings-mcp-header-row {
+    @apply flex items-center gap-2;
+  }
+
+  .settings-mcp-header-row .settings-provider-input {
+    @apply flex-1;
+  }
+
+  .settings-mcp-env-row {
+    @apply mb-1.5 flex flex-col gap-1;
+  }
+
+  .settings-mcp-env-tags {
+    @apply flex gap-1.5 text-[10px] text-[var(--color-muted)];
+  }
+
+  .settings-mcp-env-tags span {
+    @apply rounded-[4px] bg-[var(--color-button)] px-1.5 py-0.5;
+  }
+
+  .settings-mcp-success {
+    @apply flex items-center gap-1.5 text-[12px] text-[var(--color-foreground)];
   }
 
   /* Rules management ----------------------------------------------------- */
@@ -429,10 +756,6 @@
   }
 
 
-  .settings-provider-list {
-    @apply border-t border-[var(--color-border)];
-  }
-
   .settings-dialog-backdrop {
     @apply absolute inset-0 z-30 flex items-stretch justify-center bg-black/20 p-2;
   }
@@ -530,7 +853,7 @@
   }
 
   .settings-dialog-header {
-    @apply flex shrink-0 items-center gap-3 border-b border-[var(--color-border)] px-3 py-3;
+    @apply flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-border)] px-3 py-3;
   }
 
   .settings-dialog-back,

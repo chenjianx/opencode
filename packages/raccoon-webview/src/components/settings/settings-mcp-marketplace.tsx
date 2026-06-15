@@ -1,0 +1,576 @@
+import { useEffect, useMemo, useState } from "react"
+import { ArrowClockwise, CheckCircle, CloudArrowDown, DownloadSimple, MagnifyingGlass, Package, Trash } from "@phosphor-icons/react"
+import { useLanguage } from "../../context/language"
+import { useSession } from "../../context/session"
+import { useVSCode } from "../../context/vscode"
+import type { RaccoonMarketplaceMcpItem, RaccoonMarketplaceScope } from "../../protocol"
+import { Button } from "../ui"
+import { SelectField, TextField, TextInput } from "./settings-common"
+import { SettingsDialog } from "./settings-dialog"
+
+// Deterministic accent hue per server id, so each MCP gets a stable colored
+// avatar without bundling per-server artwork.
+function avatarHue(id: string) {
+  let hash = 0
+  for (let index = 0; index < id.length; index++) hash = (hash * 31 + id.charCodeAt(index)) % 360
+  return hash
+}
+
+function McpAvatar(props: { item: RaccoonMarketplaceMcpItem; size?: "sm" | "lg" }) {
+  const label = (props.item.title ?? props.item.name).trim()
+  const initials = label.slice(0, 2).toUpperCase()
+  const hue = avatarHue(props.item.id)
+  return (
+    <span
+      className={`settings-mcp-avatar ${props.size === "lg" ? "lg" : ""}`.trim()}
+      style={{
+        background: `hsl(${hue} 60% 50% / 0.18)`,
+        color: `hsl(${hue} 70% 70%)`,
+        borderColor: `hsl(${hue} 60% 50% / 0.35)`,
+      }}
+      aria-hidden="true"
+    >
+      {initials}
+    </span>
+  )
+}
+
+type Transport = "package" | "remote"
+
+type InstallDraft = {
+  item: RaccoonMarketplaceMcpItem
+  scope: RaccoonMarketplaceScope
+  transport: Transport
+  environment: Record<string, string>
+  headers: Record<string, string>
+  variables: Record<string, string>
+}
+
+export function SettingsMcpMarketplace() {
+  const language = useLanguage()
+  const session = useSession()
+  const vscode = useVSCode()
+  const marketplace = session.state.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } }
+  const [query, setQuery] = useState("")
+  const [selectedID, setSelectedID] = useState<string>()
+  const [draft, setDraft] = useState<InstallDraft>()
+  const [pendingID, setPendingID] = useState<string>()
+  const [resultError, setResultError] = useState<string>()
+
+  useEffect(() => {
+    if ((session.state.mcpMarketplace?.items.length ?? 0) === 0 && !session.state.mcpMarketplace?.loading) {
+      vscode.postMessage({ type: "fetchMcpMarketplace" })
+    }
+  }, [session.state.mcpMarketplace?.items.length, session.state.mcpMarketplace?.loading, vscode])
+
+  useEffect(() => {
+    return vscode.onMessage((message) => {
+      if (message.type === "mcpMarketplaceInstallResult") {
+        setPendingID(undefined)
+        setResultError(message.error)
+        if (message.success) setDraft(undefined)
+        return
+      }
+      if (message.type === "mcpMarketplaceRemoveResult") {
+        setPendingID(undefined)
+        setResultError(message.error)
+      }
+    })
+  }, [vscode])
+
+  const filtered = useMemo(() => {
+    const text = query.trim().toLowerCase()
+    return marketplace.items.filter((item) => {
+      if (!text) return true
+      return `${item.title ?? ""} ${item.name} ${item.description}`.toLowerCase().includes(text)
+    })
+  }, [marketplace.items, query])
+
+  const selected = filtered.find((item) => item.id === selectedID) ?? filtered[0]
+  const installedScope = selected ? installedIn(marketplace.installed, selected.id) : undefined
+
+  const refresh = () => {
+    setResultError(undefined)
+    vscode.postMessage({ type: "fetchMcpMarketplace", force: true })
+  }
+
+  const openInstall = (item: RaccoonMarketplaceMcpItem) => {
+    setResultError(undefined)
+    const transport: Transport = item.packages.length > 0 ? "package" : "remote"
+    setDraft({
+      item,
+      scope: "project",
+      transport,
+      environment: Object.fromEntries(environmentVariables(item).map((env) => [env.name, ""])),
+      headers: Object.fromEntries(remoteHeaders(item).map((header) => [header.name, ""])),
+      variables: Object.fromEntries(itemVariables(item).map((entry) => [entry.name, ""])),
+    })
+  }
+
+  const install = () => {
+    if (!draft) return
+    setPendingID(draft.item.id)
+    setResultError(undefined)
+    vscode.postMessage({
+      type: "installMcpMarketplaceItem",
+      item: draft.item,
+      options: {
+        scope: draft.scope,
+        transport: draft.transport,
+        variables: draft.variables,
+        ...(draft.transport === "remote" ? { headers: draft.headers } : { environment: draft.environment }),
+      },
+    })
+  }
+
+  const remove = (item: RaccoonMarketplaceMcpItem, scope: RaccoonMarketplaceScope) => {
+    setPendingID(item.id)
+    setResultError(undefined)
+    vscode.postMessage({ type: "removeMcpMarketplaceItem", item, scope })
+  }
+
+  return (
+    <section className="settings-mcp">
+      <div className="settings-section-header">
+        <div>
+          <h3>{language.t("settings.mcpMarketplace.title")}</h3>
+          <p>{language.t("settings.mcpMarketplace.subtitle")}</p>
+        </div>
+        <Button onClick={refresh} disabled={marketplace.loading} icon={<ArrowClockwise size={14} weight="bold" />}>
+          {marketplace.loading ? language.t("settings.mcpMarketplace.loading") : language.t("settings.mcpMarketplace.refresh")}
+        </Button>
+      </div>
+
+      <div className="settings-mcp-toolbar">
+        <div className="settings-mcp-search-wrap">
+          <MagnifyingGlass size={14} className="settings-mcp-search-icon" />
+          <TextInput
+            value={query}
+            onChange={setQuery}
+            placeholder={language.t("settings.mcpMarketplace.search")}
+            className="settings-provider-input settings-mcp-search"
+            ariaLabel={language.t("settings.mcpMarketplace.search")}
+          />
+        </div>
+      </div>
+
+      {marketplace.errors?.length ? <div className="settings-dialog-error">{marketplace.errors.join("\n")}</div> : null}
+      {resultError ? <div className="settings-dialog-error">{resultError}</div> : null}
+
+      <div className="settings-mcp-layout">
+        <div className="settings-mcp-list">
+          {filtered.length === 0 ? (
+            <div className="settings-empty">{language.t("settings.mcpMarketplace.empty")}</div>
+          ) : (
+            filtered.map((item) => {
+              const scope = installedIn(marketplace.installed, item.id)
+              return (
+                <button
+                  type="button"
+                  key={item.id}
+                  className={`settings-mcp-item ${selected?.id === item.id ? "active" : ""}`.trim()}
+                  onClick={() => setSelectedID(item.id)}
+                >
+                  <McpAvatar item={item} />
+                  <span className="settings-mcp-item-main">
+                    <span className="settings-mcp-item-titlerow">
+                      <span className="settings-mcp-item-title">{item.title ?? item.name}</span>
+                      {scope ? (
+                        <span className="settings-mcp-installed">
+                          <CheckCircle size={12} weight="fill" /> {language.t(`settings.mcpMarketplace.scope.${scope}`)}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="settings-mcp-item-description">{item.description}</span>
+                    <span className="settings-mcp-item-meta">
+                      {item.packages.length > 0 ? (
+                        <span className="settings-mcp-chip">
+                          <Package size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.package")}
+                        </span>
+                      ) : null}
+                      {item.remotes.length > 0 ? (
+                        <span className="settings-mcp-chip">
+                          <CloudArrowDown size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.remote")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                </button>
+              )
+            })
+          )}
+        </div>
+
+        <div className="settings-mcp-detail">
+          {selected ? (
+            <>
+              <div className="settings-mcp-detail-header">
+                <div className="settings-mcp-detail-heading">
+                  <McpAvatar item={selected} size="lg" />
+                  <div className="settings-mcp-detail-heading-text">
+                    <h4>{selected.title ?? selected.name}</h4>
+                    <p>{selected.name}</p>
+                  </div>
+                </div>
+                <div className="settings-mcp-actions">
+                  {installedScope ? (
+                    <Button
+                      disabled={pendingID === selected.id}
+                      onClick={() => remove(selected, installedScope)}
+                      icon={<Trash size={14} weight="bold" />}
+                    >
+                      {language.t("settings.mcpMarketplace.remove")}
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={!canInstallItem(selected) || pendingID === selected.id}
+                      onClick={() => openInstall(selected)}
+                      icon={<DownloadSimple size={14} weight="bold" />}
+                    >
+                      {language.t("settings.mcpMarketplace.install")}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <p className="settings-mcp-description">{selected.description}</p>
+              <div className="settings-mcp-tags">
+                {selected.packages.length > 0 ? <span><Package size={12} /> package</span> : null}
+                {selected.version ? <span>v{selected.version}</span> : null}
+              </div>
+              <DetailLinks item={selected} />
+              <DetailPackages item={selected} />
+              <DetailRemotes item={selected} />
+              <DetailEnvironment item={selected} />
+              <DetailVariables item={selected} />
+            </>
+          ) : (
+            <div className="settings-empty">{language.t("settings.mcpMarketplace.empty")}</div>
+          )}
+        </div>
+      </div>
+
+      {draft ? (
+        <InstallDialog
+          draft={draft}
+          installing={pendingID === draft.item.id}
+          error={resultError}
+          onChange={setDraft}
+          onInstall={install}
+          onClose={() => setDraft(undefined)}
+        />
+      ) : null}
+    </section>
+  )
+}
+
+function DetailLinks(props: { item: RaccoonMarketplaceMcpItem }) {
+  const links = [
+    props.item.websiteUrl ? { label: "Website", url: props.item.websiteUrl } : undefined,
+    props.item.repositoryUrl ? { label: "Repository", url: props.item.repositoryUrl } : undefined,
+  ].filter((link): link is { label: string; url: string } => !!link)
+  if (links.length === 0) return null
+  return (
+    <div className="settings-mcp-links">
+      {links.map((link) => (
+        <a href={link.url} key={link.url}>
+          {link.label}
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function DetailPackages(props: { item: RaccoonMarketplaceMcpItem }) {
+  const language = useLanguage()
+  if (props.item.packages.length === 0) return null
+  return (
+    <div className="settings-mcp-transport">
+      <div>
+        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.packages")}</div>
+        {props.item.packages.map((pkg) => (
+          <code key={`${pkg.registryType}:${pkg.identifier}:${pkg.version ?? ""}`}>
+            {pkg.registryType}: {pkg.identifier}
+            {pkg.version ? `@${pkg.version}` : ""}
+          </code>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DetailRemotes(props: { item: RaccoonMarketplaceMcpItem }) {
+  const language = useLanguage()
+  if (props.item.remotes.length === 0) return null
+  return (
+    <div className="settings-mcp-transport">
+      <div>
+        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.remotes")}</div>
+        {props.item.remotes.map((remote) => (
+          <code key={`${remote.type}:${remote.url}`}>
+            {remote.type}: {remote.url}
+          </code>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DetailEnvironment(props: { item: RaccoonMarketplaceMcpItem }) {
+  const language = useLanguage()
+  const env = props.item.environmentVariables.filter((entry) => entry.name)
+  if (env.length === 0) return null
+  return (
+    <div className="settings-mcp-transport">
+      <div>
+        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.environment")}</div>
+        {env.map((entry) => (
+          <div className="settings-mcp-env-row" key={entry.name}>
+            <code>{entry.name}</code>
+            <span className="settings-mcp-env-tags">
+              <span>{entry.isRequired ? language.t("settings.mcpMarketplace.required") : language.t("settings.mcpMarketplace.optional")}</span>
+              {entry.isSecret ? <span>{language.t("settings.mcpMarketplace.secret")}</span> : null}
+            </span>
+            {entry.description ? <small>{entry.description}</small> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function DetailVariables(props: { item: RaccoonMarketplaceMcpItem }) {
+  const language = useLanguage()
+  const variables = itemVariables(props.item)
+  if (variables.length === 0) return null
+  return (
+    <div className="settings-mcp-transport">
+      <div>
+        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.variables")}</div>
+        {variables.map((entry) => (
+          <div className="settings-mcp-env-row" key={entry.name}>
+            <code>{entry.name}</code>
+            <span className="settings-mcp-env-tags">
+              <span>{entry.isRequired ? language.t("settings.mcpMarketplace.required") : language.t("settings.mcpMarketplace.optional")}</span>
+              {entry.isSecret ? <span>{language.t("settings.mcpMarketplace.secret")}</span> : null}
+            </span>
+            {entry.description ? <small>{entry.description}</small> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InstallDialog(props: {
+  draft: InstallDraft
+  installing: boolean
+  error?: string
+  onChange: (draft: InstallDraft) => void
+  onInstall: () => void
+  onClose: () => void
+}) {
+  const language = useLanguage()
+  const item = props.draft.item
+  const transport = props.draft.transport
+  const hasPackage = item.packages.length > 0
+  const hasRemote = item.remotes.length > 0
+  const config = transport === "remote"
+    ? installRemoteConfig(item, props.draft.headers, props.draft.variables)
+    : installConfig(item, props.draft.environment, props.draft.variables)
+  const environment = transport === "package" ? environmentVariables(item) : []
+  const headers = transport === "remote" ? remoteHeaders(item) : []
+  const variables = itemVariables(item)
+  const requiredEnvOk = environment.filter((env) => env.isRequired || env.isSecret).every((env) => props.draft.environment[env.name]?.trim())
+  const requiredHeadersOk = headers.filter((header) => header.isRequired).every((header) => props.draft.headers[header.name]?.trim())
+  const requiredVariablesOk = variables.filter((entry) => entry.isRequired || entry.isSecret).every((entry) => props.draft.variables[entry.name]?.trim())
+  const canInstall = requiredEnvOk && requiredHeadersOk && requiredVariablesOk
+  const preview = { mcp: { [item.id]: config } }
+
+  return (
+    <SettingsDialog
+      titleId="settings-mcp-install-title"
+      title={language.t("settings.mcpMarketplace.installTitle", { name: item.title ?? item.name })}
+      subtitle={item.name}
+      onClose={props.onClose}
+      className="settings-mcp-install-dialog"
+      footer={
+        <>
+          <Button onClick={props.onClose}>{language.t("common.cancel")}</Button>
+          <Button disabled={!canInstall || props.installing} onClick={props.onInstall}>
+            {props.installing ? language.t("settings.mcpMarketplace.installing") : language.t("settings.mcpMarketplace.install")}
+          </Button>
+        </>
+      }
+    >
+      <SelectField
+        label={language.t("settings.mcpMarketplace.scope")}
+        value={props.draft.scope}
+        onChange={(scope) => props.onChange({ ...props.draft, scope: scope as RaccoonMarketplaceScope })}
+        options={[
+          { value: "project", label: language.t("settings.mcpMarketplace.scope.project") },
+          { value: "user", label: language.t("settings.mcpMarketplace.scope.user") },
+        ]}
+      />
+      {hasPackage && hasRemote ? (
+        <SelectField
+          label={language.t("settings.mcpMarketplace.transport")}
+          value={transport}
+          onChange={(value) => props.onChange({ ...props.draft, transport: value as Transport })}
+          options={[
+            { value: "package", label: language.t("settings.mcpMarketplace.transport.package") },
+            { value: "remote", label: language.t("settings.mcpMarketplace.transport.remote") },
+          ]}
+        />
+      ) : null}
+      {environment.map((env) => (
+        <TextField
+          key={env.name}
+          label={env.description}
+          value={props.draft.environment[env.name] ?? ""}
+          type={env.isSecret ? "password" : "text"}
+          placeholder={env.placeholder ?? env.name}
+          onChange={(value) =>
+            props.onChange({ ...props.draft, environment: { ...props.draft.environment, [env.name]: value } })
+          }
+        />
+      ))}
+      {headers.map((header) => (
+        <TextField
+          key={header.name}
+          label={header.description}
+          value={props.draft.headers[header.name] ?? ""}
+          type={header.isSecret ? "password" : "text"}
+          placeholder={header.placeholder ?? header.name}
+          onChange={(value) => props.onChange({ ...props.draft, headers: { ...props.draft.headers, [header.name]: value } })}
+        />
+      ))}
+      {variables.map((entry) => (
+        <TextField
+          key={entry.name}
+          label={entry.description ?? entry.name}
+          value={props.draft.variables[entry.name] ?? ""}
+          type={entry.isSecret ? "password" : "text"}
+          placeholder={entry.placeholder ?? entry.name}
+          onChange={(value) =>
+            props.onChange({ ...props.draft, variables: { ...props.draft.variables, [entry.name]: value } })
+          }
+        />
+      ))}
+      <div className="settings-mcp-preview">
+        <div className="settings-dialog-section-title">{language.t("settings.mcpMarketplace.configPreview")}</div>
+        <pre>{JSON.stringify(preview, null, 2)}</pre>
+      </div>
+      {props.error ? <div className="settings-dialog-error">{props.error}</div> : null}
+    </SettingsDialog>
+  )
+}
+
+function canInstallItem(item: RaccoonMarketplaceMcpItem) {
+  return supportedNpmPackage(item) !== undefined || item.remotes.some((remote) => remote.url)
+}
+
+// Mirrors installer.ts so the live preview matches what gets written to disk.
+function substituteTokens(text: string, variables: Record<string, string>) {
+  return text.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => variables[key] ?? "")
+}
+
+function applyArgTemplate(args: string[], variables: Record<string, string>, declared: RaccoonMarketplaceMcpItem["variables"]) {
+  const optional = new Set(declared.filter((entry) => !(entry.isRequired || entry.isSecret)).map((entry) => entry.name))
+  const result: string[] = []
+  for (const arg of args) {
+    const soleToken = arg.match(/^\{\{\s*([^}]+?)\s*\}\}$/)
+    const key = soleToken?.[1]
+    if (key) {
+      const value = variables[key]?.trim()
+      if (!value && optional.has(key)) {
+        const last = result[result.length - 1]
+        if (last !== undefined && last.startsWith("-")) result.pop()
+        continue
+      }
+    }
+    result.push(substituteTokens(arg, variables))
+  }
+  return result
+}
+
+function installConfig(item: RaccoonMarketplaceMcpItem, environment: Record<string, string>, variables: Record<string, string>) {
+  const pkg = supportedNpmPackage(item)
+  if (pkg) {
+    const clean = cleanRecord(environment)
+    return {
+      type: "local",
+      command: pkg.runtimeArguments?.length
+        ? applyArgTemplate(pkg.runtimeArguments, variables, item.variables)
+        : pkg.registryType.toLowerCase() === "npm"
+          ? ["npx", "-y", packageSpecifier(pkg.identifier, pkg.version)]
+          : ["uvx", pythonSpecifier(pkg.identifier, pkg.version)],
+      ...(Object.keys(clean).length > 0 ? { environment: clean } : {}),
+    }
+  }
+  return { type: "local", command: [] }
+}
+
+function installRemoteConfig(item: RaccoonMarketplaceMcpItem, headers: Record<string, string>, variables: Record<string, string>) {
+  const remote = item.remotes[0]
+  const clean = cleanRecord(headers)
+  return {
+    type: "remote",
+    url: remote?.url ? substituteTokens(remote.url, variables) : "",
+    ...(Object.keys(clean).length > 0 ? { headers: clean } : {}),
+  }
+}
+
+function supportedNpmPackage(item: RaccoonMarketplaceMcpItem) {
+  return item.packages.find((pkg) => pkg.registryType.toLowerCase() === "npm" && pkg.transport?.type === "stdio")
+    ?? item.packages.find((pkg) => pkg.registryType.toLowerCase() === "pypi" && pkg.transport?.type === "stdio" && pkg.runtimeHint === "uvx")
+}
+
+function packageSpecifier(identifier: string, version: string | undefined) {
+  if (!version) return identifier
+  return `${identifier}@${version}`
+}
+
+function pythonSpecifier(identifier: string, version: string | undefined) {
+  if (!version) return identifier
+  return `${identifier}==${version}`
+}
+
+function environmentVariables(item: RaccoonMarketplaceMcpItem) {
+  const seen = new Set<string>()
+  return item.environmentVariables.filter((env) => {
+    if (!env.name || seen.has(env.name)) return false
+    seen.add(env.name)
+    return true
+  })
+}
+
+function itemVariables(item: RaccoonMarketplaceMcpItem) {
+  const seen = new Set<string>()
+  return (item.variables ?? []).filter((entry) => {
+    if (!entry.name || seen.has(entry.name)) return false
+    seen.add(entry.name)
+    return true
+  })
+}
+
+function remoteHeaders(item: RaccoonMarketplaceMcpItem) {
+  const seen = new Set<string>()
+  return [...item.headers, ...item.remotes.flatMap((remote) => remote.headers ?? [])].filter((header) => {
+    if (!header.name || seen.has(header.name)) return false
+    seen.add(header.name)
+    return true
+  })
+}
+
+function installedIn(
+  installed: { project: Record<string, { type: "mcp" }>; user: Record<string, { type: "mcp" }> },
+  id: string,
+): RaccoonMarketplaceScope | undefined {
+  if (installed.project[id]) return "project"
+  if (installed.user[id]) return "user"
+  return undefined
+}
+
+function cleanRecord(record: Record<string, string>) {
+  return Object.fromEntries(Object.entries(record).filter((entry) => entry[0].trim() && entry[1].trim()))
+}

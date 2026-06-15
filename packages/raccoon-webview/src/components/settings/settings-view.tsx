@@ -7,6 +7,7 @@ import { SettingsAgents } from "./settings-agents"
 import { SettingsAutocomplete } from "./settings-autocomplete"
 import { SettingsRules } from "./settings-rules"
 import { SettingsLanguage } from "./settings-language"
+import { SettingsMcp } from "./settings-mcp"
 import { SettingsModels } from "./settings-models"
 import { SettingsProviders } from "./settings-providers"
 
@@ -19,7 +20,7 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "language" | "autocomplete">("models")
+  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "mcp" | "language" | "autocomplete">("models")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.defaultModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
@@ -76,6 +77,12 @@ export function SettingsView() {
               <Plugs size={16} weight="bold" />
             </span>
             <span>{language.t("settings.nav.providers")}</span>
+          </button>
+          <button type="button" className={`settings-nav-item ${tab === "mcp" ? "active" : ""}`} onClick={() => setTab("mcp")}>
+            <span className="settings-nav-icon">
+              <Plugs size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.mcp")}</span>
           </button>
           <button type="button" className={`settings-nav-item ${tab === "models" ? "active" : ""}`} onClick={() => setTab("models")}>
             <span className="settings-nav-icon">
@@ -144,6 +151,8 @@ export function SettingsView() {
               onToggleRule={session.toggleRule}
               onDeleteRule={session.deleteRule}
             />
+          ) : tab === "mcp" ? (
+            <SettingsMcp />
           ) : (
             <SettingsProviders />
           )}

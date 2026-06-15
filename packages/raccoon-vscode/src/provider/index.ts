@@ -14,6 +14,8 @@ import type {
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
 import { RaccoonConnectionService, type ConnectionState } from "../services/cli-backend/index.js"
+import { MarketplaceService } from "../services/marketplace/index.js"
+import type { McpStatus } from "../services/marketplace/index.js"
 import {
   mapPart,
   messageText,
@@ -91,6 +93,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   private readonly config: RaccoonProviderConfig
   private readonly rules: RaccoonRulesConfig
   private readonly sessions: RaccoonSessionController
+  private readonly marketplace = new MarketplaceService()
   private state: RaccoonState = {
     sessions: [],
     messages: [],
@@ -178,6 +181,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       stopPromptRefresh: (sessionID) => this.sessions.stopPromptRefresh(sessionID),
       clearPromptRefresh: (sessionID) => this.sessions.clearPromptRefresh(sessionID),
       scheduleEventRefresh: () => this.scheduleEventRefresh(),
+      refreshMcpInstalled: () => this.refreshMcpInstalled(),
       postMessage: (message) => this.webviewHost.post("chat", message),
       onReauthRequired: () => this.handleReauthRequired(),
     })
@@ -216,7 +220,18 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       deleteRule: (message) => this.rules.deleteRule(message.scope, message.name),
       connectProvider: (message) => this.config.connectProvider(message),
       cancelProviderConnect: (providerID) => this.config.cancelProviderConnect(providerID),
+      disconnectProvider: (providerID) => this.config.disconnectProvider(providerID),
       fetchCustomProviderModels: (message, source) => this.fetchCustomProviderModels(message, source),
+      fetchMcpMarketplace: (force, source) => this.fetchMcpMarketplace(force, source),
+      installMcpMarketplaceItem: (message, source) => this.installMcpMarketplaceItem(message, source),
+      removeMcpMarketplaceItem: (message, source) => this.removeMcpMarketplaceItem(message, source),
+      addMcpServerManual: (message, source) => this.addMcpServerManual(message, source),
+      fetchMcpInstalled: (source) => this.fetchMcpInstalled(source),
+      setMcpServerEnabled: (message, source) => this.setMcpServerEnabled(message, source),
+      connectMcpServer: (message, source) => this.connectMcpServer(message, source),
+      disconnectMcpServer: (message, source) => this.disconnectMcpServer(message, source),
+      removeMcpServer: (message, source) => this.removeMcpServer(message, source),
+      updateMcpServer: (message, source) => this.updateMcpServer(message, source),
       configureCustomProvider: (message) => this.config.configureCustomProvider(message),
       requestFileSearch: (requestID, query, kind) => this.requestFileSearch(requestID, query, kind),
       openFile: (filePath, line, column) => this.openFile(filePath, line, column),
@@ -596,6 +611,249 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async fetchMcpMarketplace(_force: boolean | undefined, source: RaccoonWebviewSource) {
+    this.state = {
+      ...this.state,
+      mcpMarketplace: {
+        items: this.state.mcpMarketplace?.items ?? [],
+        installed: this.state.mcpMarketplace?.installed ?? { project: {}, user: {} },
+        loading: true,
+        errors: undefined,
+        lastFetchedAt: this.state.mcpMarketplace?.lastFetchedAt,
+      },
+    }
+    this.post()
+    try {
+      const data = await this.marketplace.fetchData(await this.client(), this.directory())
+      this.state = {
+        ...this.state,
+        mcpMarketplace: {
+          items: data.items,
+          installed: data.installed,
+          loading: false,
+          errors: data.errors,
+          lastFetchedAt: Date.now(),
+        },
+      }
+      this.post()
+      this.webviewHost.post(source, { type: "mcpMarketplaceData", ...data } satisfies ExtensionToWebview)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const mcpMarketplace = {
+        items: this.state.mcpMarketplace?.items ?? [],
+        installed: this.state.mcpMarketplace?.installed ?? { project: {}, user: {} },
+        loading: false,
+        errors: [message],
+        lastFetchedAt: this.state.mcpMarketplace?.lastFetchedAt,
+      }
+      this.state = {
+        ...this.state,
+        mcpMarketplace,
+      }
+      this.post()
+      this.webviewHost.post(source, {
+        type: "mcpMarketplaceData",
+        items: mcpMarketplace.items,
+        installed: mcpMarketplace.installed,
+        errors: [message],
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async installMcpMarketplaceItem(
+    message: Extract<WebviewToExtension, { type: "installMcpMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const result = await this.marketplace.install(await this.client(), this.directory(), message.item, message.options)
+      this.webviewHost.post(source, { type: "mcpMarketplaceInstallResult", ...result } satisfies ExtensionToWebview)
+      if (!result.success) return
+      await this.refresh()
+      await this.fetchMcpMarketplace(false, source)
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "mcpMarketplaceInstallResult",
+        id: message.item.id,
+        scope: message.options.scope,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async removeMcpMarketplaceItem(
+    message: Extract<WebviewToExtension, { type: "removeMcpMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const result = await this.marketplace.remove(await this.client(), this.directory(), message.item, message.scope)
+      this.webviewHost.post(source, { type: "mcpMarketplaceRemoveResult", ...result } satisfies ExtensionToWebview)
+      if (!result.success) return
+      await this.refresh()
+      await this.fetchMcpMarketplace(false, source)
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "mcpMarketplaceRemoveResult",
+        id: message.item.id,
+        scope: message.scope,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async addMcpServerManual(
+    message: Extract<WebviewToExtension, { type: "addMcpServerManual" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const result = await this.marketplace.installManual(await this.client(), this.directory(), {
+        id: message.id,
+        config: message.config,
+        scope: message.scope,
+      })
+      this.webviewHost.post(source, { type: "mcpManualAddResult", ...result } satisfies ExtensionToWebview)
+      if (!result.success) return
+      await this.refresh()
+      await this.fetchMcpMarketplace(false, source)
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "mcpManualAddResult",
+        id: message.id,
+        scope: message.scope,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async fetchMcpInstalled(source: RaccoonWebviewSource) {
+    this.state = {
+      ...this.state,
+      mcpInstalled: {
+        servers: this.state.mcpInstalled?.servers ?? [],
+        loading: true,
+        error: undefined,
+      },
+    }
+    this.post()
+    try {
+      const withStatus = await this.loadMcpInstalled()
+      this.state = {
+        ...this.state,
+        mcpInstalled: { servers: withStatus, loading: false, error: undefined },
+      }
+      this.post()
+      this.webviewHost.post(source, { type: "mcpInstalledData", servers: withStatus } satisfies ExtensionToWebview)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.state = {
+        ...this.state,
+        mcpInstalled: { servers: this.state.mcpInstalled?.servers ?? [], loading: false, error: message },
+      }
+      this.post()
+      this.webviewHost.post(source, {
+        type: "mcpInstalledData",
+        servers: this.state.mcpInstalled?.servers ?? [],
+        error: message,
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  // Triggered by the mcp.tools.changed event. Only refreshes when the Installed
+  // panel has already been opened, and broadcasts to every webview.
+  private async refreshMcpInstalled() {
+    if (!this.state.mcpInstalled) return
+    try {
+      const withStatus = await this.loadMcpInstalled()
+      this.state = {
+        ...this.state,
+        mcpInstalled: { servers: withStatus, loading: false, error: undefined },
+      }
+      this.post()
+    } catch (error) {
+      this.report(error)
+    }
+  }
+
+  private async loadMcpInstalled() {
+    const client = await this.client()
+    const directory = this.directory()
+    const [servers, status] = await Promise.all([
+      this.marketplace.listInstalled(client, directory),
+      this.marketplace.status(client, directory).catch(() => ({}) as Record<string, McpStatus>),
+    ])
+    return servers.map((server) => ({ ...server, status: status[server.id] }))
+  }
+
+  private async setMcpServerEnabled(
+    message: Extract<WebviewToExtension, { type: "setMcpServerEnabled" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    await this.runMcpServerAction(message.id, source, async () => {
+      await this.marketplace.setEnabled(await this.client(), this.directory(), message.id, message.scope, message.enabled)
+    })
+  }
+
+  private async connectMcpServer(
+    message: Extract<WebviewToExtension, { type: "connectMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    await this.runMcpServerAction(message.id, source, async () => {
+      await this.marketplace.connect(await this.client(), this.directory(), message.id)
+    })
+  }
+
+  private async disconnectMcpServer(
+    message: Extract<WebviewToExtension, { type: "disconnectMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    await this.runMcpServerAction(message.id, source, async () => {
+      await this.marketplace.disconnect(await this.client(), this.directory(), message.id)
+    })
+  }
+
+  private async removeMcpServer(
+    message: Extract<WebviewToExtension, { type: "removeMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    await this.runMcpServerAction(message.id, source, async () => {
+      await this.marketplace.removeById(await this.client(), this.directory(), message.id, message.scope)
+    })
+  }
+
+  private async updateMcpServer(
+    message: Extract<WebviewToExtension, { type: "updateMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    await this.runMcpServerAction(message.id, source, async () => {
+      const result = await this.marketplace.updateConfig(
+        await this.client(),
+        this.directory(),
+        message.id,
+        message.scope,
+        message.config,
+      )
+      if (!result.success) throw new Error(result.error ?? "Failed to update MCP server")
+    })
+  }
+
+  private async runMcpServerAction(id: string, source: RaccoonWebviewSource, action: () => Promise<unknown>) {
+    try {
+      await action()
+      this.webviewHost.post(source, { type: "mcpServerActionResult", id, success: true } satisfies ExtensionToWebview)
+      await this.refresh()
+      await this.fetchMcpInstalled(source)
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "mcpServerActionResult",
+        id,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
   private report(error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
     this.output.appendLine(message)
@@ -633,6 +891,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     this.autocompleteConfigListener.dispose()
     this.sessions.dispose()
     this.streams.dispose()
+    this.marketplace.dispose()
     void this.stopEventStream()
     this.didChangeState.dispose()
   }

@@ -47,6 +47,7 @@ type EventHandlerDeps = {
   stopPromptRefresh: (sessionID: string) => void
   clearPromptRefresh: (sessionID: string) => void
   scheduleEventRefresh: () => void
+  refreshMcpInstalled: () => void
   postMessage: (message: ExtensionToWebview) => void
   onReauthRequired: () => void
 }
@@ -78,6 +79,10 @@ export class RaccoonEventHandler {
     if (event.type === "session.deleted") {
       this.deps.removeSession(event.properties.info.id)
       this.deps.post()
+      return
+    }
+    if (event.type === "mcp.tools.changed") {
+      this.deps.refreshMcpInstalled()
       return
     }
     if (event.type === "session.error" && this.isReauthError(event.properties.error)) {
