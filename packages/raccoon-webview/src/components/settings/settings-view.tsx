@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, Translate } from "@phosphor-icons/react"
+import { FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
@@ -10,6 +10,7 @@ import { SettingsLanguage } from "./settings-language"
 import { SettingsMcp } from "./settings-mcp"
 import { SettingsModels } from "./settings-models"
 import { SettingsProviders } from "./settings-providers"
+import { SettingsSkills } from "./settings-skills"
 
 type ModelSelection = { providerID: string; modelID: string }
 
@@ -20,7 +21,7 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "mcp" | "language" | "autocomplete">("providers")
+  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "mcp" | "skills" | "language" | "autocomplete">("providers")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.defaultModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
@@ -83,6 +84,12 @@ export function SettingsView() {
               <Plugs size={16} weight="bold" />
             </span>
             <span>{language.t("settings.nav.mcp")}</span>
+          </button>
+          <button type="button" className={`settings-nav-item ${tab === "skills" ? "active" : ""}`} onClick={() => setTab("skills")}>
+            <span className="settings-nav-icon">
+              <FileText size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.skills")}</span>
           </button>
           <button type="button" className={`settings-nav-item ${tab === "models" ? "active" : ""}`} onClick={() => setTab("models")}>
             <span className="settings-nav-icon">
@@ -153,6 +160,8 @@ export function SettingsView() {
             />
           ) : tab === "mcp" ? (
             <SettingsMcp />
+          ) : tab === "skills" ? (
+            <SettingsSkills />
           ) : (
             <SettingsProviders />
           )}

@@ -196,7 +196,7 @@ export function SettingsMcpManual() {
       )}
 
       {preview ? (
-        <div className="settings-mcp-preview">
+        <div className="settings-browser-preview">
           <div className="settings-dialog-section-title">{language.t("settings.mcpMarketplace.configPreview")}</div>
           <pre>{JSON.stringify(preview, null, 2)}</pre>
         </div>
@@ -209,7 +209,7 @@ export function SettingsMcpManual() {
         </div>
       ) : null}
 
-      <div className="settings-mcp-actions">
+      <div className="settings-browser-actions">
         <Button disabled={!canAdd} onClick={submit}>
           {pending ? language.t("settings.mcpManual.adding") : language.t("settings.mcpManual.add")}
         </Button>

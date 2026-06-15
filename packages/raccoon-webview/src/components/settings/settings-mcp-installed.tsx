@@ -88,27 +88,27 @@ export function SettingsMcpInstalled() {
       {servers.length === 0 ? (
         <div className="settings-empty">{language.t("settings.mcpInstalled.empty")}</div>
       ) : (
-        <div className="settings-mcp-installed-list">
+        <div className="settings-browser-installed-list">
           {servers.map((server) => {
             const isExpanded = expanded === serverKey(server)
             const enabled = server.config.enabled !== false
             const pending = pendingID === server.id
             return (
-              <div className="settings-mcp-installed-item" key={serverKey(server)}>
-                <div className="settings-mcp-installed-row">
+              <div className="settings-browser-installed-item" key={serverKey(server)}>
+                <div className="settings-browser-installed-row">
                   <button
                     type="button"
-                    className="settings-mcp-installed-main"
+                    className="settings-browser-installed-main"
                     onClick={() => setExpanded(isExpanded ? undefined : serverKey(server))}
                   >
                     <StatusBadge status={server.status} enabled={enabled} />
-                    <span className="settings-mcp-installed-name">{server.id}</span>
-                    <span className="settings-mcp-installed-scope">
+                    <span className="settings-browser-installed-name">{server.id}</span>
+                    <span className="settings-browser-installed-scope">
                       {language.t(`settings.mcpMarketplace.scope.${server.scope}`)}
                     </span>
-                    <span className="settings-mcp-installed-type">{server.config.type}</span>
+                    <span className="settings-browser-installed-type">{server.config.type}</span>
                   </button>
-                  <div className="settings-mcp-installed-actions">
+                  <div className="settings-browser-installed-actions">
                     <input
                       type="checkbox"
                       role="switch"
@@ -122,9 +122,9 @@ export function SettingsMcpInstalled() {
                   </div>
                 </div>
                 {isExpanded ? (
-                  <div className="settings-mcp-installed-detail">
+                  <div className="settings-browser-installed-detail">
                     <ServerDetail server={server} />
-                    <div className="settings-mcp-actions">
+                    <div className="settings-browser-actions">
                       {server.status?.status === "connected" ? (
                         <Button disabled={pending} onClick={() => disconnect(server)} icon={<Plugs size={14} weight="bold" />}>
                           {language.t("settings.mcpInstalled.disconnect")}
@@ -203,17 +203,17 @@ function ServerDetail(props: { server: RaccoonInstalledMcp }) {
     [config],
   )
   return (
-    <div className="settings-mcp-transport">
+    <div className="settings-browser-transport">
       {error ? <div className="settings-dialog-error">{error}</div> : null}
       <div>
-        <div className="settings-mcp-transport-title">
+        <div className="settings-browser-transport-title">
           {config.type === "local" ? language.t("settings.mcpInstalled.command") : language.t("settings.mcpInstalled.url")}
         </div>
         <code>{config.type === "local" ? config.command.join(" ") : config.url}</code>
       </div>
       {envKeys.length > 0 ? (
         <div>
-          <div className="settings-mcp-transport-title">
+          <div className="settings-browser-transport-title">
             {config.type === "local"
               ? language.t("settings.mcpMarketplace.environment")
               : language.t("settings.mcpMarketplace.headers")}
@@ -305,7 +305,7 @@ function EditDialog(props: {
       title={language.t("settings.mcpInstalled.editTitle", { name: props.server.id })}
       subtitle={language.t(`settings.mcpMarketplace.scope.${props.server.scope}`)}
       onClose={props.onClose}
-      className="settings-mcp-install-dialog"
+      className="settings-browser-install-dialog"
       footer={
         <>
           <Button onClick={props.onClose}>{language.t("common.cancel")}</Button>
@@ -379,7 +379,7 @@ function EditDialog(props: {
       />
 
       {preview ? (
-        <div className="settings-mcp-preview">
+        <div className="settings-browser-preview">
           <div className="settings-dialog-section-title">{language.t("settings.mcpMarketplace.configPreview")}</div>
           <pre>{JSON.stringify(preview, null, 2)}</pre>
         </div>

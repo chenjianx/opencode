@@ -11,25 +11,25 @@ export function SettingsMcp() {
   const [tab, setTab] = useState<McpTab>("marketplace")
 
   return (
-    <div className="settings-mcp-shell">
-      <div className="settings-mcp-tabs">
+    <div className="settings-browser-shell">
+      <div className="settings-browser-tabs">
         <button
           type="button"
-          className={`settings-mcp-tab ${tab === "marketplace" ? "active" : ""}`.trim()}
+          className={`settings-browser-tab ${tab === "marketplace" ? "active" : ""}`.trim()}
           onClick={() => setTab("marketplace")}
         >
           {language.t("settings.mcp.tab.marketplace")}
         </button>
         <button
           type="button"
-          className={`settings-mcp-tab ${tab === "installed" ? "active" : ""}`.trim()}
+          className={`settings-browser-tab ${tab === "installed" ? "active" : ""}`.trim()}
           onClick={() => setTab("installed")}
         >
           {language.t("settings.mcp.tab.installed")}
         </button>
         <button
           type="button"
-          className={`settings-mcp-tab ${tab === "manual" ? "active" : ""}`.trim()}
+          className={`settings-browser-tab ${tab === "manual" ? "active" : ""}`.trim()}
           onClick={() => setTab("manual")}
         >
           {language.t("settings.mcp.tab.manual")}

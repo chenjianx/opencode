@@ -32,6 +32,11 @@ const initialState: RaccoonState = {
     items: [],
     installed: { project: {}, user: {} },
   },
+  skillMarketplace: {
+    sources: [],
+    items: [],
+    installed: { project: {}, user: {} },
+  },
   mode: "build",
   loading: true,
 }
@@ -134,6 +139,7 @@ function normalizeState(state: RaccoonState): RaccoonState {
     slashCommands: state.slashCommands ?? [],
     customProviders: state.customProviders ?? [],
     mcpMarketplace: state.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } },
+    skillMarketplace: state.skillMarketplace ?? { sources: [], items: [], installed: { project: {}, user: {} } },
     providerAuthMethods: state.providerAuthMethods ?? {},
   }
 }
@@ -224,12 +230,45 @@ export function SessionProvider(props: { children: ReactNode }) {
         })
         return
       }
+      if (message.type === "skillMarketplaceData") {
+        setState((current) => {
+          const next = {
+            ...current,
+            skillMarketplace: {
+              sources: message.sources,
+              items: message.items,
+              installed: message.installed,
+              loading: false,
+              errors: message.errors,
+              lastFetchedAt: Date.now(),
+            },
+          }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
       if (message.type === "mcpInstalledData") {
         setState((current) => {
           const next = {
             ...current,
             mcpInstalled: {
               servers: message.servers,
+              loading: false,
+              error: message.error,
+            },
+          }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "skillInstalledData") {
+        setState((current) => {
+          const next = {
+            ...current,
+            skillInstalled: {
+              skills: message.skills,
               loading: false,
               error: message.error,
             },

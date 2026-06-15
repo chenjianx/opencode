@@ -22,7 +22,7 @@ function McpAvatar(props: { item: RaccoonMarketplaceMcpItem; size?: "sm" | "lg" 
   const hue = avatarHue(props.item.id)
   return (
     <span
-      className={`settings-mcp-avatar ${props.size === "lg" ? "lg" : ""}`.trim()}
+      className={`settings-browser-avatar ${props.size === "lg" ? "lg" : ""}`.trim()}
       style={{
         background: `hsl(${hue} 60% 50% / 0.18)`,
         color: `hsl(${hue} 70% 70%)`,
@@ -36,6 +36,45 @@ function McpAvatar(props: { item: RaccoonMarketplaceMcpItem; size?: "sm" | "lg" 
 }
 
 type Transport = "package" | "remote"
+type MarketplaceCategory = "all" | "code" | "data" | "cloud" | "web" | "communication" | "productivity" | "other"
+
+const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
+  "all",
+  "code",
+  "data",
+  "cloud",
+  "web",
+  "communication",
+  "productivity",
+  "other",
+]
+
+const CATEGORY_KEYWORDS: Array<{ category: Exclude<MarketplaceCategory, "all" | "other">; keywords: string[] }> = [
+  {
+    category: "code",
+    keywords: ["github", "gitlab", "git", "repo", "repository", "code", "filesystem", "file", "linear", "jira"],
+  },
+  {
+    category: "data",
+    keywords: ["postgres", "postgresql", "sqlite", "mysql", "database", "db", "redis", "snowflake", "bigquery", "data"],
+  },
+  {
+    category: "cloud",
+    keywords: ["aws", "cloudflare", "gcp", "google cloud", "azure", "sentry", "vercel", "docker", "kubernetes"],
+  },
+  {
+    category: "web",
+    keywords: ["browser", "fetch", "http", "web", "playwright", "puppeteer", "search", "brave", "firecrawl"],
+  },
+  {
+    category: "communication",
+    keywords: ["slack", "discord", "notion", "mail", "email", "gmail", "calendar", "linear", "jira"],
+  },
+  {
+    category: "productivity",
+    keywords: ["drive", "docs", "sheets", "calendar", "memory", "time", "todo", "task", "knowledge"],
+  },
+]
 
 type InstallDraft = {
   item: RaccoonMarketplaceMcpItem
@@ -52,6 +91,7 @@ export function SettingsMcpMarketplace() {
   const vscode = useVSCode()
   const marketplace = session.state.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } }
   const [query, setQuery] = useState("")
+  const [category, setCategory] = useState<MarketplaceCategory>("all")
   const [selectedID, setSelectedID] = useState<string>()
   const [draft, setDraft] = useState<InstallDraft>()
   const [pendingID, setPendingID] = useState<string>()
@@ -81,10 +121,25 @@ export function SettingsMcpMarketplace() {
   const filtered = useMemo(() => {
     const text = query.trim().toLowerCase()
     return marketplace.items.filter((item) => {
+      const itemCategory = marketplaceCategory(item)
+      if (category !== "all" && itemCategory !== category) return false
       if (!text) return true
-      return `${item.title ?? ""} ${item.name} ${item.description}`.toLowerCase().includes(text)
+      return `${item.title ?? ""} ${item.name} ${item.description} ${itemCategory} ${language.t(`settings.mcpMarketplace.category.${itemCategory}`)}`.toLowerCase().includes(text)
     })
-  }, [marketplace.items, query])
+  }, [category, language, marketplace.items, query])
+
+  const categoryCounts = useMemo(() => {
+    return marketplace.items.reduce<Record<MarketplaceCategory, number>>(
+      (counts, item) => {
+        const itemCategory = marketplaceCategory(item)
+        return {
+          ...counts,
+          [itemCategory]: counts[itemCategory] + 1,
+        }
+      },
+      { all: marketplace.items.length, code: 0, data: 0, cloud: 0, web: 0, communication: 0, productivity: 0, other: 0 },
+    )
+  }, [marketplace.items])
 
   const selected = filtered.find((item) => item.id === selectedID) ?? filtered[0]
   const installedScope = selected ? installedIn(marketplace.installed, selected.id) : undefined
@@ -141,25 +196,47 @@ export function SettingsMcpMarketplace() {
         </Button>
       </div>
 
-      <div className="settings-mcp-toolbar">
-        <div className="settings-mcp-search-wrap">
-          <MagnifyingGlass size={14} className="settings-mcp-search-icon" />
+      <div className="settings-browser-toolbar">
+        <div className="settings-browser-search-wrap">
+          <MagnifyingGlass size={14} className="settings-browser-search-icon" />
           <TextInput
             value={query}
             onChange={setQuery}
             placeholder={language.t("settings.mcpMarketplace.search")}
-            className="settings-provider-input settings-mcp-search"
+            className="settings-provider-input settings-browser-search"
             ariaLabel={language.t("settings.mcpMarketplace.search")}
           />
         </div>
       </div>
 
+      <div className="settings-browser-category-strip" aria-label={language.t("settings.mcpMarketplace.category")}>
+        {MARKETPLACE_CATEGORIES.map((entry) => (
+          <button
+            type="button"
+            key={entry}
+            className={`settings-browser-category-chip ${category === entry ? "active" : ""}`.trim()}
+            onClick={() => setCategory(entry)}
+          >
+            <span>{language.t(`settings.mcpMarketplace.category.${entry}`)}</span>
+            <span>{categoryCounts[entry]}</span>
+          </button>
+        ))}
+      </div>
+
       {marketplace.errors?.length ? <div className="settings-dialog-error">{marketplace.errors.join("\n")}</div> : null}
       {resultError ? <div className="settings-dialog-error">{resultError}</div> : null}
 
-      <div className="settings-mcp-layout">
-        <div className="settings-mcp-list">
-          {filtered.length === 0 ? (
+      <div className="settings-browser-result-summary">
+        {marketplace.loading
+          ? language.t("settings.mcpMarketplace.loadingResults")
+          : language.t("settings.mcpMarketplace.resultCount", { count: filtered.length, total: marketplace.items.length })}
+      </div>
+
+      <div className="settings-browser-layout">
+        <div className="settings-browser-list">
+          {marketplace.loading && marketplace.items.length === 0 ? (
+            <div className="settings-empty">{language.t("settings.mcpMarketplace.loadingResults")}</div>
+          ) : filtered.length === 0 ? (
             <div className="settings-empty">{language.t("settings.mcpMarketplace.empty")}</div>
           ) : (
             filtered.map((item) => {
@@ -168,31 +245,32 @@ export function SettingsMcpMarketplace() {
                 <button
                   type="button"
                   key={item.id}
-                  className={`settings-mcp-item ${selected?.id === item.id ? "active" : ""}`.trim()}
+                  className={`settings-browser-item ${selected?.id === item.id ? "active" : ""}`.trim()}
                   onClick={() => setSelectedID(item.id)}
                 >
                   <McpAvatar item={item} />
-                  <span className="settings-mcp-item-main">
-                    <span className="settings-mcp-item-titlerow">
-                      <span className="settings-mcp-item-title">{item.title ?? item.name}</span>
+                  <span className="settings-browser-item-main">
+                    <span className="settings-browser-item-titlerow">
+                      <span className="settings-browser-item-title">{item.title ?? item.name}</span>
                       {scope ? (
-                        <span className="settings-mcp-installed">
+                        <span className="settings-browser-installed">
                           <CheckCircle size={12} weight="fill" /> {language.t(`settings.mcpMarketplace.scope.${scope}`)}
                         </span>
                       ) : null}
                     </span>
-                    <span className="settings-mcp-item-description">{item.description}</span>
-                    <span className="settings-mcp-item-meta">
+                    <span className="settings-browser-item-description">{item.description}</span>
+                    <span className="settings-browser-item-meta">
                       {item.packages.length > 0 ? (
-                        <span className="settings-mcp-chip">
+                        <span className="settings-browser-chip">
                           <Package size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.package")}
                         </span>
                       ) : null}
                       {item.remotes.length > 0 ? (
-                        <span className="settings-mcp-chip">
+                        <span className="settings-browser-chip">
                           <CloudArrowDown size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.remote")}
                         </span>
                       ) : null}
+                      <span className="settings-browser-chip">{language.t(`settings.mcpMarketplace.category.${marketplaceCategory(item)}`)}</span>
                     </span>
                   </span>
                 </button>
@@ -201,18 +279,18 @@ export function SettingsMcpMarketplace() {
           )}
         </div>
 
-        <div className="settings-mcp-detail">
+        <div className="settings-browser-detail">
           {selected ? (
             <>
-              <div className="settings-mcp-detail-header">
-                <div className="settings-mcp-detail-heading">
+              <div className="settings-browser-detail-header">
+                <div className="settings-browser-detail-heading">
                   <McpAvatar item={selected} size="lg" />
-                  <div className="settings-mcp-detail-heading-text">
+                  <div className="settings-browser-detail-heading-text">
                     <h4>{selected.title ?? selected.name}</h4>
                     <p>{selected.name}</p>
                   </div>
                 </div>
-                <div className="settings-mcp-actions">
+                <div className="settings-browser-actions">
                   {installedScope ? (
                     <Button
                       disabled={pendingID === selected.id}
@@ -232,10 +310,12 @@ export function SettingsMcpMarketplace() {
                   )}
                 </div>
               </div>
-              <p className="settings-mcp-description">{selected.description}</p>
-              <div className="settings-mcp-tags">
+              <p className="settings-browser-description">{selected.description}</p>
+              <div className="settings-browser-tags">
+                <span>{language.t(`settings.mcpMarketplace.category.${marketplaceCategory(selected)}`)}</span>
                 {selected.packages.length > 0 ? <span><Package size={12} /> package</span> : null}
                 {selected.version ? <span>v{selected.version}</span> : null}
+                {selected.updatedAt ? <span>{language.t("settings.mcpMarketplace.updatedAt", { date: selected.updatedAt })}</span> : null}
               </div>
               <DetailLinks item={selected} />
               <DetailPackages item={selected} />
@@ -270,7 +350,7 @@ function DetailLinks(props: { item: RaccoonMarketplaceMcpItem }) {
   ].filter((link): link is { label: string; url: string } => !!link)
   if (links.length === 0) return null
   return (
-    <div className="settings-mcp-links">
+    <div className="settings-browser-links">
       {links.map((link) => (
         <a href={link.url} key={link.url}>
           {link.label}
@@ -284,9 +364,9 @@ function DetailPackages(props: { item: RaccoonMarketplaceMcpItem }) {
   const language = useLanguage()
   if (props.item.packages.length === 0) return null
   return (
-    <div className="settings-mcp-transport">
+    <div className="settings-browser-transport">
       <div>
-        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.packages")}</div>
+        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.packages")}</div>
         {props.item.packages.map((pkg) => (
           <code key={`${pkg.registryType}:${pkg.identifier}:${pkg.version ?? ""}`}>
             {pkg.registryType}: {pkg.identifier}
@@ -302,9 +382,9 @@ function DetailRemotes(props: { item: RaccoonMarketplaceMcpItem }) {
   const language = useLanguage()
   if (props.item.remotes.length === 0) return null
   return (
-    <div className="settings-mcp-transport">
+    <div className="settings-browser-transport">
       <div>
-        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.remotes")}</div>
+        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.remotes")}</div>
         {props.item.remotes.map((remote) => (
           <code key={`${remote.type}:${remote.url}`}>
             {remote.type}: {remote.url}
@@ -320,9 +400,9 @@ function DetailEnvironment(props: { item: RaccoonMarketplaceMcpItem }) {
   const env = props.item.environmentVariables.filter((entry) => entry.name)
   if (env.length === 0) return null
   return (
-    <div className="settings-mcp-transport">
+    <div className="settings-browser-transport">
       <div>
-        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.environment")}</div>
+        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.environment")}</div>
         {env.map((entry) => (
           <div className="settings-mcp-env-row" key={entry.name}>
             <code>{entry.name}</code>
@@ -343,9 +423,9 @@ function DetailVariables(props: { item: RaccoonMarketplaceMcpItem }) {
   const variables = itemVariables(props.item)
   if (variables.length === 0) return null
   return (
-    <div className="settings-mcp-transport">
+    <div className="settings-browser-transport">
       <div>
-        <div className="settings-mcp-transport-title">{language.t("settings.mcpMarketplace.variables")}</div>
+        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.variables")}</div>
         {variables.map((entry) => (
           <div className="settings-mcp-env-row" key={entry.name}>
             <code>{entry.name}</code>
@@ -392,7 +472,7 @@ function InstallDialog(props: {
       title={language.t("settings.mcpMarketplace.installTitle", { name: item.title ?? item.name })}
       subtitle={item.name}
       onClose={props.onClose}
-      className="settings-mcp-install-dialog"
+      className="settings-browser-install-dialog"
       footer={
         <>
           <Button onClick={props.onClose}>{language.t("common.cancel")}</Button>
@@ -456,7 +536,7 @@ function InstallDialog(props: {
           }
         />
       ))}
-      <div className="settings-mcp-preview">
+      <div className="settings-browser-preview">
         <div className="settings-dialog-section-title">{language.t("settings.mcpMarketplace.configPreview")}</div>
         <pre>{JSON.stringify(preview, null, 2)}</pre>
       </div>
@@ -467,6 +547,15 @@ function InstallDialog(props: {
 
 function canInstallItem(item: RaccoonMarketplaceMcpItem) {
   return supportedNpmPackage(item) !== undefined || item.remotes.some((remote) => remote.url)
+}
+
+function marketplaceCategory(item: RaccoonMarketplaceMcpItem): Exclude<MarketplaceCategory, "all"> {
+  const declared = item.category?.trim().toLowerCase()
+  if (declared && MARKETPLACE_CATEGORIES.includes(declared as MarketplaceCategory) && declared !== "all") {
+    return declared as Exclude<MarketplaceCategory, "all">
+  }
+  const text = `${item.id} ${item.name} ${item.title ?? ""} ${item.description} ${item.packages.map((entry) => entry.identifier).join(" ")}`.toLowerCase()
+  return CATEGORY_KEYWORDS.find((entry) => entry.keywords.some((keyword) => text.includes(keyword)))?.category ?? "other"
 }
 
 // Mirrors installer.ts so the live preview matches what gets written to disk.

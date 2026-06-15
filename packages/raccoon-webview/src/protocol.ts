@@ -258,6 +258,7 @@ export type RaccoonMarketplaceMcpItem = {
   name: string
   title?: string
   description: string
+  category?: string
   version: string
   websiteUrl?: string
   repositoryUrl?: string
@@ -274,6 +275,43 @@ export type RaccoonMarketplaceMcpItem = {
 export type RaccoonMarketplaceInstalledMetadata = {
   project: Record<string, { type: "mcp" }>
   user: Record<string, { type: "mcp" }>
+}
+
+export type RaccoonSkillMarketplaceSource = {
+  id: string
+  label: string
+  description: string
+  source: string
+  defaultSubpath?: string
+  sourceType: "github"
+}
+
+export type RaccoonSkillMarketplaceItem = {
+  id: string
+  name: string
+  title?: string
+  description?: string
+  sourceID: string
+  sourceLabel: string
+  repoSource: string
+  repoSubpath?: string
+  skillDir: string
+  installable: boolean
+  warnings?: string[]
+  repositoryUrl?: string
+}
+
+export type RaccoonSkillMarketplaceInstalledMetadata = {
+  project: Record<string, { type: "skill" }>
+  user: Record<string, { type: "skill" }>
+}
+
+export type RaccoonInstalledSkill = {
+  id: string
+  name: string
+  description?: string
+  scope: RaccoonMarketplaceScope
+  location: string
 }
 
 export type RaccoonMcpLocalConfig = {
@@ -357,6 +395,19 @@ export type RaccoonState = {
     errors?: string[]
     lastFetchedAt?: number
   }
+  skillMarketplace?: {
+    sources: RaccoonSkillMarketplaceSource[]
+    items: RaccoonSkillMarketplaceItem[]
+    installed: RaccoonSkillMarketplaceInstalledMetadata
+    loading?: boolean
+    errors?: string[]
+    lastFetchedAt?: number
+  }
+  skillInstalled?: {
+    skills: RaccoonInstalledSkill[]
+    loading?: boolean
+    error?: string
+  }
   mcpInstalled?: {
     servers: RaccoonInstalledMcp[]
     loading?: boolean
@@ -430,6 +481,7 @@ export type WebviewToExtension =
   | { type: "disconnectProvider"; providerID: string }
   | { type: "fetchCustomProviderModels"; requestID: string; baseURL: string; apiKey?: string }
   | { type: "fetchMcpMarketplace"; force?: boolean }
+  | { type: "fetchSkillMarketplace"; force?: boolean }
   | {
       type: "installMcpMarketplaceItem"
       item: RaccoonMarketplaceMcpItem
@@ -442,8 +494,17 @@ export type WebviewToExtension =
       }
     }
   | { type: "removeMcpMarketplaceItem"; item: RaccoonMarketplaceMcpItem; scope: RaccoonMarketplaceScope }
+  | {
+      type: "installSkillMarketplaceItem"
+      item: RaccoonSkillMarketplaceItem
+      options: {
+        scope: RaccoonMarketplaceScope
+      }
+    }
+  | { type: "removeSkillMarketplaceItem"; item: RaccoonSkillMarketplaceItem; scope: RaccoonMarketplaceScope }
   | { type: "addMcpServerManual"; id: string; config: RaccoonMcpServerConfig; scope: RaccoonMarketplaceScope }
   | { type: "fetchMcpInstalled" }
+  | { type: "fetchSkillInstalled" }
   | { type: "setMcpServerEnabled"; id: string; scope: RaccoonMarketplaceScope; enabled: boolean }
   | { type: "connectMcpServer"; id: string }
   | { type: "disconnectMcpServer"; id: string }
@@ -494,10 +555,20 @@ export type ExtensionToWebview =
       installed: RaccoonMarketplaceInstalledMetadata
       errors?: string[]
     }
+  | {
+      type: "skillMarketplaceData"
+      sources: RaccoonSkillMarketplaceSource[]
+      items: RaccoonSkillMarketplaceItem[]
+      installed: RaccoonSkillMarketplaceInstalledMetadata
+      errors?: string[]
+    }
   | { type: "mcpMarketplaceInstallResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
   | { type: "mcpMarketplaceRemoveResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
+  | { type: "skillMarketplaceInstallResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
+  | { type: "skillMarketplaceRemoveResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
   | { type: "mcpManualAddResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
   | { type: "mcpInstalledData"; servers: RaccoonInstalledMcp[]; error?: string }
+  | { type: "skillInstalledData"; skills: RaccoonInstalledSkill[]; error?: string }
   | { type: "mcpServerActionResult"; id: string; success: boolean; error?: string }
   | {
       type: "fileSearchResult"

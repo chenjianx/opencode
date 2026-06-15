@@ -306,112 +306,144 @@
     @apply flex min-h-0 flex-col;
   }
 
-  .settings-mcp-toolbar {
-    @apply mb-3 flex flex-wrap gap-2;
+  .settings-browser-toolbar {
+    @apply mb-3 flex flex-wrap items-end gap-2;
   }
 
-  .settings-mcp-search-wrap {
+  .settings-browser-category-strip {
+    @apply -mt-1 mb-3 flex flex-wrap gap-1.5;
+  }
+
+  .settings-browser-category-chip {
+    @apply inline-flex items-center gap-1.5 rounded-[999px] border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1 text-[11px] text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover)];
+  }
+
+  .settings-browser-category-chip.active {
+    @apply border-[var(--color-focus)] bg-[var(--color-button)] text-[var(--color-foreground)];
+  }
+
+  .settings-browser-category-chip span:last-child {
+    @apply rounded-[999px] bg-[var(--color-button)] px-1.5 py-0.5 text-[10px] leading-none;
+  }
+
+  .settings-browser-result-summary {
+    @apply mb-2 text-[11px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-browser-search-wrap {
     @apply relative min-w-[220px] flex-1;
   }
 
-  .settings-mcp-search-icon {
+  .settings-browser-search-icon {
     @apply pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-muted)];
   }
 
-  .settings-mcp-search {
+  .settings-browser-search {
     @apply w-full pl-8;
   }
 
-  .settings-mcp-filter {
-    @apply w-[150px];
+  .settings-browser-filter {
+    @apply w-[150px] min-w-[150px] flex-none;
   }
 
-  .settings-mcp-layout {
+  .settings-browser-filter .settings-provider-input {
+    @apply w-full min-w-0;
+  }
+
+  .settings-browser-layout {
     @apply grid min-h-[420px] grid-cols-[minmax(220px,320px)_minmax(0,1fr)] overflow-hidden rounded-[6px] border border-[var(--color-border)] max-[760px]:grid-cols-1;
   }
 
-  .settings-mcp-list {
+  .settings-browser-list {
     @apply min-h-0 overflow-auto border-r border-[var(--color-border)] max-[760px]:max-h-[320px] max-[760px]:border-b max-[760px]:border-r-0;
   }
 
-  .settings-mcp-item {
+  .settings-browser-item {
     @apply flex w-full items-start gap-2.5 border-b border-[var(--color-border)] bg-transparent px-3 py-3 text-left transition-colors last:border-b-0 hover:bg-[var(--color-hover)];
   }
 
-  .settings-mcp-item.active {
+  .settings-browser-item.active {
     @apply bg-[var(--color-button)];
     box-shadow: inset 3px 0 0 var(--color-focus);
   }
 
-  .settings-mcp-avatar {
+  .settings-browser-avatar {
     @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border text-[11px] font-semibold;
   }
 
-  .settings-mcp-avatar.lg {
+  .settings-browser-avatar.lg {
     @apply h-11 w-11 rounded-[10px] text-[15px];
   }
 
-  .settings-mcp-item-main {
+  .settings-browser-item-main {
     @apply flex min-w-0 flex-1 flex-col gap-1;
   }
 
-  .settings-mcp-item-titlerow {
+  .settings-browser-item-titlerow {
     @apply flex items-center justify-between gap-2;
   }
 
-  .settings-mcp-item-title {
+  .settings-browser-item-title {
     @apply min-w-0 truncate text-[13px] font-medium text-[var(--color-foreground)];
   }
 
-  .settings-mcp-item-description {
+  .settings-browser-item-description {
     @apply overflow-hidden text-[11px] leading-4 text-[var(--color-muted)];
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
   }
 
-  .settings-mcp-item-meta {
+  .settings-browser-item-meta {
     @apply flex flex-wrap gap-1;
   }
 
-  .settings-mcp-chip {
+  .settings-browser-chip {
     @apply inline-flex items-center gap-1 rounded-[5px] border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 text-[10px] text-[var(--color-muted)];
   }
 
-  .settings-mcp-installed {
+  .settings-browser-installed {
     @apply inline-flex shrink-0 items-center gap-1 rounded-[999px] bg-[var(--color-success,#3fb950)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-success,#3fb950)];
   }
 
-  .settings-mcp-installed-list {
+  .settings-browser-installed-list {
     @apply flex flex-col overflow-auto rounded-[6px] border border-[var(--color-border)];
   }
 
-  .settings-mcp-installed-item {
+  .settings-browser-installed-item {
     @apply border-b border-[var(--color-border)] last:border-b-0;
   }
 
-  .settings-mcp-installed-row {
+  .settings-browser-installed-row {
     @apply flex items-center justify-between gap-2 px-3 py-2.5;
   }
 
-  .settings-mcp-installed-main {
+  .settings-browser-installed-main {
     @apply flex min-w-0 flex-1 items-center gap-2 bg-transparent text-left;
   }
 
-  .settings-mcp-installed-name {
+  .settings-browser-installed-caret {
+    @apply shrink-0 text-[var(--color-muted)] transition-transform;
+  }
+
+  .settings-browser-installed-caret.open {
+    @apply rotate-180;
+  }
+
+  .settings-browser-installed-name {
     @apply truncate text-[13px] font-medium text-[var(--color-foreground)];
   }
 
-  .settings-mcp-installed-scope,
-  .settings-mcp-installed-type {
+  .settings-browser-installed-scope,
+  .settings-browser-installed-type {
     @apply inline-flex shrink-0 items-center rounded-[999px] bg-[var(--color-button)] px-2 py-0.5 text-[10px] text-[var(--color-muted)];
   }
 
-  .settings-mcp-installed-actions {
+  .settings-browser-installed-actions {
     @apply flex shrink-0 items-center gap-2;
   }
 
-  .settings-mcp-installed-detail {
+  .settings-browser-installed-detail {
     @apply flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3;
   }
 
@@ -435,121 +467,141 @@
     @apply text-[var(--color-muted)];
   }
 
-  .settings-mcp-detail {
+  .settings-browser-detail {
     @apply min-w-0 overflow-auto px-4 py-3;
   }
 
-  .settings-mcp-detail-header {
+  .settings-browser-detail-header {
     @apply flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] pb-3;
   }
 
-  .settings-mcp-detail-heading {
+  .settings-browser-detail-heading {
     @apply flex min-w-0 items-center gap-3;
   }
 
-  .settings-mcp-detail-heading-text {
+  .settings-browser-detail-heading-text {
     @apply min-w-0;
   }
 
-  .settings-mcp-detail-header h4 {
+  .settings-browser-detail-header h4 {
     @apply m-0 truncate text-[15px] font-semibold text-[var(--color-foreground)];
   }
 
-  .settings-mcp-detail-header p {
+  .settings-browser-detail-header p {
     @apply m-0 mt-1 break-all font-mono text-[11px] text-[var(--color-muted)];
   }
 
-  .settings-mcp-actions {
+  .settings-browser-actions {
     @apply flex shrink-0 gap-2;
   }
 
-  .settings-mcp-description {
+  .settings-browser-description {
     @apply my-3 text-[12px] leading-5 text-[var(--color-foreground)];
   }
 
-  .settings-mcp-tags {
+  .settings-browser-tags {
     @apply mb-3 flex flex-wrap gap-1.5;
   }
 
-  .settings-mcp-tags span {
+  .settings-browser-tags span {
     @apply inline-flex items-center gap-1 rounded-[999px] bg-[var(--color-button)] px-2 py-0.5 text-[11px] text-[var(--color-muted)];
   }
 
-  .settings-mcp-links {
+  .settings-browser-links {
     @apply mb-3 flex flex-wrap gap-2 text-[12px];
   }
 
-  .settings-mcp-links a {
+  .settings-browser-links a {
     @apply text-[var(--color-focus)] underline-offset-2 hover:underline;
   }
 
-  .settings-mcp-transport {
+  .settings-browser-transport {
     @apply flex flex-col gap-3;
   }
 
-  .settings-mcp-transport > div {
+  .settings-browser-transport > div {
     @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2.5;
   }
 
-  .settings-mcp-transport-title {
-    @apply mb-2 text-[12px] font-semibold text-[var(--color-foreground)];
+  .settings-browser-transport-title {
+    @apply mb-2 flex items-center gap-1.5 text-[12px] font-semibold text-[var(--color-foreground)];
   }
 
-  .settings-mcp-transport code {
+  .settings-browser-transport code {
     @apply mb-1 block break-all rounded-[4px] bg-[var(--color-button)] px-2 py-1 font-mono text-[11px] text-[var(--color-foreground)];
   }
 
-  .settings-mcp-transport p,
+  .settings-skill-path-grid {
+    @apply grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 gap-y-1.5;
+  }
+
+  .settings-skill-path-grid > span {
+    @apply pt-1 text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-skill-path-grid > code {
+    @apply mb-0;
+  }
+
+  .settings-browser-transport p,
   .settings-empty {
     @apply m-0 text-[12px] leading-4 text-[var(--color-muted)];
+  }
+
+  .settings-browser-warning-block > div {
+    @apply border-[var(--color-warning,#d29922)]/50 bg-[var(--color-warning,#d29922)]/10;
+  }
+
+  .settings-browser-warning-block .settings-browser-transport-title {
+    @apply text-[var(--color-warning,#d29922)];
   }
 
   .settings-empty {
     @apply p-3;
   }
 
-  .settings-mcp-install-dialog {
+  .settings-browser-install-dialog {
     @apply self-center w-[min(680px,calc(100vw-28px))] max-h-[min(620px,100%)];
   }
 
-  .settings-mcp-install-dialog .settings-dialog-body {
+  .settings-browser-install-dialog .settings-dialog-body {
     @apply flex flex-col gap-3;
   }
 
   /* Fields default to flex-1 for the horizontal provider-config row; in this
      vertical dialog body that makes each one stretch to fill the height. Keep
      them at their natural height instead. */
-  .settings-mcp-install-dialog .settings-dialog-field {
+  .settings-browser-install-dialog .settings-dialog-field {
     @apply flex-none;
   }
 
-  .settings-mcp-install-dialog .settings-dialog-field .settings-provider-input,
-  .settings-mcp-install-dialog .settings-dialog-field .settings-select {
+  .settings-browser-install-dialog .settings-dialog-field .settings-provider-input,
+  .settings-browser-install-dialog .settings-dialog-field .settings-select {
     @apply w-full;
   }
 
-  .settings-mcp-preview {
+  .settings-browser-preview {
     @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2;
   }
 
-  .settings-mcp-preview pre {
+  .settings-browser-preview pre {
     @apply m-0 max-h-[220px] overflow-auto whitespace-pre-wrap break-all font-mono text-[11px] leading-4 text-[var(--color-foreground)];
   }
 
   /* MCP sub-tabs, manual add, and richer detail ------------------------- */
-  .settings-mcp-shell {
+  .settings-browser-shell {
     @apply flex h-full min-h-0 flex-col gap-3;
   }
 
-  .settings-mcp-tabs {
+  .settings-browser-tabs {
     @apply flex gap-1 border-b border-[var(--color-border)];
   }
 
-  .settings-mcp-tab {
+  .settings-browser-tab {
     @apply -mb-px border-b-2 border-transparent px-3 py-2 text-[12px] font-medium text-[var(--color-muted)];
   }
 
-  .settings-mcp-tab.active {
+  .settings-browser-tab.active {
     @apply border-[var(--color-focus)] text-[var(--color-foreground)];
   }
 

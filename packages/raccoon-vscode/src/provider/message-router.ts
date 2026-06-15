@@ -38,10 +38,14 @@ type MessageRouterDeps = {
   disconnectProvider: (providerID: string) => Promise<void>
   fetchCustomProviderModels: (message: Extract<WebviewToExtension, { type: "fetchCustomProviderModels" }>, source: RaccoonWebviewSource) => Promise<void>
   fetchMcpMarketplace: (force: boolean | undefined, source: RaccoonWebviewSource) => Promise<void>
+  fetchSkillMarketplace: (force: boolean | undefined, source: RaccoonWebviewSource) => Promise<void>
   installMcpMarketplaceItem: (message: Extract<WebviewToExtension, { type: "installMcpMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
   removeMcpMarketplaceItem: (message: Extract<WebviewToExtension, { type: "removeMcpMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
+  installSkillMarketplaceItem: (message: Extract<WebviewToExtension, { type: "installSkillMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
+  removeSkillMarketplaceItem: (message: Extract<WebviewToExtension, { type: "removeSkillMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
   addMcpServerManual: (message: Extract<WebviewToExtension, { type: "addMcpServerManual" }>, source: RaccoonWebviewSource) => Promise<void>
   fetchMcpInstalled: (source: RaccoonWebviewSource) => Promise<void>
+  fetchSkillInstalled: (source: RaccoonWebviewSource) => Promise<void>
   setMcpServerEnabled: (message: Extract<WebviewToExtension, { type: "setMcpServerEnabled" }>, source: RaccoonWebviewSource) => Promise<void>
   connectMcpServer: (message: Extract<WebviewToExtension, { type: "connectMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
   disconnectMcpServer: (message: Extract<WebviewToExtension, { type: "disconnectMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
@@ -207,6 +211,10 @@ export class RaccoonMessageRouter {
       await this.deps.fetchMcpMarketplace(message.force, source)
       return
     }
+    if (message.type === "fetchSkillMarketplace") {
+      await this.deps.fetchSkillMarketplace(message.force, source)
+      return
+    }
     if (message.type === "installMcpMarketplaceItem") {
       await this.deps.installMcpMarketplaceItem(message, source)
       return
@@ -215,12 +223,24 @@ export class RaccoonMessageRouter {
       await this.deps.removeMcpMarketplaceItem(message, source)
       return
     }
+    if (message.type === "installSkillMarketplaceItem") {
+      await this.deps.installSkillMarketplaceItem(message, source)
+      return
+    }
+    if (message.type === "removeSkillMarketplaceItem") {
+      await this.deps.removeSkillMarketplaceItem(message, source)
+      return
+    }
     if (message.type === "addMcpServerManual") {
       await this.deps.addMcpServerManual(message, source)
       return
     }
     if (message.type === "fetchMcpInstalled") {
       await this.deps.fetchMcpInstalled(source)
+      return
+    }
+    if (message.type === "fetchSkillInstalled") {
+      await this.deps.fetchSkillInstalled(source)
       return
     }
     if (message.type === "setMcpServerEnabled") {

@@ -16,6 +16,7 @@ import type {
 import { RaccoonConnectionService, type ConnectionState } from "../services/cli-backend/index.js"
 import { MarketplaceService } from "../services/marketplace/index.js"
 import type { McpStatus } from "../services/marketplace/index.js"
+import { SkillMarketplaceService } from "../services/skill-marketplace/index.js"
 import {
   mapPart,
   messageText,
@@ -94,6 +95,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   private readonly rules: RaccoonRulesConfig
   private readonly sessions: RaccoonSessionController
   private readonly marketplace = new MarketplaceService()
+  private readonly skillMarketplace = new SkillMarketplaceService()
   private state: RaccoonState = {
     sessions: [],
     messages: [],
@@ -223,10 +225,14 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       disconnectProvider: (providerID) => this.config.disconnectProvider(providerID),
       fetchCustomProviderModels: (message, source) => this.fetchCustomProviderModels(message, source),
       fetchMcpMarketplace: (force, source) => this.fetchMcpMarketplace(force, source),
+      fetchSkillMarketplace: (force, source) => this.fetchSkillMarketplace(force, source),
       installMcpMarketplaceItem: (message, source) => this.installMcpMarketplaceItem(message, source),
       removeMcpMarketplaceItem: (message, source) => this.removeMcpMarketplaceItem(message, source),
+      installSkillMarketplaceItem: (message, source) => this.installSkillMarketplaceItem(message, source),
+      removeSkillMarketplaceItem: (message, source) => this.removeSkillMarketplaceItem(message, source),
       addMcpServerManual: (message, source) => this.addMcpServerManual(message, source),
       fetchMcpInstalled: (source) => this.fetchMcpInstalled(source),
+      fetchSkillInstalled: (source) => this.fetchSkillInstalled(source),
       setMcpServerEnabled: (message, source) => this.setMcpServerEnabled(message, source),
       connectMcpServer: (message, source) => this.connectMcpServer(message, source),
       disconnectMcpServer: (message, source) => this.disconnectMcpServer(message, source),
@@ -702,6 +708,103 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async fetchSkillMarketplace(_force: boolean | undefined, source: RaccoonWebviewSource) {
+    this.state = {
+      ...this.state,
+      skillMarketplace: {
+        sources: this.state.skillMarketplace?.sources ?? [],
+        items: this.state.skillMarketplace?.items ?? [],
+        installed: this.state.skillMarketplace?.installed ?? { project: {}, user: {} },
+        loading: true,
+        errors: undefined,
+        lastFetchedAt: this.state.skillMarketplace?.lastFetchedAt,
+      },
+    }
+    this.post()
+    try {
+      const data = await this.skillMarketplace.fetchData(await this.client(), this.directory())
+      this.state = {
+        ...this.state,
+        skillMarketplace: {
+          sources: data.sources,
+          items: data.items,
+          installed: data.installed,
+          loading: false,
+          errors: data.errors,
+          lastFetchedAt: Date.now(),
+        },
+      }
+      this.post()
+      this.webviewHost.post(source, { type: "skillMarketplaceData", ...data } satisfies ExtensionToWebview)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const skillMarketplace = {
+        sources: this.state.skillMarketplace?.sources ?? [],
+        items: this.state.skillMarketplace?.items ?? [],
+        installed: this.state.skillMarketplace?.installed ?? { project: {}, user: {} },
+        loading: false,
+        errors: [message],
+        lastFetchedAt: this.state.skillMarketplace?.lastFetchedAt,
+      }
+      this.state = {
+        ...this.state,
+        skillMarketplace,
+      }
+      this.post()
+      this.webviewHost.post(source, {
+        type: "skillMarketplaceData",
+        sources: skillMarketplace.sources,
+        items: skillMarketplace.items,
+        installed: skillMarketplace.installed,
+        errors: [message],
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async installSkillMarketplaceItem(
+    message: Extract<WebviewToExtension, { type: "installSkillMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const result = await this.skillMarketplace.install(await this.client(), this.directory(), message.item, message.options)
+      this.webviewHost.post(source, { type: "skillMarketplaceInstallResult", ...result } satisfies ExtensionToWebview)
+      if (!result.success) return
+      await this.refresh()
+      await this.fetchSkillMarketplace(false, source)
+      await this.fetchSkillInstalled(source)
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "skillMarketplaceInstallResult",
+        id: message.item.id,
+        scope: message.options.scope,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async removeSkillMarketplaceItem(
+    message: Extract<WebviewToExtension, { type: "removeSkillMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const result = await this.skillMarketplace.remove(await this.client(), this.directory(), message.item, message.scope)
+      this.webviewHost.post(source, { type: "skillMarketplaceRemoveResult", ...result } satisfies ExtensionToWebview)
+      if (!result.success) return
+      await this.refresh()
+      await this.fetchSkillMarketplace(false, source)
+      await this.fetchSkillInstalled(source)
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "skillMarketplaceRemoveResult",
+        id: message.item.id,
+        scope: message.scope,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
   private async addMcpServerManual(
     message: Extract<WebviewToExtension, { type: "addMcpServerManual" }>,
     source: RaccoonWebviewSource,
@@ -723,6 +826,47 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
         scope: message.scope,
         success: false,
         error: error instanceof Error ? error.message : String(error),
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  private async fetchSkillInstalled(source: RaccoonWebviewSource) {
+    this.state = {
+      ...this.state,
+      skillInstalled: {
+        skills: this.state.skillInstalled?.skills ?? [],
+        loading: true,
+        error: undefined,
+      },
+    }
+    this.post()
+    try {
+      const skills = await this.skillMarketplace.listInstalled(await this.client(), this.directory())
+      this.state = {
+        ...this.state,
+        skillInstalled: {
+          skills,
+          loading: false,
+        },
+      }
+      this.post()
+      this.webviewHost.post(source, { type: "skillInstalledData", skills } satisfies ExtensionToWebview)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const skills = this.state.skillInstalled?.skills ?? []
+      this.state = {
+        ...this.state,
+        skillInstalled: {
+          skills,
+          loading: false,
+          error: message,
+        },
+      }
+      this.post()
+      this.webviewHost.post(source, {
+        type: "skillInstalledData",
+        skills,
+        error: message,
       } satisfies ExtensionToWebview)
     }
   }
