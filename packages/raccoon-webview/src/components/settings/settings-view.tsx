@@ -20,7 +20,7 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "mcp" | "language" | "autocomplete">("models")
+  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "mcp" | "language" | "autocomplete">("providers")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.defaultModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
