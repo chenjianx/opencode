@@ -8,6 +8,7 @@ import { Config } from "../../src/config/config"
 import { RuntimeFlags } from "../../src/effect/runtime-flags"
 import { Permission } from "../../src/permission"
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
+import { LocationServiceMap } from "@opencode-ai/core/location-layer" // raccoon_change - provide location map required by agent layer
 import { Plugin } from "../../src/plugin"
 import { Provider } from "../../src/provider/provider"
 import { Skill } from "../../src/skill"
@@ -22,10 +23,11 @@ const agentLayer = (flags: Partial<RuntimeFlags.Info> = {}) =>
     Layer.provide(Auth.defaultLayer),
     Layer.provide(Config.defaultLayer),
     Layer.provide(Skill.defaultLayer),
+    Layer.provide(LocationServiceMap.layer), // raccoon_change - satisfy Agent.layer location dependency
     Layer.provide(RuntimeFlags.layer(flags)),
   )
 
-const it = testEffect(agentLayer())
+const it = testEffect(agentLayer()) // raccoon_change - enable raccoon agent test runner
 
 function evalPerm(agent: Agent.Info | undefined, permission: string): PermissionV1.Action | undefined {
   if (!agent) return undefined
