@@ -232,6 +232,7 @@
     "lint": "eslint src"
   },
   "dependencies": {
+    "@opencode-ai/raccoon-core": "workspace:*",
     "@opencode-ai/raccoon-webview": "workspace:*",
     "@opencode-ai/sdk": "workspace:*",
     "jsonc-parser": "2.3.1",

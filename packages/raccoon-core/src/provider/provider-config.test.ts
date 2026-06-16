@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, mock, test } from "bun:test"
+import { beforeAll, describe, expect, test } from "bun:test"
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -8,7 +8,6 @@ import type { RaccoonProviderConfig as RaccoonProviderConfigType } from "./provi
 let RaccoonProviderConfig: typeof RaccoonProviderConfigType
 
 beforeAll(async () => {
-  mock.module("vscode", () => ({}))
   RaccoonProviderConfig = (await import("./provider-config")).RaccoonProviderConfig
 })
 

@@ -1,5 +1,5 @@
 import type { RaccoonConnectionService } from "../../cli-backend/index.js"
-import { getAutocompleteModel } from "../models.js"
+import { getAutocompleteModel } from "@opencode-ai/raccoon-core"
 import type { ILLM } from "./types.js"
 
 /** Shape of one SSE frame emitted by the backend `/fim` endpoint. */

@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { AutocompleteInlineCompletionProvider, type AutocompleteSettings } from "./vscodeProvider.js"
 import type { RaccoonConnectionService } from "../cli-backend/index.js"
-import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel } from "./models.js"
+import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel } from "@opencode-ai/raccoon-core"
 
 const CONFIG_SECTION = "raccoon.autocomplete"
 

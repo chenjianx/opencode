@@ -664,10 +664,24 @@
         "typescript": "catalog:",
       },
     },
+    "packages/raccoon-core": {
+      "name": "@opencode-ai/raccoon-core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@opencode-ai/raccoon-webview": "workspace:*",
+        "@opencode-ai/sdk": "workspace:*",
+        "jsonc-parser": "2.3.1",
+      },
+      "devDependencies": {
+        "@types/node": "20.x",
+        "typescript": "^5.8.3",
+      },
+    },
     "packages/raccoon-vscode": {
       "name": "raccoon-vscode",
       "version": "0.0.0",
       "dependencies": {
+        "@opencode-ai/raccoon-core": "workspace:*",
         "@opencode-ai/raccoon-webview": "workspace:*",
         "@opencode-ai/sdk": "workspace:*",
         "@tree-sitter-grammars/tree-sitter-kotlin": "1.1.0",
@@ -995,7 +1009,6 @@
     "solid-js@1.9.10": "patches/solid-js@1.9.10.patch",
     "virtua@0.49.1": "patches/virtua@0.49.1.patch",
     "@modelcontextprotocol/sdk@1.29.0": "patches/@modelcontextprotocol%2Fsdk@1.29.0.patch",
-    "gcp-metadata@8.1.2": "patches/gcp-metadata@8.1.2.patch",
     "@ai-sdk/google@3.0.73": "patches/@ai-sdk%2Fgoogle@3.0.73.patch",
     "@ai-sdk/xai@3.0.82": "patches/@ai-sdk%2Fxai@3.0.82.patch",
     "@standard-community/standard-openapi@0.2.9": "patches/@standard-community%2Fstandard-openapi@0.2.9.patch",
@@ -1903,6 +1916,8 @@
     "@opencode-ai/plugin": ["@opencode-ai/plugin@workspace:packages/plugin"],
 
     "@opencode-ai/raccoon-auth-plugin": ["@opencode-ai/raccoon-auth-plugin@workspace:packages/raccoon-auth-plugin"],
+
+    "@opencode-ai/raccoon-core": ["@opencode-ai/raccoon-core@workspace:packages/raccoon-core"],
 
     "@opencode-ai/raccoon-webview": ["@opencode-ai/raccoon-webview@workspace:packages/raccoon-webview"],
 
@@ -6031,6 +6046,10 @@
     "@opencode-ai/llm/@smithy/eventstream-codec": ["@smithy/eventstream-codec@4.2.14", "", { "dependencies": { "@aws-crypto/crc32": "5.2.0", "@smithy/types": "^4.14.1", "@smithy/util-hex-encoding": "^4.2.2", "tslib": "^2.6.2" } }, "sha512-erZq0nOIpzfeZdCyzZjdJb4nVSKLUmSkaQUVkRGQTXs30gyUGeKnrYEg+Xe1W5gE3aReS7IgsvANwVPxSzY6Pw=="],
 
     "@opencode-ai/llm/@smithy/util-utf8": ["@smithy/util-utf8@4.2.2", "", { "dependencies": { "@smithy/util-buffer-from": "^4.2.2", "tslib": "^2.6.2" } }, "sha512-75MeYpjdWRe8M5E3AW0O4Cx3UadweS+cwdXjwYGBW5h/gxxnbeZ877sLPX/ZJA9GVTlL/qG0dXP29JWFCD1Ayw=="],
+
+    "@opencode-ai/raccoon-core/jsonc-parser": ["jsonc-parser@2.3.1", "", {}, "sha512-H8jvkz1O50L3dMZCsLqiuB2tA7muqbSg1AtGEkN0leAqGjsUzDJir3Zwr02BhqdcITPg3ei3mZ+HjMocAknhhg=="],
+
+    "@opencode-ai/raccoon-core/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@opencode-ai/raccoon-webview/@types/react": ["@types/react@19.2.17", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw=="],
 

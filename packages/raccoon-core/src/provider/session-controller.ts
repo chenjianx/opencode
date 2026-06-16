@@ -1,4 +1,3 @@
-import * as vscode from "vscode"
 import type { FilePartInput, OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import type {
   ChatMode,
@@ -15,7 +14,7 @@ import { mapMessage, mapSession, responseText, sortMessages, sortSessions } from
 import type { ModelSelection } from "./model-state.js"
 import type { RaccoonProviderConfig } from "./provider-config.js"
 import type { RaccoonStreamScheduler } from "./stream-scheduler.js"
-import type { RaccoonWebviewHost, RaccoonWebviewSource } from "./webview-host.js"
+import type { RaccoonWebviewSource, WebviewTransport } from "./platform.js"
 
 type SessionControllerDeps = {
   client: () => Promise<OpencodeClient>
@@ -29,9 +28,18 @@ type SessionControllerDeps = {
   removeSession: (sessionID: string) => void
   report: (error: unknown) => void
   log: (message: string) => void
+  saveFile: (options: {
+    title: string
+    saveLabel?: string
+    defaultName: string
+    directory: string
+    filters?: Record<string, string[]>
+    data: Uint8Array
+  }) => Promise<boolean>
+  captureTerminal: () => Promise<string>
   config: RaccoonProviderConfig
   streams: RaccoonStreamScheduler
-  webviewHost: RaccoonWebviewHost
+  webviewHost: WebviewTransport
 }
 
 export class RaccoonSessionController {
@@ -127,15 +135,14 @@ export class RaccoonSessionController {
       client.session.messages({ sessionID }, { throwOnError: true }),
     ])
     const filename = `${(info.data.title || sessionID).replace(/[\\/:*?"<>|]/g, "-")}.md`
-    const base = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd()
-    const file = await vscode.window.showSaveDialog({
+    await this.deps.saveFile({
       title: "Export session",
       saveLabel: "Export",
+      defaultName: filename,
+      directory: this.deps.directory(),
       filters: { Markdown: ["md"] },
-      defaultUri: vscode.Uri.file(`${base}/${filename}`),
+      data: Buffer.from(exportMarkdown({ info: info.data, messages: messages.data })),
     })
-    if (!file) return
-    await vscode.workspace.fs.writeFile(file, Buffer.from(exportMarkdown({ info: info.data, messages: messages.data })))
   }
 
   async revertSession(sessionID: string, messageID: string, source: RaccoonWebviewSource) {
@@ -303,6 +310,7 @@ export class RaccoonSessionController {
     const contextFiles = await contextMentionAttachments(
       text,
       this.deps.directory(),
+      this.deps.captureTerminal,
       inputFiles.map((item) => item.filename ?? item.path),
     )
     const fileParts: (FilePartInput & RaccoonMessagePart)[] = [...inputFiles, ...contextFiles].map((file) => ({

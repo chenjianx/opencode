@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { RaccoonProvider } from "../provider/index.js"
+import { RaccoonProvider } from "@opencode-ai/raccoon-core"
 import { extractFunctionRanges } from "./function-extractor.js"
 
 const actions = [

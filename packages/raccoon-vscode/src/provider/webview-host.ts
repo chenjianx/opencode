@@ -2,21 +2,26 @@ import * as vscode from "vscode"
 import type { ExtensionToWebview, RaccoonSession, RaccoonState, WebviewToExtension } from "@opencode-ai/raccoon-webview"
 import type { RaccoonConnectionService } from "../services/cli-backend/index.js"
 import { buildWebviewHtml } from "../webview/html.js"
+import type { RaccoonWebviewSource, WebviewTransport } from "@opencode-ai/raccoon-core"
 
-export type RaccoonWebviewSource = "chat" | "settings"
+export type { RaccoonWebviewSource } from "@opencode-ai/raccoon-core"
 
-export class RaccoonWebviewHost {
+export class RaccoonWebviewHost implements WebviewTransport {
   private view?: vscode.WebviewView
   private settingsPanel?: vscode.WebviewPanel
   private ready = false
   private settingsReady = false
   private readonly pendingChatMessages: ExtensionToWebview[] = []
+  private messageHandler: (message: WebviewToExtension, source: RaccoonWebviewSource) => void = () => {}
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly connection: RaccoonConnectionService,
-    private readonly onMessage: (message: WebviewToExtension, source: RaccoonWebviewSource) => void,
   ) {}
+
+  onMessage(handler: (message: WebviewToExtension, source: RaccoonWebviewSource) => void) {
+    this.messageHandler = handler
+  }
 
   resolveChatView(view: vscode.WebviewView) {
     this.view = view
@@ -26,7 +31,7 @@ export class RaccoonWebviewHost {
       localResourceRoots: [this.extensionUri],
     }
     view.webview.html = this.html(view.webview)
-    view.webview.onDidReceiveMessage((message: WebviewToExtension) => this.onMessage(message, "chat"))
+    view.webview.onDidReceiveMessage((message: WebviewToExtension) => this.messageHandler(message, "chat"))
   }
 
   openSettings() {
@@ -42,7 +47,7 @@ export class RaccoonWebviewHost {
     this.settingsPanel = panel
     this.settingsReady = false
     panel.webview.html = this.html(panel.webview)
-    panel.webview.onDidReceiveMessage((message: WebviewToExtension) => this.onMessage(message, "settings"))
+    panel.webview.onDidReceiveMessage((message: WebviewToExtension) => this.messageHandler(message, "settings"))
     panel.onDidDispose(() => {
       if (this.settingsPanel !== panel) return
       this.settingsPanel = undefined

@@ -1,7 +1,7 @@
 import type { FilePartInput } from "@opencode-ai/sdk/v2/client"
 import type { ChatMode, RaccoonPluginLanguageMode, WebviewToExtension } from "@opencode-ai/raccoon-webview"
 import type { ModelSelection } from "./model-state.js"
-import type { RaccoonWebviewSource } from "./webview-host.js"
+import type { RaccoonWebviewSource } from "./platform.js"
 
 type MessageRouterDeps = {
   markReady: (source: RaccoonWebviewSource) => void

@@ -1,4 +1,3 @@
-import * as vscode from "vscode"
 import * as fs from "node:fs/promises"
 import * as nodePath from "node:path"
 import { applyEdits, modify, parse as parseJsonc, type ParseError } from "jsonc-parser/lib/esm/main.js"
@@ -24,7 +23,7 @@ import { ActionTokenStore } from "./action-tokens.js"
 import { collectRules } from "./rules-config.js"
 import { collectCommands } from "./commands-config.js"
 import { isRaccoonLoggedIn } from "./raccoon-auth-state.js"
-import type { RaccoonWebviewHost, RaccoonWebviewSource } from "./webview-host.js"
+import type { KeyValueStore, RaccoonWebviewSource, WebviewTransport } from "./platform.js"
 
 type ProviderConfigDeps = {
   client: () => Promise<OpencodeClient>
@@ -34,8 +33,10 @@ type ProviderConfigDeps = {
   post: () => void
   refresh: () => Promise<void>
   withLoading: (run: () => Promise<void>) => Promise<void>
-  storage?: vscode.Memento
-  webviewHost: RaccoonWebviewHost
+  storage?: KeyValueStore
+  webviewHost: WebviewTransport
+  openExternal: (url: string) => Promise<void>
+  promptInput: (options: { title: string; prompt?: string }) => Promise<string | undefined>
   pluginLanguage: () => RaccoonPluginLanguage
 }
 
@@ -338,10 +339,9 @@ export class RaccoonProviderConfig {
         if (cancelled()) return
         if (!authorization.data) throw new Error("Provider did not return an authorization URL")
         if (authorization.data.method === "code") {
-          const code = await vscode.window.showInputBox({
+          const code = await this.deps.promptInput({
             title: `${method.label} authorization code`,
             prompt: authorization.data.instructions,
-            ignoreFocusOut: true,
           })
           if (cancelled()) return
           if (!code) throw new Error("Provider login cancelled")
@@ -355,7 +355,7 @@ export class RaccoonProviderConfig {
             { throwOnError: true },
           )
         } else {
-          void vscode.env.openExternal(vscode.Uri.parse(authorization.data.url))
+          void this.deps.openExternal(authorization.data.url)
           await client.provider.oauth.callback(
             {
               providerID: message.providerID,
@@ -481,10 +481,9 @@ export class RaccoonProviderConfig {
         if (!authorization.data) throw new Error("Raccoon did not return an authorization URL")
 
         if (authorization.data.method === "code") {
-          const code = await vscode.window.showInputBox({
+          const code = await this.deps.promptInput({
             title: "Raccoon authorization code",
             prompt: authorization.data.instructions,
-            ignoreFocusOut: true,
           })
           if (!this.raccoonLoginTokens.isCurrent(undefined, token)) return
           if (!code) throw new Error("Raccoon login cancelled")

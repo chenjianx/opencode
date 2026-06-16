@@ -1,4 +1,3 @@
-import { window } from "vscode"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import { MARKETPLACE_CATALOG } from "./catalog.js"
 import { MarketplaceInstaller } from "./installer.js"
@@ -18,6 +17,10 @@ import type {
 export class MarketplaceService {
   private readonly installer = new MarketplaceInstaller()
 
+  // `notify` surfaces a success toast; the host supplies it (no-op by default) so this service
+  // stays free of any editor API.
+  constructor(private readonly notify: (message: string) => void = () => {}) {}
+
   async fetchData(client: OpencodeClient, directory: string): Promise<MarketplaceDataResponse> {
     const installed = await this.installer.detect(client, directory)
     return { items: MARKETPLACE_CATALOG, installed }
@@ -30,7 +33,7 @@ export class MarketplaceService {
     options: MarketplaceInstallOptions,
   ): Promise<MarketplaceInstallResult> {
     const result = await this.installer.install(client, directory, item, options)
-    if (result.success) window.showInformationMessage(`Installed MCP server ${item.title ?? item.name}`)
+    if (result.success) this.notify(`Installed MCP server ${item.title ?? item.name}`)
     return result
   }
 
@@ -40,7 +43,7 @@ export class MarketplaceService {
     request: MarketplaceManualInstall,
   ): Promise<MarketplaceInstallResult> {
     const result = await this.installer.installManual(client, directory, request)
-    if (result.success) window.showInformationMessage(`Added MCP server ${result.id}`)
+    if (result.success) this.notify(`Added MCP server ${result.id}`)
     return result
   }
 
@@ -51,7 +54,7 @@ export class MarketplaceService {
     scope: MarketplaceScope,
   ): Promise<MarketplaceRemoveResult> {
     const result = await this.installer.remove(client, directory, item, scope)
-    if (result.success) window.showInformationMessage(`Removed MCP server ${item.title ?? item.name}`)
+    if (result.success) this.notify(`Removed MCP server ${item.title ?? item.name}`)
     return result
   }
 
@@ -82,7 +85,7 @@ export class MarketplaceService {
     config: McpServerConfig,
   ): Promise<MarketplaceRemoveResult> {
     const result = await this.installer.updateConfig(client, directory, id, scope, config)
-    if (result.success) window.showInformationMessage(`Updated MCP server ${id}`)
+    if (result.success) this.notify(`Updated MCP server ${id}`)
     return result
   }
 
@@ -101,7 +104,7 @@ export class MarketplaceService {
     scope: MarketplaceScope,
   ): Promise<MarketplaceRemoveResult> {
     const result = await this.installer.removeById(client, directory, id, scope)
-    if (result.success) window.showInformationMessage(`Removed MCP server ${id}`)
+    if (result.success) this.notify(`Removed MCP server ${id}`)
     return result
   }
 

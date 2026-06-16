@@ -1,7 +1,6 @@
 import { spawn } from "node:child_process"
 import * as fs from "node:fs/promises"
 import * as path from "node:path"
-import * as vscode from "vscode"
 
 type Attachment = {
   path: string
@@ -104,22 +103,12 @@ function truncateTerminalOutput(content: string) {
   return `${lines.slice(0, before).join("\n")}\n\n[...${omitted} lines omitted...]\n\n${lines.slice(-after).join("\n")}`
 }
 
-export async function terminalContext() {
-  const terminal = vscode.window.activeTerminal
-  if (!terminal) return "No active terminal is available."
-
-  const saved = await vscode.env.clipboard.readText()
-  try {
-    await vscode.commands.executeCommand("workbench.action.terminal.selectAll")
-    await vscode.commands.executeCommand("workbench.action.terminal.copySelection")
-    await vscode.commands.executeCommand("workbench.action.terminal.clearSelection")
-
-    const copied = (await vscode.env.clipboard.readText()).trim()
-    if (!copied || copied === saved) return `Active terminal: ${terminal.name}\n\nNo terminal output captured.`
-    return cap(truncateTerminalOutput(trimPrompt(copied))).content
-  } finally {
-    await vscode.env.clipboard.writeText(saved)
-  }
+// Pure formatting of raw terminal text into the bounded context string. The platform-specific
+// capture (clipboard/selection on VSCode) lives in the host adapter and feeds its output here.
+export function formatTerminalOutput(terminalName: string, copied: string, previousClipboard: string) {
+  const trimmed = copied.trim()
+  if (!trimmed || trimmed === previousClipboard) return `Active terminal: ${terminalName}\n\nNo terminal output captured.`
+  return cap(truncateTerminalOutput(trimPrompt(trimmed))).content
 }
 
 export async function gitChangesContext(dir: string) {
@@ -238,10 +227,15 @@ function run(args: string[], cwd: string, limit: number): Promise<Result> {
   })
 }
 
-export async function contextMentionAttachments(text: string, directory: string, existing: string[] = []) {
+export async function contextMentionAttachments(
+  text: string,
+  directory: string,
+  captureTerminal: () => Promise<string>,
+  existing: string[] = [],
+) {
   return [
     hasTerminalMention(text) && !existing.includes("terminal-output.txt")
-      ? attachment("terminal-output.txt", await terminalContext(), mentionSource(text, "terminal", "terminal-output.txt"))
+      ? attachment("terminal-output.txt", await captureTerminal(), mentionSource(text, "terminal", "terminal-output.txt"))
       : undefined,
     hasGitChangesMention(text) && !existing.includes("git-changes.txt")
       ? attachment("git-changes.txt", await gitChangesContext(directory), mentionSource(text, "git-changes", "git-changes.txt"))

@@ -1,4 +1,3 @@
-import { window } from "vscode"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import { SKILL_MARKETPLACE_SOURCES } from "./catalog.js"
 import { SkillMarketplaceInstaller } from "./installer.js"
@@ -15,6 +14,9 @@ import type {
 
 export class SkillMarketplaceService {
   private readonly installer = new SkillMarketplaceInstaller()
+
+  // `notify` surfaces a success toast; supplied by the host so this service touches no editor API.
+  constructor(private readonly notify: (message: string) => void = () => {}) {}
 
   async fetchData(client: OpencodeClient, directory: string): Promise<SkillMarketplaceDataResponse> {
     const scanned = await Promise.all(SKILL_MARKETPLACE_SOURCES.map((source) => scanSkillSource(source)))
@@ -33,7 +35,7 @@ export class SkillMarketplaceService {
     options: SkillMarketplaceInstallOptions,
   ): Promise<SkillMarketplaceInstallResult> {
     const result = await this.installer.install(client, directory, item, options)
-    if (result.success) window.showInformationMessage(`Installed skill ${item.name}`)
+    if (result.success) this.notify(`Installed skill ${item.name}`)
     return result
   }
 
@@ -44,7 +46,7 @@ export class SkillMarketplaceService {
     scope: SkillMarketplaceScope,
   ): Promise<SkillMarketplaceRemoveResult> {
     const result = await this.installer.remove(client, directory, item, scope)
-    if (result.success) window.showInformationMessage(`Removed skill ${item.name}`)
+    if (result.success) this.notify(`Removed skill ${item.name}`)
     return result
   }
 

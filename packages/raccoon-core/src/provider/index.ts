@@ -1,4 +1,4 @@
-import * as vscode from "vscode"
+import * as nodePath from "node:path"
 import {
   type Message,
   type OpencodeClient,
@@ -13,7 +13,6 @@ import type {
   RaccoonState,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
-import { RaccoonConnectionService, type ConnectionState } from "../services/cli-backend/index.js"
 import { MarketplaceService } from "../services/marketplace/index.js"
 import type { McpStatus } from "../services/marketplace/index.js"
 import { SkillMarketplaceService } from "../services/skill-marketplace/index.js"
@@ -21,14 +20,7 @@ import {
   mapPart,
   messageText,
 } from "./mapping.js"
-import { gitChangesContext, terminalContext } from "./context-mentions.js"
-import {
-  createEditorContext,
-  createPrompt,
-  getEditorContext,
-  type EditorContextAction,
-} from "./editor-context.js"
-import { searchFiles } from "./file-search.js"
+import { createPrompt } from "./editor-prompt.js"
 import {
   removePart as removeSessionPart,
   removeSession as removeSessionState,
@@ -45,7 +37,18 @@ import { RaccoonProviderConfig } from "./provider-config.js"
 import { RaccoonRulesConfig } from "./rules-config.js"
 import { RaccoonCommandsConfig } from "./commands-config.js"
 import { RaccoonSessionController } from "./session-controller.js"
-import { RaccoonWebviewHost, type RaccoonWebviewSource } from "./webview-host.js"
+import type {
+  ConnectionPort,
+  ConnectionState,
+  Disposable,
+  DocumentRangeRef,
+  EditorContext,
+  EditorContextAction,
+  Emitter,
+  HostPlatform,
+  RaccoonWebviewSource,
+  WebviewTransport,
+} from "./platform.js"
 
 function isAbsolutePath(filePath: string) {
   if (filePath.charCodeAt(0) === 47) return true
@@ -58,6 +61,27 @@ function isAbsolutePath(filePath: string) {
   )
     return true
   return filePath.length >= 2 && filePath.charCodeAt(0) === 92 && filePath.charCodeAt(1) === 92
+}
+
+// Resolve a (possibly workspace-relative) path to an absolute path, collapsing any overlap
+// between the tail of the workspace directory and the head of the relative path. Pure string
+// logic so the orchestrator stays platform-agnostic; the host opens the resulting path.
+function resolveFilePath(filePath: string, directory: string): string {
+  if (isAbsolutePath(filePath)) return filePath
+  const normalized = filePath.replace(/\\/g, "/").replace(/^\.?\//, "")
+  const directoryParts = directory.replace(/\\/g, "/").split("/").filter(Boolean)
+  const fileParts = normalized.split("/").filter(Boolean)
+  const overlap = fileParts
+    .map((_, index) => index + 1)
+    .reverse()
+    .find(
+      (length) =>
+        length < fileParts.length &&
+        length <= directoryParts.length &&
+        fileParts.slice(0, length).join("/") === directoryParts.slice(-length).join("/"),
+    )
+  const relative = overlap ? fileParts.slice(overlap).join("/") : normalized
+  return nodePath.join(directory, relative)
 }
 
 function imageExtension(filename: string | undefined, mime: string) {
@@ -75,20 +99,16 @@ function normalizePluginLanguage(value: string | undefined): RaccoonPluginLangua
   return "en"
 }
 
-function readAutocompleteEnabled(): boolean {
-  return vscode.workspace.getConfiguration("raccoon.autocomplete").get<boolean>("enableAutoTrigger") ?? true
-}
-
-export class RaccoonProvider implements vscode.WebviewViewProvider {
+export class RaccoonProvider {
   static readonly viewType = "raccoon.chat"
 
-  private readonly didChangeState = new vscode.EventEmitter<void>()
+  private readonly didChangeState: Emitter<void>
   private eventRefreshTimer?: ReturnType<typeof setTimeout>
   private unsubscribeState?: () => void
-  private readonly autocompleteConfigListener: vscode.Disposable
+  private readonly autocompleteConfigListener: Disposable
   private readonly pendingPartDeltas = new Map<string, string>()
   private readonly streams = new RaccoonStreamScheduler((message) => this.webviewHost.post("chat", message))
-  private readonly webviewHost: RaccoonWebviewHost
+  private readonly webviewHost: WebviewTransport
   private readonly eventStream: RaccoonEventStream
   private readonly eventHandler: RaccoonEventHandler
   private readonly messageRouter: RaccoonMessageRouter
@@ -96,8 +116,8 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   private readonly rules: RaccoonRulesConfig
   private readonly commands: RaccoonCommandsConfig
   private readonly sessions: RaccoonSessionController
-  private readonly marketplace = new MarketplaceService()
-  private readonly skillMarketplace = new SkillMarketplaceService()
+  private readonly marketplace: MarketplaceService
+  private readonly skillMarketplace: SkillMarketplaceService
   private state: RaccoonState = {
     sessions: [],
     messages: [],
@@ -107,26 +127,31 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     mode: "build",
     loading: true,
     pluginLanguageMode: "auto",
-    pluginLanguage: normalizePluginLanguage(vscode.env.language),
-    autocompleteEnabled: readAutocompleteEnabled(),
+    pluginLanguage: "en",
+    autocompleteEnabled: true,
   }
 
   constructor(
-    private readonly extensionUri: vscode.Uri,
-    private readonly storageUri: vscode.Uri,
-    private readonly connection: RaccoonConnectionService,
-    private readonly output: vscode.OutputChannel,
-    private readonly storage?: vscode.Memento,
+    private readonly connection: ConnectionPort,
+    private readonly platform: HostPlatform,
+    transport: WebviewTransport,
   ) {
+    this.webviewHost = transport
+    this.marketplace = new MarketplaceService((message) => this.platform.ui.showInfo(message))
+    this.skillMarketplace = new SkillMarketplaceService((message) => this.platform.ui.showInfo(message))
+    this.state = {
+      ...this.state,
+      pluginLanguage: normalizePluginLanguage(this.platform.env.locale()),
+      autocompleteEnabled: this.platform.settings.getAutocompleteEnabled(),
+    }
+    this.didChangeState = this.platform.createEmitter<void>()
     this.unsubscribeState = this.connection.onStateChange((state) => this.onConnectionState(state))
-    this.autocompleteConfigListener = vscode.workspace.onDidChangeConfiguration((event) => {
-      if (!event.affectsConfiguration("raccoon.autocomplete.enableAutoTrigger")) return
-      const enabled = readAutocompleteEnabled()
+    this.autocompleteConfigListener = this.platform.settings.onAutocompleteEnabledChange((enabled) => {
       if (enabled === this.state.autocompleteEnabled) return
       this.state = { ...this.state, autocompleteEnabled: enabled }
       this.post()
     })
-    this.webviewHost = new RaccoonWebviewHost(this.extensionUri, this.connection, (message, source) => void this.handle(message, source))
+    this.webviewHost.onMessage((message, source) => void this.handle(message, source))
     this.config = new RaccoonProviderConfig({
       client: () => this.client(),
       directory: () => this.directory(),
@@ -137,9 +162,11 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       post: () => this.post(),
       refresh: () => this.refresh(),
       withLoading: (run) => this.withLoading(run),
-      storage,
+      storage: this.platform.storage,
       webviewHost: this.webviewHost,
-      pluginLanguage: () => normalizePluginLanguage(vscode.env.language),
+      openExternal: (url) => this.platform.ui.openExternal(url),
+      promptInput: (options) => this.platform.ui.promptInput(options),
+      pluginLanguage: () => normalizePluginLanguage(this.platform.env.locale()),
     })
     this.state = { ...this.state, ...this.config.initialState() }
     this.rules = new RaccoonRulesConfig({
@@ -165,7 +192,9 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       loadModels: (client) => this.config.loadModels(client),
       removeSession: (sessionID) => this.removeSession(sessionID),
       report: (error) => this.report(error),
-      log: (message) => this.output.appendLine(message),
+      log: (message) => this.platform.ui.log(message),
+      saveFile: (options) => this.platform.ui.saveFile(options),
+      captureTerminal: () => this.platform.editor.terminalContext(),
       config: this.config,
       streams: this.streams,
       webviewHost: this.webviewHost,
@@ -195,7 +224,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       onReauthRequired: () => this.handleReauthRequired(),
     })
     this.eventStream = new RaccoonEventStream(() => this.client(), (event) => this.eventHandler.handleGlobal(event), (message) =>
-      this.output.appendLine(message),
+      this.platform.ui.log(message),
     )
     this.messageRouter = new RaccoonMessageRouter({
       markReady: (source) => this.webviewHost.markReady(source),
@@ -262,10 +291,6 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     })
   }
 
-  async resolveWebviewView(view: vscode.WebviewView) {
-    this.webviewHost.resolveChatView(view)
-  }
-
   async createSession(mode: ChatMode = this.state.mode) {
     await this.sessions.createSession(mode)
   }
@@ -320,7 +345,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   }
 
   private async requestFileSearch(requestID: string, query: string, kind?: "file" | "folder") {
-    const result = await searchFiles({ query, kind })
+    const result = await this.platform.editor.searchFiles(query, kind)
     this.webviewHost.post("chat", {
       type: "fileSearchResult",
       requestID,
@@ -340,9 +365,9 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   }
 
   async appendEditorContext(type: "ADD_TO_CONTEXT") {
-    const context = getEditorContext()
+    const context = this.platform.editor.getActiveContext()
     if (!context) return
-    await vscode.commands.executeCommand("workbench.view.extension.raccoon")
+    await this.platform.ui.revealChat()
     this.webviewHost.post("chat", {
       type: "appendPrompt",
       text: createPrompt(type, context, this.state.pluginLanguage),
@@ -351,21 +376,19 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   }
 
   async sendEditorContext(type: "EXPLAIN" | "FIX" | "IMPROVE") {
-    const context = getEditorContext()
+    const context = this.platform.editor.getActiveContext()
     if (!context) return
     await this.sendContextPrompt(type, context)
   }
 
-  async sendDocumentRangeContext(type: EditorContextAction, uri: vscode.Uri, range: vscode.Range) {
-    const document = await vscode.workspace.openTextDocument(uri)
-    const context = createEditorContext(document, range)
+  async sendDocumentRangeContext(type: EditorContextAction, ref: DocumentRangeRef) {
+    const context = await this.platform.editor.getRangeContext(ref)
     if (!context) return
     await this.sendContextPrompt(type, context)
   }
 
-  private async sendContextPrompt(type: EditorContextAction, context: ReturnType<typeof createEditorContext>) {
-    if (!context) return
-    await vscode.commands.executeCommand("workbench.view.extension.raccoon")
+  private async sendContextPrompt(type: EditorContextAction, context: EditorContext) {
+    await this.platform.ui.revealChat()
     if (!this.state.activeSessionID) {
       await this.sessions.createSession(this.state.mode)
     }
@@ -373,9 +396,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   }
 
   async setAutocompleteEnabled(enabled: boolean) {
-    await vscode.workspace
-      .getConfiguration("raccoon.autocomplete")
-      .update("enableAutoTrigger", enabled, vscode.ConfigurationTarget.Global)
+    await this.platform.settings.setAutocompleteEnabled(enabled)
     this.state = { ...this.state, autocompleteEnabled: enabled }
     this.post()
   }
@@ -401,7 +422,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       this.webviewHost.post(source, {
         type: "terminalContextResult",
         requestID,
-        content: await terminalContext(),
+        content: await this.platform.editor.terminalContext(),
       } satisfies ExtensionToWebview)
     } catch (error) {
       this.webviewHost.post(source, {
@@ -417,7 +438,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       this.webviewHost.post(source, {
         type: "gitChangesContextResult",
         requestID,
-        content: await gitChangesContext(this.directory()),
+        content: await this.platform.editor.gitChangesContext(this.directory()),
       } satisfies ExtensionToWebview)
     } catch (error) {
       this.webviewHost.post(source, {
@@ -532,28 +553,17 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   }
 
   private directory() {
-    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd()
+    return this.platform.workspace.directory()
   }
 
   private openFile(filePath: string, line?: number, column?: number) {
-    const uri = this.fileUri(filePath)
-    vscode.workspace.openTextDocument(uri).then(
-      (document) => {
-        const options: vscode.TextDocumentShowOptions = { preview: true }
-        if (line !== undefined && line > 0) {
-          const position = new vscode.Position(line - 1, column !== undefined && column > 0 ? column - 1 : 0)
-          options.selection = new vscode.Range(position, position)
-        }
-        void vscode.window.showTextDocument(document, options)
-      },
-      (error) => this.output.appendLine(`Failed to open file ${uri.fsPath}: ${error instanceof Error ? error.message : String(error)}`),
-    )
+    this.platform.ui.openFile(resolveFilePath(filePath, this.directory()), line, column)
   }
 
   private async openImage(url: string, filename?: string, mime?: string) {
     try {
       if (url.startsWith("file://")) {
-        await vscode.commands.executeCommand("vscode.open", vscode.Uri.parse(url), { preview: true })
+        await this.platform.ui.openPath(url)
         return
       }
 
@@ -565,32 +575,15 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       const mediaType = mime ?? match[1] ?? "image/png"
       const extension = imageExtension(filename, mediaType)
       const safeName = (filename ?? `raccoon-image-${Date.now()}${extension}`).replace(/[\\/:"*?<>|]+/g, "-")
-      const uri = vscode.Uri.joinPath(this.storageUri, "image-preview", safeName.includes(".") ? safeName : `${safeName}${extension}`)
-      await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(this.storageUri, "image-preview"))
-      await vscode.workspace.fs.writeFile(uri, Buffer.from(decodeURIComponent(match[2] ?? ""), url.includes(";base64,") ? "base64" : "utf8"))
-      await vscode.commands.executeCommand("vscode.open", uri, { preview: true })
-    } catch (error) {
-      this.output.appendLine(`Failed to open image: ${error instanceof Error ? error.message : String(error)}`)
-    }
-  }
-
-  private fileUri(filePath: string) {
-    if (isAbsolutePath(filePath)) return vscode.Uri.file(filePath)
-    const directory = this.directory()
-    const base = vscode.Uri.file(directory)
-    const normalized = filePath.replace(/\\/g, "/").replace(/^\.?\//, "")
-    const directoryParts = directory.replace(/\\/g, "/").split("/").filter(Boolean)
-    const fileParts = normalized.split("/").filter(Boolean)
-    const overlap = fileParts
-      .map((_, index) => index + 1)
-      .reverse()
-      .find(
-        (length) =>
-          length < fileParts.length &&
-          length <= directoryParts.length &&
-          fileParts.slice(0, length).join("/") === directoryParts.slice(-length).join("/"),
+      const data = Buffer.from(decodeURIComponent(match[2] ?? ""), url.includes(";base64,") ? "base64" : "utf8")
+      const absolutePath = await this.platform.fs.writeTempFile(
+        ["image-preview", safeName.includes(".") ? safeName : `${safeName}${extension}`],
+        data,
       )
-    return vscode.Uri.joinPath(base, overlap ? fileParts.slice(overlap).join("/") : normalized)
+      await this.platform.ui.openPath(absolutePath)
+    } catch (error) {
+      this.platform.ui.log(`Failed to open image: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
 
   private async withLoading(run: () => Promise<void>) {
@@ -1009,7 +1002,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
 
   private report(error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
-    this.output.appendLine(message)
+    this.platform.ui.log(message)
     this.state = { ...this.state, loading: false, busy: false, error: message }
     this.didChangeState.fire()
     this.webviewHost.postError(message)

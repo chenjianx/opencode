@@ -3,7 +3,7 @@ import type { RaccoonConnectionService } from "../cli-backend/index.js"
 import { CompletionProvider } from "./CompletionProvider.js"
 import { ErrorBackoff } from "./ErrorBackoff.js"
 import { hasValidCredentials, RaccoonFimLlm } from "./llm/RaccoonFimLlm.js"
-import { DEFAULT_AUTOCOMPLETE_MODEL } from "./models.js"
+import { DEFAULT_AUTOCOMPLETE_MODEL } from "@opencode-ai/raccoon-core"
 import {
   DEFAULT_AUTOCOMPLETE_OPTIONS,
   type AutocompleteInput,
