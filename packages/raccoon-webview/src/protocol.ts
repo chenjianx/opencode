@@ -121,6 +121,25 @@ export type RaccoonCommand = {
   hints: string[]
 }
 
+export type RaccoonManagedCommand = {
+  name: string
+  scope: RaccoonAgentScope
+  description?: string
+  agent?: string
+  model?: string
+  subtask?: boolean
+  template: string
+}
+
+export type RaccoonManagedCommandInput = {
+  name: string
+  description?: string
+  agent?: string
+  model?: string
+  subtask?: boolean
+  template: string
+}
+
 export type RaccoonSlashCommand = {
   name: string
   description?: string
@@ -415,6 +434,7 @@ export type RaccoonState = {
   }
   defaults?: Record<string, string>
   commands?: RaccoonCommand[]
+  commandConfigs?: RaccoonManagedCommand[]
   slashCommands?: RaccoonSlashCommand[]
   providerAuthMethods?: Record<string, RaccoonProviderAuthMethod[]>
   customProviders?: RaccoonCustomProvider[]
@@ -470,6 +490,13 @@ export type WebviewToExtension =
   | { type: "saveRule"; scope: RaccoonAgentScope; originalName: string; name: string; content: string }
   | { type: "toggleRule"; scope: RaccoonAgentScope; name: string; enabled: boolean }
   | { type: "deleteRule"; scope: RaccoonAgentScope; name: string }
+  | {
+      type: "saveCommand"
+      scope: RaccoonAgentScope
+      originalName: string
+      command: RaccoonManagedCommandInput
+    }
+  | { type: "deleteCommand"; scope: RaccoonAgentScope; name: string }
   | {
       type: "connectProvider"
       providerID: string

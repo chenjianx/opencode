@@ -546,6 +546,7 @@ export function SettingsProviders() {
           onClose={() => setRaccoonLogoutConfirm(false)}
           footer={
             <>
+              <Button onClick={() => setRaccoonLogoutConfirm(false)}>{language.t("common.cancel")}</Button>
               <Button
                 onClick={() => {
                   setRaccoonLogoutConfirm(false)
@@ -554,7 +555,6 @@ export function SettingsProviders() {
               >
                 {language.t("common.confirm")}
               </Button>
-              <Button onClick={() => setRaccoonLogoutConfirm(false)}>{language.t("common.cancel")}</Button>
             </>
           }
         >
@@ -573,8 +573,8 @@ export function SettingsProviders() {
           onClose={() => setPendingAction(undefined)}
           footer={
             <>
-              <Button onClick={confirmPendingAction}>{language.t("common.confirm")}</Button>
               <Button onClick={() => setPendingAction(undefined)}>{language.t("common.cancel")}</Button>
+              <Button onClick={confirmPendingAction}>{language.t("common.confirm")}</Button>
             </>
           }
         >

@@ -43,6 +43,7 @@ import { RaccoonEventHandler } from "./event-handler.js"
 import { RaccoonMessageRouter } from "./message-router.js"
 import { RaccoonProviderConfig } from "./provider-config.js"
 import { RaccoonRulesConfig } from "./rules-config.js"
+import { RaccoonCommandsConfig } from "./commands-config.js"
 import { RaccoonSessionController } from "./session-controller.js"
 import { RaccoonWebviewHost, type RaccoonWebviewSource } from "./webview-host.js"
 
@@ -93,6 +94,7 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
   private readonly messageRouter: RaccoonMessageRouter
   private readonly config: RaccoonProviderConfig
   private readonly rules: RaccoonRulesConfig
+  private readonly commands: RaccoonCommandsConfig
   private readonly sessions: RaccoonSessionController
   private readonly marketplace = new MarketplaceService()
   private readonly skillMarketplace = new SkillMarketplaceService()
@@ -141,6 +143,11 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
     })
     this.state = { ...this.state, ...this.config.initialState() }
     this.rules = new RaccoonRulesConfig({
+      client: () => this.client(),
+      directory: () => this.directory(),
+      refresh: () => this.refresh(),
+    })
+    this.commands = new RaccoonCommandsConfig({
       client: () => this.client(),
       directory: () => this.directory(),
       refresh: () => this.refresh(),
@@ -220,6 +227,8 @@ export class RaccoonProvider implements vscode.WebviewViewProvider {
       saveRule: (message) => this.rules.saveRule(message),
       toggleRule: (message) => this.rules.toggleRule(message.scope, message.name, message.enabled),
       deleteRule: (message) => this.rules.deleteRule(message.scope, message.name),
+      saveCommand: (message) => this.commands.saveCommand(message),
+      deleteCommand: (message) => this.commands.deleteCommand(message.scope, message.name),
       connectProvider: (message) => this.config.connectProvider(message),
       cancelProviderConnect: (providerID) => this.config.cancelProviderConnect(providerID),
       disconnectProvider: (providerID) => this.config.disconnectProvider(providerID),

@@ -22,6 +22,7 @@ import { mapProviderModels, mapProviders, recountProviders } from "./mapping.js"
 import { ModelStateStore, type ModelSelection, modelKey, modeModelSelections } from "./model-state.js"
 import { ActionTokenStore } from "./action-tokens.js"
 import { collectRules } from "./rules-config.js"
+import { collectCommands } from "./commands-config.js"
 import { isRaccoonLoggedIn } from "./raccoon-auth-state.js"
 import type { RaccoonWebviewHost, RaccoonWebviewSource } from "./webview-host.js"
 
@@ -133,9 +134,11 @@ export class RaccoonProviderConfig {
     const projectAgentNames = await collectProjectAgentNames(this.deps.directory())
     const agentOverrides = collectAgentOverrides(rawGlobalConfigResponse?.data?.agent, rawConfigResponse.data?.agent)
     const agentScopes = collectAgentScopes(rawGlobalConfigResponse?.data?.agent, projectAgentNames)
-    const [projectRules, userRules] = await Promise.all([
+    const [projectRules, userRules, projectCommands, userCommands] = await Promise.all([
       collectRules(active, this.deps.directory(), "project").catch(() => []),
       collectRules(active, this.deps.directory(), "user").catch(() => []),
+      collectCommands(active, this.deps.directory(), "project").catch(() => []),
+      collectCommands(active, this.deps.directory(), "user").catch(() => []),
     ])
     const raccoonLoggedIn = await isRaccoonLoggedIn()
     this.deps.setState({
@@ -145,6 +148,7 @@ export class RaccoonProviderConfig {
       defaults: configResponse.data.default,
       agents: visibleAgents(agentResponse.data, agentOverrides, agentScopes),
       rules: [...projectRules, ...userRules],
+      commandConfigs: [...projectCommands, ...userCommands],
       providers,
       commands,
       slashCommands: [

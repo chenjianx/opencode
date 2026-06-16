@@ -799,6 +799,152 @@
     @apply text-[11px] text-[var(--color-error)];
   }
 
+  .settings-commands-template {
+    @apply min-h-0 flex-1;
+  }
+
+  .settings-commands-root {
+    @apply gap-1;
+  }
+
+  .settings-commands-header {
+    @apply flex items-start justify-between gap-4 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2.5;
+  }
+
+  .settings-commands-header .settings-rules-hint {
+    @apply min-w-0 flex-1;
+  }
+
+  .settings-commands-shell {
+    @apply gap-4;
+  }
+
+  .settings-commands-pane {
+    @apply w-[260px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-1.5 max-[760px]:w-full;
+  }
+
+  .settings-commands-node {
+    @apply w-full min-h-[38px] gap-2 border border-transparent bg-transparent px-2.5 py-2 text-left transition-colors;
+  }
+
+  .settings-commands-node.active {
+    @apply border-[var(--color-border)] bg-[var(--color-button)];
+    box-shadow: inset 2px 0 0 var(--color-focus);
+  }
+
+  .settings-commands-node-main {
+    @apply overflow-hidden;
+  }
+
+  .settings-commands-node-name {
+    @apply font-mono text-[12px] font-medium;
+  }
+
+  .settings-commands-node-meta {
+    @apply flex shrink-0 items-center gap-1.5;
+  }
+
+  .settings-commands-node-delete {
+    @apply opacity-55 transition-opacity;
+  }
+
+  .settings-commands-node:hover .settings-commands-node-delete,
+  .settings-commands-node.active .settings-commands-node-delete {
+    @apply opacity-100;
+  }
+
+  .settings-commands-scope {
+    @apply shrink-0 border border-[var(--color-border)] bg-[var(--color-button)] px-2 font-medium;
+  }
+
+  .settings-commands-scope.project {
+    @apply text-[var(--color-focus)];
+  }
+
+  .settings-commands-scope.user {
+    @apply text-[var(--color-muted)];
+  }
+
+  .settings-commands-scope.builtin {
+    @apply text-[var(--color-muted)] opacity-80;
+  }
+
+  .settings-commands-node-spacer {
+    @apply h-5 w-5 shrink-0;
+  }
+
+  .settings-commands-editor {
+    @apply min-w-0 rounded-[8px];
+  }
+
+  .settings-commands-editor-header {
+    @apply min-w-0;
+  }
+
+  .settings-commands-editor-header .settings-rules-editor-title {
+    @apply min-w-0 flex-1;
+  }
+
+  .settings-commands-editor-body {
+    @apply grid auto-rows-min grid-cols-2 gap-x-4 gap-y-3 overflow-y-auto bg-[var(--color-background)] p-4 max-[920px]:grid-cols-1;
+  }
+
+  .settings-commands-field {
+    @apply min-w-0 rounded-[4px] bg-transparent p-0;
+  }
+
+  .settings-commands-field > span:first-child {
+    @apply text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-muted)];
+  }
+
+  .settings-commands-field .settings-provider-input,
+  .settings-commands-field .settings-rules-textarea,
+  .settings-commands-field select {
+    @apply border-[var(--color-border)] bg-[var(--color-input)];
+  }
+
+  .settings-commands-field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .settings-commands-textarea {
+    @apply min-h-[300px] overflow-auto;
+    max-height: min(48vh, 520px);
+  }
+
+  .settings-commands-description {
+    @apply h-auto min-h-[74px] w-full resize-y py-1.5 leading-5;
+  }
+
+  .settings-commands-readonly {
+    @apply flex flex-col gap-3 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] p-3;
+  }
+
+  .settings-commands-readonly-name {
+    @apply font-mono text-[13px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-commands-readonly-description,
+  .settings-commands-readonly-note {
+    @apply text-[12px] leading-5 text-[var(--color-muted)];
+  }
+
+  .settings-commands-readonly-hints {
+    @apply flex flex-col gap-1 text-[12px] text-[var(--color-muted)];
+  }
+
+  .settings-commands-readonly-hints div {
+    @apply flex flex-wrap gap-1.5;
+  }
+
+  .settings-commands-readonly-hints code {
+    @apply rounded-[4px] border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--color-foreground)];
+  }
+
+  .settings-commands-editor-footer {
+    @apply bg-[var(--color-background)];
+  }
+
   .settings-rules-save:not(:disabled) {
     @apply bg-[var(--color-focus)] text-[var(--color-background)] hover:opacity-90;
   }

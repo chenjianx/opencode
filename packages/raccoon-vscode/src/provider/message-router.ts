@@ -33,6 +33,8 @@ type MessageRouterDeps = {
   saveRule: (message: Extract<WebviewToExtension, { type: "saveRule" }>) => Promise<void>
   toggleRule: (message: Extract<WebviewToExtension, { type: "toggleRule" }>) => Promise<void>
   deleteRule: (message: Extract<WebviewToExtension, { type: "deleteRule" }>) => Promise<void>
+  saveCommand: (message: Extract<WebviewToExtension, { type: "saveCommand" }>) => Promise<void>
+  deleteCommand: (message: Extract<WebviewToExtension, { type: "deleteCommand" }>) => Promise<void>
   connectProvider: (message: Extract<WebviewToExtension, { type: "connectProvider" }>) => Promise<void>
   cancelProviderConnect: (providerID?: string) => void
   disconnectProvider: (providerID: string) => Promise<void>
@@ -189,6 +191,14 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "deleteRule") {
       await this.deps.deleteRule(message)
+      return
+    }
+    if (message.type === "saveCommand") {
+      await this.deps.saveCommand(message)
+      return
+    }
+    if (message.type === "deleteCommand") {
+      await this.deps.deleteCommand(message)
       return
     }
     if (message.type === "connectProvider") {

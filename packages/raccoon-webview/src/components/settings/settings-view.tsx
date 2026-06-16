@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
-import { FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, Translate } from "@phosphor-icons/react"
+import { FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, TerminalWindow, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
 import { SettingsAgents } from "./settings-agents"
 import { SettingsAutocomplete } from "./settings-autocomplete"
+import { SettingsCommands } from "./settings-commands"
 import { SettingsRules } from "./settings-rules"
 import { SettingsLanguage } from "./settings-language"
 import { SettingsMcp } from "./settings-mcp"
@@ -21,7 +22,7 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
 export function SettingsView() {
   const language = useLanguage()
   const session = useSession()
-  const [tab, setTab] = useState<"models" | "agents" | "rules" | "providers" | "mcp" | "skills" | "language" | "autocomplete">("providers")
+  const [tab, setTab] = useState<"models" | "agents" | "commands" | "rules" | "providers" | "mcp" | "skills" | "language" | "autocomplete">("providers")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.defaultModel)
   const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
@@ -103,6 +104,12 @@ export function SettingsView() {
             </span>
             <span>{language.t("settings.nav.agents")}</span>
           </button>
+          <button type="button" className={`settings-nav-item ${tab === "commands" ? "active" : ""}`} onClick={() => setTab("commands")}>
+            <span className="settings-nav-icon">
+              <TerminalWindow size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.commands")}</span>
+          </button>
           <button type="button" className={`settings-nav-item ${tab === "rules" ? "active" : ""}`} onClick={() => setTab("rules")}>
             <span className="settings-nav-icon">
               <Scroll size={16} weight="bold" />
@@ -143,6 +150,15 @@ export function SettingsView() {
               onSave={handleAgentSave}
               onConfigureAgent={session.configureAgent}
               onDeleteAgent={session.deleteAgent}
+            />
+          ) : tab === "commands" ? (
+            <SettingsCommands
+              commandConfigs={session.state.commandConfigs ?? []}
+              availableCommands={session.state.commands ?? []}
+              agents={session.state.agents}
+              connectedModels={connectedModels}
+              onSaveCommand={session.saveCommand}
+              onDeleteCommand={session.deleteCommand}
             />
           ) : tab === "language" ? (
             <SettingsLanguage pluginLanguageMode={draftPluginLanguageMode} onPluginLanguageChange={setDraftPluginLanguageMode} />

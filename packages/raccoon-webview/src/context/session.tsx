@@ -5,6 +5,8 @@ import type {
   RaccoonAgentScope,
   RaccoonAgentConfigInput,
   RaccoonFileAttachment,
+  RaccoonManagedCommand,
+  RaccoonManagedCommandInput,
   RaccoonMessage,
   RaccoonModel,
   RaccoonPluginLanguage,
@@ -26,6 +28,7 @@ const initialState: RaccoonState = {
   models: [],
   providers: [],
   commands: [],
+  commandConfigs: [],
   slashCommands: [],
   customProviders: [],
   mcpMarketplace: {
@@ -47,6 +50,7 @@ type SessionStateContextValue = {
   messages: RaccoonMessage[]
   models: RaccoonModel[]
   commands: RaccoonCommand[]
+  commandConfigs: RaccoonManagedCommand[]
   slashCommands: RaccoonSlashCommand[]
   selectedModel?: RaccoonModel
   activeSession?: RaccoonSession
@@ -95,6 +99,8 @@ type SessionActionsContextValue = {
   saveRule: (scope: RaccoonAgentScope, originalName: string, name: string, content: string) => void
   toggleRule: (scope: RaccoonAgentScope, name: string, enabled: boolean) => void
   deleteRule: (scope: RaccoonAgentScope, name: string) => void
+  saveCommand: (scope: RaccoonAgentScope, originalName: string, command: RaccoonManagedCommandInput) => void
+  deleteCommand: (scope: RaccoonAgentScope, name: string) => void
   connectProvider: (input: {
     providerID: string
     methodIndex?: number
@@ -136,6 +142,7 @@ function normalizeState(state: RaccoonState): RaccoonState {
     models: state.models ?? [],
     providers: state.providers ?? [],
     commands: state.commands ?? [],
+    commandConfigs: state.commandConfigs ?? [],
     slashCommands: state.slashCommands ?? [],
     customProviders: state.customProviders ?? [],
     mcpMarketplace: state.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } },
@@ -394,6 +401,7 @@ export function SessionProvider(props: { children: ReactNode }) {
     const messages = state.messages
     const models = state.models
     const commands = state.commands ?? []
+    const commandConfigs = state.commandConfigs ?? []
     const slashCommands = state.slashCommands ?? []
     const enabledModels = models.filter((model) => model.enabled && model.connected)
     const selectedModel = models.find(
@@ -420,6 +428,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       messages,
       models: enabledModels,
       commands,
+      commandConfigs,
       slashCommands,
       selectedModel,
       activeSession,
@@ -528,6 +537,9 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({ type: "saveRule", scope, originalName, name, content }),
       toggleRule: (scope, name, enabled) => vscode.postMessage({ type: "toggleRule", scope, name, enabled }),
       deleteRule: (scope, name) => vscode.postMessage({ type: "deleteRule", scope, name }),
+      saveCommand: (scope, originalName, command) =>
+        vscode.postMessage({ type: "saveCommand", scope, originalName, command }),
+      deleteCommand: (scope, name) => vscode.postMessage({ type: "deleteCommand", scope, name }),
       connectProvider: (input) => vscode.postMessage({ type: "connectProvider", ...input }),
       cancelProviderConnect: (providerID) => vscode.postMessage({ type: "cancelProviderConnect", providerID }),
       disconnectProvider: (providerID) => vscode.postMessage({ type: "disconnectProvider", providerID }),
