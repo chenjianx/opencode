@@ -5,9 +5,9 @@ import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
+import { Select } from "./settings-common"
 import { MarkdownLite } from "../ui/markdown-lite"
 
-const SCOPES: RaccoonAgentScope[] = ["project", "user"]
 const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
 
 type RuleDraft = {
@@ -15,14 +15,6 @@ type RuleDraft = {
   originalName: string // "" when creating
   name: string
   content: string
-}
-
-function firstLine(content: string): string {
-  for (const raw of content.split("\n")) {
-    const line = raw.replace(/^#+\s*/, "").trim()
-    if (line) return line
-  }
-  return ""
 }
 
 function uniqueName(base: string, existing: RaccoonRule[]): string {
@@ -47,11 +39,8 @@ export function SettingsRules(props: {
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("edit")
   const [pendingDelete, setPendingDelete] = useState<RaccoonRule | undefined>()
 
-  const grouped = useMemo(
-    () => ({
-      project: rules.filter((rule) => rule.scope === "project"),
-      user: rules.filter((rule) => rule.scope === "user"),
-    }),
+  const listItems = useMemo(
+    () => rules.slice().sort((a, b) => a.name.localeCompare(b.name) || a.scope.localeCompare(b.scope)),
     [rules],
   )
 
@@ -64,16 +53,24 @@ export function SettingsRules(props: {
   const trimmedName = draft?.name.trim() ?? ""
   const invalidName = !!draft && !NAME_RE.test(trimmedName)
   const duplicateName =
-    !!draft && grouped[draft.scope].some((rule) => rule.name === trimmedName && rule.name !== draft.originalName)
+    !!draft &&
+    rules.some(
+      (rule) => rule.scope === draft.scope && rule.name === trimmedName && rule.name !== draft.originalName,
+    )
   const canSave = !!draft && !invalidName && !duplicateName
 
   const editRule = (rule: RaccoonRule) => {
     setEditorTab("edit")
     setDraft({ scope: rule.scope, originalName: rule.name, name: rule.name, content: rule.content })
   }
-  const createRule = (scope: RaccoonAgentScope) => {
+  const createRule = () => {
     setEditorTab("edit")
-    setDraft({ scope, originalName: "", name: uniqueName("new-rule", grouped[scope]), content: "" })
+    setDraft({
+      scope: "project",
+      originalName: "",
+      name: uniqueName("new-rule", rules.filter((rule) => rule.scope === "project")),
+      content: "",
+    })
   }
   const save = () => {
     if (!draft || !canSave) return
@@ -86,88 +83,105 @@ export function SettingsRules(props: {
 
   return (
     <>
-      <div className="settings-rules-root">
+      <div className="settings-rules-root settings-commands-root">
         <h3>{language.t("settings.nav.rules")}</h3>
-        <div className="settings-rules-hint settings-rules-intro">{language.t("settings.rules.subtitle")}</div>
-
-        <div className="settings-rules-shell">
-        <div className="settings-rules-pane">
-          <div className="settings-rules-tree">
-            {SCOPES.map((scope) => {
-              const scopeRules = grouped[scope]
-              return (
-                <div className="settings-rules-group" key={scope}>
-                  <div className="settings-rules-group-header">
-                    <div className="settings-rules-group-toggle">
-                      <span className="settings-rules-group-label">{scopeLabel(scope)}</span>
-                      <span className="settings-rules-count">{scopeRules.length}</span>
-                    </div>
-                    <Button
-                      variant="icon"
-                      className="settings-rules-add"
-                      title={language.t("settings.rules.new")}
-                      onClick={() => createRule(scope)}
-                    >
-                      <Plus size={15} weight="bold" />
-                    </Button>
-                  </div>
-
-                  <div className="settings-rules-children">
-                    {scopeRules.length === 0 ? (
-                      <div className="settings-rules-group-empty">{language.t("settings.rules.empty")}</div>
-                    ) : (
-                      scopeRules.map((rule) => {
-                        const active = draft?.originalName === rule.name && draft.scope === rule.scope
-                        return (
-                          <div
-                            key={rule.name}
-                            className={`settings-rules-node ${active ? "active" : ""} ${rule.enabled ? "" : "disabled"}`}
-                          >
-                            <Button
-                              variant="icon"
-                              className="settings-rules-danger settings-rules-node-delete"
-                              title={language.t("settings.rules.delete")}
-                              onClick={() => setPendingDelete(rule)}
-                            >
-                              <Trash size={14} />
-                            </Button>
-                            <button type="button" className="settings-rules-node-main" onClick={() => editRule(rule)}>
-                              <span className="settings-rules-card-name">{rule.name}</span>
-                            </button>
-                            <input
-                              type="checkbox"
-                              role="switch"
-                              className="settings-toggle settings-rules-node-toggle"
-                              checked={rule.enabled}
-                              aria-label={language.t("settings.rules.toggle")}
-                              title={rule.enabled ? language.t("settings.rules.enabled") : language.t("settings.rules.disabled")}
-                              onChange={(event) => onToggleRule(rule.scope, rule.name, event.currentTarget.checked)}
-                            />
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+        <div className="settings-rules-intro settings-commands-header">
+          <div className="settings-rules-hint">{language.t("settings.rules.subtitle")}</div>
+          <Button variant="small" onClick={createRule}>
+            <Plus size={14} weight="bold" />
+            <span>{language.t("settings.rules.new")}</span>
+          </Button>
         </div>
 
-        <div className="settings-rules-editor">
+        <div className="settings-rules-shell settings-commands-shell">
+          <div className="settings-rules-pane settings-commands-pane">
+            <div className="settings-rules-tree">
+              {listItems.length === 0 ? (
+                <div className="settings-rules-group-empty">{language.t("settings.rules.empty")}</div>
+              ) : (
+                listItems.map((rule) => {
+                  const active = draft?.originalName === rule.name && draft.scope === rule.scope
+                  return (
+                    <div
+                      key={`${rule.scope}:${rule.name}`}
+                      className={`settings-rules-node settings-commands-node ${active ? "active" : ""} ${rule.enabled ? "" : "disabled"}`}
+                    >
+                      <button
+                        type="button"
+                        className="settings-rules-node-main settings-commands-node-main"
+                        onClick={() => editRule(rule)}
+                      >
+                        <span className="settings-rules-card-name settings-commands-node-name">{rule.name}</span>
+                      </button>
+                      <div className="settings-commands-node-meta">
+                        <span className={`settings-rules-scope-count settings-commands-scope ${rule.scope}`}>
+                          {scopeLabel(rule.scope)}
+                        </span>
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          className="settings-toggle settings-rules-node-toggle"
+                          checked={rule.enabled}
+                          aria-label={language.t("settings.rules.toggle")}
+                          title={rule.enabled ? language.t("settings.rules.enabled") : language.t("settings.rules.disabled")}
+                          onChange={(event) => onToggleRule(rule.scope, rule.name, event.currentTarget.checked)}
+                        />
+                        <Button
+                          variant="icon"
+                          className="settings-rules-danger settings-rules-node-delete settings-commands-node-delete"
+                          title={language.t("settings.rules.delete")}
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setPendingDelete(rule)
+                          }}
+                        >
+                          <Trash size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="settings-rules-editor settings-commands-editor">
           {draft ? (
             <>
-              <div className="settings-rules-editor-header">
+              <div className="settings-rules-editor-header settings-commands-editor-header">
                 <span className="settings-rules-editor-title">
                   {draft.originalName
                     ? language.t("settings.rules.editing", { name: draft.originalName })
                     : language.t("settings.rules.new")}
                 </span>
                 <div className="settings-rules-editor-actions">
-                  <span className="settings-rules-scope-count">{scopeLabel(draft.scope)}</span>
+                  <span className={`settings-rules-scope-count settings-commands-scope ${draft.scope}`}>{scopeLabel(draft.scope)}</span>
                 </div>
               </div>
               <div className="settings-rules-editor-body">
+                {!draft.originalName ? (
+                  <label className="settings-rules-field">
+                    <span>{language.t("settings.rules.scope.title")}</span>
+                    <Select
+                      value={draft.scope}
+                      options={[
+                        { value: "project", label: language.t("settings.rules.scope.project") },
+                        { value: "user", label: language.t("settings.rules.scope.user") },
+                      ]}
+                      onChange={(scope) => {
+                        const nextScope: RaccoonAgentScope = scope === "user" ? "user" : "project"
+                        setDraft((current) => {
+                          if (!current) return current
+                          return {
+                            ...current,
+                            scope: nextScope,
+                            name: uniqueName(current.name, rules.filter((rule) => rule.scope === nextScope)),
+                          }
+                        })
+                      }}
+                    />
+                  </label>
+                ) : null}
                 <label className="settings-rules-field">
                   <span>{language.t("settings.rules.name.title")}</span>
                   <input

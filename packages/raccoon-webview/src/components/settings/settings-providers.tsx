@@ -388,6 +388,8 @@ export function SettingsProviders() {
                           {language.t("common.delete")}
                         </Button>
                       </>
+                    ) : item.source === "env" ? (
+                      <span className="settings-provider-from-env">{language.t("settings.providers.fromEnv")}</span>
                     ) : (
                       <Button
                         disabled={connectingProviderID === item.id}
