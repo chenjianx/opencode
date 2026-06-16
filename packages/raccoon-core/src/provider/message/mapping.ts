@@ -1,7 +1,7 @@
 import type { Message, Part, Provider, Session } from "@opencode-ai/sdk/v2/client"
 import type { RaccoonMessage, RaccoonMessagePart, RaccoonModel, RaccoonProviderInfo, RaccoonSession } from "@opencode-ai/raccoon-webview"
-import { AUTOCOMPLETE_MODELS } from "../services/autocomplete/models.js"
-import { modelKey } from "./model-state.js"
+import { AUTOCOMPLETE_MODELS } from "../../services/autocomplete/models.js"
+import { modelKey } from "../session/model-state.js"
 
 const autocompleteModelIDs = new Set(AUTOCOMPLETE_MODELS.map((model) => model.id))
 

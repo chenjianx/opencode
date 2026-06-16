@@ -17,13 +17,13 @@ import type {
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
 import { uiSlashCommands } from "./commands.js"
-import { mapProviderModels, mapProviders, recountProviders } from "./mapping.js"
-import { ModelStateStore, type ModelSelection, modelKey, modeModelSelections } from "./model-state.js"
-import { ActionTokenStore } from "./action-tokens.js"
+import { mapProviderModels, mapProviders, recountProviders } from "../message/mapping.js"
+import { ModelStateStore, type ModelSelection, modelKey, modeModelSelections } from "../session/model-state.js"
+import { ActionTokenStore } from "../session/action-tokens.js"
 import { collectRules } from "./rules-config.js"
 import { collectCommands } from "./commands-config.js"
-import { isRaccoonLoggedIn } from "./raccoon-auth-state.js"
-import type { KeyValueStore, RaccoonWebviewSource, WebviewTransport } from "./platform.js"
+import { isRaccoonLoggedIn } from "../session/raccoon-auth-state.js"
+import type { KeyValueStore, RaccoonWebviewSource, WebviewTransport } from "../platform.js"
 
 type ProviderConfigDeps = {
   client: () => Promise<OpencodeClient>

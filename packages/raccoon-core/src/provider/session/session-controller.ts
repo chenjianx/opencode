@@ -6,15 +6,15 @@ import type {
   RaccoonState,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
-import { uiSlashCommands } from "./commands.js"
-import { contextMentionAttachments } from "./context-mentions.js"
-import { exportMarkdown } from "./export-markdown.js"
-import { ascendingID } from "./ids.js"
-import { mapMessage, mapSession, responseText, sortMessages, sortSessions } from "./mapping.js"
+import { uiSlashCommands } from "../config/commands.js"
+import { contextMentionAttachments } from "../editor/context-mentions.js"
+import { exportMarkdown } from "../message/export-markdown.js"
+import { ascendingID } from "../message/ids.js"
+import { mapMessage, mapSession, responseText, sortMessages, sortSessions } from "../message/mapping.js"
 import type { ModelSelection } from "./model-state.js"
-import type { RaccoonProviderConfig } from "./provider-config.js"
-import type { RaccoonStreamScheduler } from "./stream-scheduler.js"
-import type { RaccoonWebviewSource, WebviewTransport } from "./platform.js"
+import type { RaccoonProviderConfig } from "../config/provider-config.js"
+import type { RaccoonStreamScheduler } from "../stream/stream-scheduler.js"
+import type { RaccoonWebviewSource, WebviewTransport } from "../platform.js"
 
 type SessionControllerDeps = {
   client: () => Promise<OpencodeClient>

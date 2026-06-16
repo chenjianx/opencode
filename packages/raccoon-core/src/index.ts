@@ -20,8 +20,8 @@ export type {
   FileSearchResult,
 } from "./provider/platform.js"
 
-export { createPrompt } from "./provider/editor-prompt.js"
-export { formatTerminalOutput, gitChangesContext } from "./provider/context-mentions.js"
+export { createPrompt } from "./provider/editor/editor-prompt.js"
+export { formatTerminalOutput, gitChangesContext } from "./provider/editor/context-mentions.js"
 
 export { MarketplaceService } from "./services/marketplace/index.js"
 export type { McpStatus } from "./services/marketplace/index.js"

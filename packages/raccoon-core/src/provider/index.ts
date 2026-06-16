@@ -19,24 +19,24 @@ import { SkillMarketplaceService } from "../services/skill-marketplace/index.js"
 import {
   mapPart,
   messageText,
-} from "./mapping.js"
-import { createPrompt } from "./editor-prompt.js"
+} from "./message/mapping.js"
+import { createPrompt } from "./editor/editor-prompt.js"
 import {
   removePart as removeSessionPart,
   removeSession as removeSessionState,
   upsertMessage as upsertSessionMessage,
   upsertPart as upsertSessionPart,
   upsertSession as upsertSessionState,
-} from "./session-state.js"
-import { FetchModelsError, fetchOpenAIModels } from "./openai-models.js"
-import { RaccoonStreamScheduler } from "./stream-scheduler.js"
-import { RaccoonEventStream } from "./event-stream.js"
-import { RaccoonEventHandler } from "./event-handler.js"
-import { RaccoonMessageRouter } from "./message-router.js"
-import { RaccoonProviderConfig } from "./provider-config.js"
-import { RaccoonRulesConfig } from "./rules-config.js"
-import { RaccoonCommandsConfig } from "./commands-config.js"
-import { RaccoonSessionController } from "./session-controller.js"
+} from "./session/session-state.js"
+import { FetchModelsError, fetchOpenAIModels } from "./editor/openai-models.js"
+import { RaccoonStreamScheduler } from "./stream/stream-scheduler.js"
+import { RaccoonEventStream } from "./stream/event-stream.js"
+import { RaccoonEventHandler } from "./stream/event-handler.js"
+import { RaccoonMessageRouter } from "./stream/message-router.js"
+import { RaccoonProviderConfig } from "./config/provider-config.js"
+import { RaccoonRulesConfig } from "./config/rules-config.js"
+import { RaccoonCommandsConfig } from "./config/commands-config.js"
+import { RaccoonSessionController } from "./session/session-controller.js"
 import type {
   ConnectionPort,
   ConnectionState,

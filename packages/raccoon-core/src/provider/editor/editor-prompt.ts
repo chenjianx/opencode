@@ -1,5 +1,5 @@
 import type { RaccoonPluginLanguage } from "@opencode-ai/raccoon-webview"
-import type { EditorContext, EditorContextAction, EditorDiagnostic } from "./platform.js"
+import type { EditorContext, EditorContextAction, EditorDiagnostic } from "../platform.js"
 
 // Pure prompt construction for editor-context actions. Platform-agnostic: it consumes the
 // neutral EditorContext and produces the chat prompt string. The VSCode-specific capture of

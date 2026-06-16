@@ -1,6 +1,6 @@
 import type { Message, Part, Session } from "@opencode-ai/sdk/v2/client"
 import type { RaccoonMessage, RaccoonSession } from "@opencode-ai/raccoon-webview"
-import { mapPart, mapSession, messageText, sortMessages, sortParts, sortSessions } from "./mapping.js"
+import { mapPart, mapSession, messageText, sortMessages, sortParts, sortSessions } from "../message/mapping.js"
 
 export function upsertMessage(messages: RaccoonMessage[], message: Message) {
   if (message.role !== "user" && message.role !== "assistant") return messages
