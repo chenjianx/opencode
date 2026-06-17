@@ -159,7 +159,7 @@ export class MarketplaceInstaller {
 
   private async globalConfigFile(client: OpencodeClient, directory: string) {
     const response = await client.path.get({ directory }, { throwOnError: true })
-    if (!response.data?.config) throw new Error("Unable to resolve opencode config directory")
+    if (!response.data?.config) throw new Error("Unable to resolve Raccoon config directory")
     return await pickConfigFile(response.data.config, GLOBAL_CONFIG_FILES, "opencode.json")
   }
 }

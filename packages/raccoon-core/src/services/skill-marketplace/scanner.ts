@@ -82,7 +82,7 @@ async function itemFromDir(
     repoSubpath: source.defaultSubpath,
     skillDir,
     installable,
-    warnings: installable ? undefined : ["Skill directory name is not valid for opencode."],
+    warnings: installable ? undefined : ["Skill directory name is not valid for Raccoon."],
     repositoryUrl: `${repositoryUrl}/tree/main/${skillDir}`,
   }
 }

@@ -172,7 +172,7 @@ function randomString(length: number) {
 function authorizeUrl(baseUrl: string, redirectUri: string) {
   const params = new URLSearchParams({
     ide: "CLI",
-    appname: "OpenCode",
+    appname: "Raccoon",
     redirect: redirectUri,
   })
   return `${baseUrl}/login?${params.toString()}`
@@ -721,7 +721,7 @@ function startCallbackServer() {
         try {
           await onCallback?.(url)
           res.writeHead(200, { "Content-Type": "text/html" })
-          res.end("<!doctype html><html><body><h1>Authorization Successful</h1><p>You can close this window and return to OpenCode.</p></body></html>")
+          res.end("<!doctype html><html><body><h1>Authorization Successful</h1><p>You can close this window and return to Raccoon.</p></body></html>")
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error)
           res.writeHead(400, { "Content-Type": "text/html" })

@@ -65,11 +65,11 @@ export class RaccoonServerManager implements vscode.Disposable {
 
     const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
     const binary = this.binaryPath()
-    const command = this.deps.existsSync(binary) ? binary : this.deps.getConfig("opencodeCommand")?.trim() || "opencode"
+    const command = this.deps.existsSync(binary) ? binary : this.deps.getConfig("opencodeCommand")?.trim() || "raccoon"
     const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"]
     const password = randomBytes(24).toString("base64url")
     const headers = { Authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}` }
-    this.output.appendLine(`starting opencode server: ${command} ${args.join(" ")}`)
+    this.output.appendLine(`starting Raccoon server: ${command} ${args.join(" ")}`)
     const child = this.deps.spawn(command, args, {
       cwd: this.deps.workspaceDirectory(),
       env: { ...process.env, OPENCODE_CALLER: "vscode", OPENCODE_SERVER_PASSWORD: password },
@@ -97,14 +97,14 @@ export class RaccoonServerManager implements vscode.Disposable {
         reject(error)
       }
       child.once("error", (error) => {
-        fail(new ServerStartupError(`Failed to start opencode server: ${error.message}`))
+        fail(new ServerStartupError(`Failed to start Raccoon server: ${error.message}`))
       })
       child.once("exit", (code, signal) => {
-        this.output.appendLine(`opencode server exited with code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""}`)
+        this.output.appendLine(`Raccoon server exited with code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""}`)
         if (this.instance?.process === child) this.instance = undefined
         fail(
           new ServerStartupError(
-            `opencode server exited before it became healthy (code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""})`,
+            `Raccoon server exited before it became healthy (code ${code ?? "unknown"}${signal ? `, signal ${signal}` : ""})`,
           ),
         )
       })
@@ -123,10 +123,10 @@ export class RaccoonServerManager implements vscode.Disposable {
         throw new ServerStartupError([error.message, output.summary()].filter(Boolean).join("\n"))
       }
       throw new ServerStartupError(
-        [`Timed out waiting for opencode server at ${url}`, output.summary()].filter(Boolean).join("\n"),
+        [`Timed out waiting for Raccoon server at ${url}`, output.summary()].filter(Boolean).join("\n"),
       )
     }
-    this.output.appendLine(`opencode server ready at ${url}`)
+    this.output.appendLine(`Raccoon server ready at ${url}`)
     return { url, headers, port, process: child }
   }
 
@@ -140,11 +140,11 @@ export class RaccoonServerManager implements vscode.Disposable {
         continue
       }
     }
-    throw new ServerStartupError(`Timed out waiting for opencode server at ${url}`)
+    throw new ServerStartupError(`Timed out waiting for Raccoon server at ${url}`)
   }
 
   private binaryPath() {
-    const binName = process.platform === "win32" ? "opencode.exe" : "opencode"
+    const binName = process.platform === "win32" ? "raccoon.exe" : "raccoon"
     return join(this.context.extensionPath, "bin", binName)
   }
 }
@@ -159,7 +159,7 @@ function recentOutput() {
     summary() {
       const text = chunks.join("").trim()
       if (!text) return ""
-      return `Recent opencode output:\n${text}`
+      return `Recent Raccoon output:\n${text}`
     },
   }
 }

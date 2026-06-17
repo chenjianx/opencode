@@ -1,6 +1,6 @@
 {
   "raccoon.package.displayName": "Raccoon",
-  "raccoon.package.description": "Raccoon 的 opencode VS Code 客户端",
+  "raccoon.package.description": "Raccoon VS Code AI 编程助手",
   "raccoon.commands.category": "Raccoon",
   "raccoon.commands.openChat.title": "Raccoon: 打开聊天",
   "raccoon.commands.newSession.title": "Raccoon: 新建会话",
@@ -19,6 +19,6 @@
   "raccoon.views.container.title": "Raccoon",
   "raccoon.views.chat.name": "聊天",
   "raccoon.configuration.title": "Raccoon",
-  "raccoon.configuration.serverUrl.description": "现有的 opencode 服务地址。为空时，Raccoon 会在本地启动 `opencode serve`。",
-  "raccoon.configuration.opencodeCommand.description": "用于启动 opencode 的命令。"
+  "raccoon.configuration.serverUrl.description": "现有的 Raccoon 服务地址。为空时，Raccoon 会在本地启动 `raccoon serve`。",
+  "raccoon.configuration.opencodeCommand.description": "用于启动 Raccoon 的命令。"
 }

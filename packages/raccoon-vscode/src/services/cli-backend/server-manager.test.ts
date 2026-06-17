@@ -76,7 +76,7 @@ describe("RaccoonServerManager", () => {
     const result = manager.getServer()
     child.emit("error", new Error("ENOENT"))
 
-    await expect(result).rejects.toThrow("Failed to start opencode server: ENOENT")
+    await expect(result).rejects.toThrow("Failed to start Raccoon server: ENOENT")
     expect(child.killed).toBe(true)
   })
 
@@ -106,7 +106,7 @@ describe("RaccoonServerManager", () => {
     child.stderr.emit("data", Buffer.from("port already in use"))
     child.emit("exit", 1, null)
 
-    await expect(result).rejects.toThrow("opencode server exited before it became healthy")
+    await expect(result).rejects.toThrow("Raccoon server exited before it became healthy")
     await expect(result).rejects.toThrow("port already in use")
     expect(child.killed).toBe(true)
   })

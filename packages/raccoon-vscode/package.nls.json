@@ -1,6 +1,6 @@
 {
   "raccoon.package.displayName": "Raccoon",
-  "raccoon.package.description": "Raccoon VS Code client for opencode",
+  "raccoon.package.description": "Raccoon AI coding assistant for VS Code",
   "raccoon.commands.category": "Raccoon",
   "raccoon.commands.openChat.title": "Raccoon: Open Chat",
   "raccoon.commands.newSession.title": "Raccoon: New Session",
@@ -19,6 +19,6 @@
   "raccoon.views.container.title": "Raccoon",
   "raccoon.views.chat.name": "Chat",
   "raccoon.configuration.title": "Raccoon",
-  "raccoon.configuration.serverUrl.description": "Existing opencode server URL. When empty, Raccoon starts `opencode serve` locally.",
-  "raccoon.configuration.opencodeCommand.description": "Command used to start opencode."
+  "raccoon.configuration.serverUrl.description": "Existing Raccoon server URL. When empty, Raccoon starts `raccoon serve` locally.",
+  "raccoon.configuration.opencodeCommand.description": "Command used to start Raccoon."
 }

@@ -67,7 +67,7 @@ export class RaccoonConnectionService implements vscode.Disposable {
 
   private async doConnect(directory: string) {
     const server = await this.serverManager.getServer()
-    if (!server) throw new Error("Failed to resolve opencode server")
+    if (!server) throw new Error("Failed to resolve Raccoon server")
     this.config = { baseUrl: server.url, port: server.port }
     this.client = createOpencodeClient({
       baseUrl: server.url,

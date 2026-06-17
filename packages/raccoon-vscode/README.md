@@ -20,7 +20,7 @@ bun run --cwd packages/raccoon-vscode build:webview
 bun run --cwd packages/raccoon-vscode dev
 ```
 
-`dev` first ensures the local opencode CLI exists at `packages/raccoon-vscode/bin/opencode`.
+`dev` first ensures the local Raccoon CLI exists at `packages/raccoon-vscode/bin/raccoon`.
 
 4. Open the repo root in VS Code.
 
@@ -30,15 +30,15 @@ bun run --cwd packages/raccoon-vscode dev
 
 ## Config
 
-- `raccoon.serverUrl`: use an existing opencode server instead of starting one
-- `raccoon.opencodeCommand`: fallback command used only when `bin/opencode` is missing
+- `raccoon.serverUrl`: use an existing Raccoon server instead of starting one
+- `raccoon.opencodeCommand`: fallback command used only when `bin/raccoon` is missing
 
 ## CLI Binary
 
 The extension follows Kilo's model and prefers its bundled CLI:
 
 ```text
-packages/raccoon-vscode/bin/opencode
+packages/raccoon-vscode/bin/raccoon
 ```
 
 Rebuild or refresh it with:
@@ -56,7 +56,7 @@ bun run --cwd packages/raccoon-vscode build:cli -- --force
 At runtime the extension spawns:
 
 ```bash
-bin/opencode serve --port <random-port> --hostname 127.0.0.1
+bin/raccoon serve --port <random-port> --hostname 127.0.0.1
 ```
 
 ## Commands
