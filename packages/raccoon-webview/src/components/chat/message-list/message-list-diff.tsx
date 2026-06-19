@@ -156,7 +156,7 @@ function ReactDiff(props: { file: DiffFile }) {
         lineHeight: 20,
         diffHeaderHeight: 0,
         hunkSeparatorHeight: 24,
-        fileGap: 0,
+        spacing: 0,
       }}
     />
   )
