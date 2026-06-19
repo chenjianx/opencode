@@ -6,9 +6,9 @@ import { basename, dirname, join, relative } from "node:path"
 const dir = join(import.meta.dir, "..")
 const opencodeDir = join(dir, "..", "opencode")
 const targetDir = join(dir, "bin")
-// The upstream build still emits a binary named `opencode`; we locate that
-// artifact but rebrand the copy bundled into the extension as `raccoon`.
-const sourceBinName = process.platform === "win32" ? "opencode.exe" : "opencode"
+// The upstream build now emits a binary named `raccoon`; we locate that
+// artifact and bundle it into the extension under the same name.
+const sourceBinName = process.platform === "win32" ? "raccoon.exe" : "raccoon"
 const targetBinName = process.platform === "win32" ? "raccoon.exe" : "raccoon"
 const targetPath = join(targetDir, targetBinName)
 

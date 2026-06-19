@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react"
 import { ChatView } from "./chat/chat-view"
+import { SubAgentView } from "./chat/subagent-view"
 import { HistoryView } from "./history/history-view"
 import { LoginView } from "./login/login-view"
 import { SettingsView } from "./settings/settings-view"
@@ -34,6 +35,7 @@ export function RootView() {
 
   if (session.state.view === "settings") return <SettingsView />
   if (session.state.view === "history") return <HistoryView onClose={() => session.showChat()} />
+  if (session.state.view === "subagent") return <SubAgentView />
   return <ChatView />
 }
 

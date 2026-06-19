@@ -192,6 +192,22 @@ export type RaccoonMessage = {
   createdAt: number
 }
 
+export type RaccoonSubSessionTool = {
+  id: string
+  tool: string
+  status?: string
+  title?: string
+}
+
+export type RaccoonSubSession = {
+  sessionID: string
+  status: string
+  tools: RaccoonSubSessionTool[]
+  toolcalls: number
+  startedAt?: number
+  completedAt?: number
+}
+
 export type RaccoonMessagePart = {
   id: string
   type: "text" | "reasoning" | "tool" | "file" | "step-start" | "step-finish" | "snapshot" | "patch" | "agent" | "subtask" | "other"
@@ -390,7 +406,15 @@ export type RaccoonPartUpdate = {
   delta?: RaccoonPartDelta
 }
 
-export type RaccoonView = "chat" | "history" | "settings"
+export type RaccoonView = "chat" | "history" | "settings" | "subagent"
+
+export type RaccoonSubAgentView = {
+  sessionID: string
+  title?: string
+  messages: RaccoonMessage[]
+  loading?: boolean
+  error?: string
+}
 
 export type RaccoonState = {
   view?: RaccoonView
@@ -403,6 +427,8 @@ export type RaccoonState = {
   activeSession?: RaccoonSession
   sessions: RaccoonSession[]
   messages: RaccoonMessage[]
+  subSessions?: Record<string, RaccoonSubSession>
+  subAgentView?: RaccoonSubAgentView
   agents: RaccoonAgent[]
   rules?: RaccoonRule[]
   models: RaccoonModel[]
@@ -463,6 +489,8 @@ export type WebviewToExtension =
   | { type: "openSettings" }
   | { type: "closeSettings" }
   | { type: "selectSession"; sessionID: string }
+  | { type: "openSubAgent"; sessionID: string; title?: string }
+  | { type: "closeSubAgent" }
   | { type: "renameSession"; sessionID: string; title: string }
   | { type: "deleteSession"; sessionID: string }
   | { type: "exportSession"; sessionID: string }
@@ -569,6 +597,8 @@ export type ExtensionToWebview =
   | ({ type: "partUpdated" } & RaccoonPartUpdate)
   | { type: "partsUpdated"; updates: RaccoonPartUpdate[] }
   | { type: "showHistory" }
+  | { type: "showSubAgent"; view: RaccoonSubAgentView }
+  | { type: "closeSubAgent" }
   | {
       type: "customProviderModelsFetched"
       requestID: string

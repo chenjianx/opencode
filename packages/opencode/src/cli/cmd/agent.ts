@@ -3,6 +3,7 @@ import * as prompts from "@clack/prompts"
 import { UI } from "../ui"
 import { Global } from "@opencode-ai/core/global"
 import path from "path"
+import { existsSync } from "fs" // raccoon_change - detect legacy .opencode dir
 import fs from "fs/promises"
 import { Filesystem } from "@/util/filesystem"
 import matter from "gray-matter"
@@ -108,7 +109,17 @@ const AgentCreateCommand = effectCmd({
           if (prompts.isCancel(scopeResult)) throw new UI.CancelledError()
           scope = scopeResult
         }
-        targetPath = path.join(scope === "global" ? Global.Path.config : path.join(ctx.worktree, ".opencode"), "agents")
+        // raccoon_change start - prefer .raccoon, fall back to existing legacy .opencode
+        const projectDir = path.join(ctx.worktree, ".raccoon")
+        const legacyDir = path.join(ctx.worktree, ".opencode")
+        const baseDir =
+          scope === "global"
+            ? Global.Path.config
+            : !existsSync(projectDir) && existsSync(legacyDir)
+              ? legacyDir
+              : projectDir
+        targetPath = path.join(baseDir, "agents")
+        // raccoon_change end
       }
 
       // Get description

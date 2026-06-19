@@ -1,6 +1,8 @@
 import { useLanguage } from "../../../context/language"
 import { useSession } from "../../../context/session"
+import { useVSCode } from "../../../context/vscode"
 import type { RaccoonMessagePart } from "../../../protocol"
+import { MarkdownLite } from "../../ui/markdown-lite"
 import { DiffPanel, diffFiles } from "./message-list-diff"
 import { filename, firstString, inputLines, stripAnsi } from "./message-list-format"
 import { QuestionDock } from "./question-dock"
@@ -42,6 +44,15 @@ function MarkdownOutput(props: { text: string }) {
 
 function ToolOutput(props: { part: RaccoonMessagePart; output: string }) {
   const text = formatToolOutput(props.part, props.output)
+  if (props.part.tool === "task") {
+    const task = parseTaskOutput(props.output)
+    return (
+      <div data-component="tool-output" data-scrollable className="tool-output-markdown">
+        {task.summary ? <div className="tool-task-summary">{task.summary}</div> : null}
+        <MarkdownLite text={task.text} />
+      </div>
+    )
+  }
   if (props.part.tool === "bash") {
     return (
       <div data-component="bash-output" className="tool-output-shell">
@@ -125,8 +136,32 @@ function todosFromPart(part: RaccoonMessagePart) {
   return jsonTodos.length > 0 ? jsonTodos : parseTodoMarkdown(text)
 }
 
-function isTodoTool(part: RaccoonMessagePart) {
-  return part.tool === "todowrite" || part.tool === "todoread" || part.tool === "task"
+export function isTodoTool(part: RaccoonMessagePart) {
+  return part.tool === "todowrite" || part.tool === "todoread"
+}
+
+type TaskOutput = {
+  state?: string
+  summary?: string
+  text: string
+}
+
+// The task (subagent) tool wraps its result in an XML envelope produced by
+// renderOutput() server-side, e.g.
+//   <task id="ses_x" state="completed"><summary>...</summary><task_result>...</task_result></task>
+// Extract the inner result/error text so we can render it as markdown instead of
+// dumping the raw envelope. Falls back to the raw string when no envelope is present.
+export function parseTaskOutput(output: string): TaskOutput {
+  const text = stripAnsi(output)
+  const stateMatch = text.match(/<task\b[^>]*\bstate="([^"]*)"/)
+  const summaryMatch = text.match(/<summary>([\s\S]*?)<\/summary>/)
+  const resultMatch = text.match(/<task_(?:result|error)>([\s\S]*?)<\/task_(?:result|error)>/)
+  if (!resultMatch) return { text: text.trim() }
+  return {
+    state: stateMatch?.[1],
+    summary: summaryMatch?.[1]?.trim() || undefined,
+    text: resultMatch[1]?.trim() ?? "",
+  }
 }
 
 function TodoOutput(props: { todos: TodoItem[] }) {
@@ -193,6 +228,14 @@ function toolInfo(part: RaccoonMessagePart, t: ReturnType<typeof useLanguage>["t
   if (tool === "list") return { title: label, subtitle: firstString(part.input, ["path", "directory", "cwd"]) }
   if (tool === "glob" || tool === "grep") return { title: label, subtitle: firstString(part.input, ["pattern", "query", "regex"]) }
   if (tool === "bash") return { title: label, subtitle: firstString(part.input, ["description"]) ?? firstString(part.input, ["command", "cmd"]) }
+  if (tool === "task") {
+    const description = firstString(part.input, ["description"]) ?? part.title
+    const agentType = firstString(part.input, ["subagent_type"])
+    return {
+      title: label,
+      subtitle: agentType && description ? `${agentType} · ${description}` : agentType ?? description,
+    }
+  }
   return {
     title: label,
     subtitle: firstString(part.input, ["description", "prompt", "query", "url"]) ?? part.title,
@@ -222,11 +265,13 @@ function ToolSummary(props: { info: ReturnType<typeof toolInfo>; status?: string
 export function ToolPart(props: { part: RaccoonMessagePart }) {
   const language = useLanguage()
   const session = useSession()
+  const vscode = useVSCode()
   const diffs = props.part.tool === "edit" || props.part.tool === "apply_patch" || props.part.tool === "patch" ? diffFiles(props.part) : []
   const onlyDiff = diffs.length > 0
   const lines = onlyDiff ? [] : inputLines(props.part)
   const output = props.part.error ?? props.part.output
   const todos = isTodoTool(props.part) ? todosFromPart(props.part) : []
+  const subSessionID = props.part.tool === "task" ? (props.part.metadata?.sessionId as string | undefined) : undefined
   const hasDetails = onlyDiff || lines.length > 0 || !!output || !!props.part.metadata
   const info = toolInfo(props.part, language.t)
   const activeQuestion = props.part.tool === "question" ? session.questions.find((request) => request.tool?.messageID === props.part.id) : undefined
@@ -239,6 +284,36 @@ export function ToolPart(props: { part: RaccoonMessagePart }) {
           <TodoOutput todos={todos} />
         </div>
       </details>
+    )
+  }
+
+  // The task (subagent) tool is not expandable inline — its child conversation lives
+  // in a dedicated read-only view. Render a single clickable row that opens it.
+  if (props.part.tool === "task" && subSessionID) {
+    const openSubAgent = () => vscode.postMessage({ type: "openSubAgent", sessionID: subSessionID, title: info.subtitle })
+    return (
+      <button
+        type="button"
+        className={`tool-part task-part task-row ${props.part.error ? "errored" : ""}`}
+        onClick={openSubAgent}
+        title={language.t("tool.task.open")}
+      >
+        <span data-component="tool-trigger">
+          <span data-slot="basic-tool-tool-trigger-content">
+            <span className="tool-dot" />
+            <span data-slot="basic-tool-tool-info">
+              <span data-slot="basic-tool-tool-info-structured">
+                <span data-slot="basic-tool-tool-info-main">
+                  <span data-slot="basic-tool-tool-title">{info.title}</span>
+                  {info.subtitle ? <span data-slot="basic-tool-tool-subtitle">{info.subtitle}</span> : null}
+                </span>
+                {props.part.status ? <span data-slot="basic-tool-tool-arg">{props.part.status}</span> : null}
+              </span>
+            </span>
+          </span>
+        </span>
+        <span className="tool-arrow">›</span>
+      </button>
     )
   }
 

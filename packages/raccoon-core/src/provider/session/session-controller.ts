@@ -4,13 +4,14 @@ import type {
   ExtensionToWebview,
   RaccoonMessagePart,
   RaccoonState,
+  RaccoonSubSession,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
 import { uiSlashCommands } from "../config/commands.js"
 import { contextMentionAttachments } from "../editor/context-mentions.js"
 import { exportMarkdown } from "../message/export-markdown.js"
 import { ascendingID } from "../message/ids.js"
-import { mapMessage, mapSession, responseText, sortMessages, sortSessions } from "../message/mapping.js"
+import { mapMessage, mapSession, mapSubSession, responseText, sortMessages, sortSessions } from "../message/mapping.js"
 import type { ModelSelection } from "./model-state.js"
 import type { RaccoonProviderConfig } from "../config/provider-config.js"
 import type { RaccoonStreamScheduler } from "../stream/stream-scheduler.js"
@@ -245,12 +246,14 @@ export class RaccoonSessionController {
     if (hasAssistantAfterLatestUser) this.stopPromptRefresh(sessionID)
     const sessionStatus = status.data[sessionID]?.type ?? "idle"
     if (sessionStatus === "idle" && this.activePromptSessionID === sessionID) this.stopPromptRefresh(sessionID)
+    const subSessions = await this.loadSubSessions(merged, status.data)
     this.deps.setState({
       ...this.deps.getState(),
       activeSessionID: sessionID,
       sessions: sortSessions(this.deps.getState().sessions.map((session) => (session.id === sessionID ? mapSession(info.data) : session))),
       activeSession: mapSession(info.data),
       messages: merged,
+      subSessions,
       loading: sessionStatus !== "idle",
       busy: sessionStatus !== "idle",
       error: undefined,
@@ -521,6 +524,45 @@ export class RaccoonSessionController {
     this.deps.webviewHost.post("chat", { type: "showHistory" } satisfies ExtensionToWebview)
   }
 
+  async openSubAgent(sessionID: string, title: string | undefined) {
+    // Show the sub-agent view immediately in a loading state, then fetch the
+    // child session's full conversation and render it read-only. Reuses the same
+    // mapMessage pipeline as the main message stream so rendering stays identical.
+    // Drive the view via a dedicated message (not state.view) because postState()
+    // hard-codes view: "chat" for the chat webview.
+    this.deps.webviewHost.post("chat", {
+      type: "showSubAgent",
+      view: { sessionID, title, messages: [], loading: true },
+    } satisfies ExtensionToWebview)
+    try {
+      const client = await this.deps.client()
+      const response = await client.session.messages(
+        { sessionID, directory: this.deps.directory(), limit: 200 },
+        { throwOnError: true },
+      )
+      const messages = sortMessages(
+        response.data
+          .flatMap((message) => mapMessage(message))
+          .filter((message) => message.text.trim() || message.parts.length > 0),
+      )
+      this.deps.webviewHost.post("chat", {
+        type: "showSubAgent",
+        view: { sessionID, title, messages, loading: false },
+      } satisfies ExtensionToWebview)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      this.deps.log(`open sub-agent failed (${sessionID}): ${message}`)
+      this.deps.webviewHost.post("chat", {
+        type: "showSubAgent",
+        view: { sessionID, title, messages: [], loading: false, error: message },
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  closeSubAgent() {
+    this.deps.webviewHost.post("chat", { type: "closeSubAgent" } satisfies ExtensionToWebview)
+  }
+
   openSettings() {
     this.deps.webviewHost.openSettings()
   }
@@ -567,6 +609,39 @@ export class RaccoonSessionController {
   dispose() {
     this.clearEventRefreshTimer()
     if (this.promptRefreshTimer) clearTimeout(this.promptRefreshTimer)
+  }
+
+  private async loadSubSessions(
+    messages: { parts: RaccoonMessagePart[] }[],
+    status: Record<string, { type: string } | undefined>,
+  ): Promise<Record<string, RaccoonSubSession> | undefined> {
+    const ids = new Set<string>()
+    for (const message of messages) {
+      for (const part of message.parts) {
+        if (part.type !== "tool" || part.tool !== "task") continue
+        const sessionId = part.metadata?.sessionId
+        if (typeof sessionId === "string" && sessionId) ids.add(sessionId)
+      }
+    }
+    if (ids.size === 0) return undefined
+    const client = await this.deps.client()
+    const entries = await Promise.all(
+      [...ids].map(async (childID) => {
+        try {
+          const response = await client.session.messages(
+            { sessionID: childID, directory: this.deps.directory(), limit: 200 },
+            { throwOnError: true },
+          )
+          return [childID, mapSubSession(childID, response.data, status[childID]?.type ?? "idle")] as const
+        } catch (error) {
+          this.deps.log(`sub-session load failed (${childID}): ${error instanceof Error ? error.message : String(error)}`)
+          return undefined
+        }
+      }),
+    )
+    const record: Record<string, RaccoonSubSession> = {}
+    for (const entry of entries) if (entry) record[entry[0]] = entry[1]
+    return Object.keys(record).length > 0 ? record : undefined
   }
 
   private async refreshSessionList() {

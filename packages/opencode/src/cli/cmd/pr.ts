@@ -95,13 +95,13 @@ export const PrCommand = effectCmd({
 
     UI.println(`Successfully checked out PR #${prNumber} as branch '${localBranchName}'`)
     UI.println()
-    UI.println("Starting opencode...")
+    UI.println("Starting raccoon...") // raccoon_change - rebrand startup message
     UI.println()
 
-    const opencodeArgs = sessionId ? ["-s", sessionId] : []
+    const raccoonArgs = sessionId ? ["-s", sessionId] : [] // raccoon_change - rename var
     const code = yield* Effect.promise(
       () =>
-        Process.spawn(["opencode", ...opencodeArgs], {
+        Process.spawn(["raccoon", ...raccoonArgs], { // raccoon_change - spawn raccoon binary
           stdin: "inherit",
           stdout: "inherit",
           stderr: "inherit",

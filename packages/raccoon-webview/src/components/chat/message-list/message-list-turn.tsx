@@ -9,6 +9,7 @@ export function MessageTurn(props: {
   turn: ReturnType<typeof turns>[number]
   session: ReturnType<typeof useSession>
   inlineQuestions: ReturnType<typeof useSession>["questions"]
+  readonly?: boolean
 }) {
   return (
     <article className="session-turn" key={props.turn.user?.id ?? props.turn.assistant[0]?.id}>
@@ -17,8 +18,8 @@ export function MessageTurn(props: {
           <div className="turn-role">You</div>
           <UserMessage
             message={props.turn.user}
-            disabled={props.session.state.busy}
-            onRevert={props.turn.assistant.length > 0 ? () => props.session.revertSession(props.turn.user!.id) : undefined}
+            disabled={props.readonly || props.session.state.busy}
+            onRevert={!props.readonly && props.turn.assistant.length > 0 ? () => props.session.revertSession(props.turn.user!.id) : undefined}
           />
         </div>
       ) : null}

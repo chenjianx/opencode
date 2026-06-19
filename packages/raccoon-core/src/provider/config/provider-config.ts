@@ -22,7 +22,7 @@ import { ModelStateStore, type ModelSelection, modelKey, modeModelSelections } f
 import { ActionTokenStore } from "../session/action-tokens.js"
 import { collectRules } from "./rules-config.js"
 import { collectCommands } from "./commands-config.js"
-import { isRaccoonLoggedIn } from "../session/raccoon-auth-state.js"
+import { isRaccoonLoggedIn, isRaccoonLoginExpired } from "../session/raccoon-auth-state.js"
 import type { KeyValueStore, RaccoonWebviewSource, WebviewTransport } from "../platform.js"
 
 type ProviderConfigDeps = {
@@ -80,6 +80,17 @@ export class RaccoonProviderConfig {
     if (selectedModel && enabledModels.some((model) => modelKey(model) === modelKey(selectedModel))) {
       return selectedModel
     }
+    // No model has been explicitly configured (no persisted `selectedModel`). When Raccoon is
+    // logged in its models are connected, so prefer Raccoon here — its server default, else any
+    // Raccoon model. This keeps the default on Raccoon after a silent token refresh / webview
+    // reload (which never fires `raccoonLoginFinished`), matching the login behavior. An explicit
+    // non-Raccoon choice is preserved by the `selectedModel` branch above.
+    const raccoonModels = enabledModels.filter((model) => model.providerID === "raccoon")
+    const firstRaccoon = raccoonModels[0]
+    if (firstRaccoon) {
+      const raccoonDefault = raccoonModels.find((model) => defaults["raccoon"] === model.modelID) ?? firstRaccoon
+      return { providerID: raccoonDefault.providerID, modelID: raccoonDefault.modelID }
+    }
     const defaultModel = enabledModels.find((model) => defaults[model.providerID] === model.modelID)
     if (defaultModel) return { providerID: defaultModel.providerID, modelID: defaultModel.modelID }
     const firstModel = enabledModels[0]
@@ -98,6 +109,17 @@ export class RaccoonProviderConfig {
 
   async loadModels(client?: OpencodeClient) {
     const active = client ?? (await this.deps.client())
+
+    // If the raccoon refresh-token JWT has expired locally, the stored credentials can
+    // never be used again. Remove them now so the provider list is rebuilt without stale
+    // raccoon auth, and the webview shows the login screen instead of a broken interface.
+    if (await isRaccoonLoginExpired()) {
+      await this.logoutRaccoon().catch(() => {
+        // Best-effort: if removal fails, isRaccoonLoggedIn() below still reads the stale
+        // (expired) credential as present, but the next refresh will retry the cleanup.
+      })
+    }
+
     const saved = await this.modelState.load(active, { selected: this.selectedModel, model: this.modeModels })
     this.selectedModel = saved.selected
     this.modeModels = saved.model

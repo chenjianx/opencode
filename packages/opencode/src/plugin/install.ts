@@ -1,4 +1,5 @@
 import path from "path"
+import { existsSync } from "fs" // raccoon_change - detect existing legacy .opencode dir
 import {
   type ParseError as JsoncParseError,
   applyEdits,
@@ -31,7 +32,7 @@ export type PatchDeps = {
   readText: (file: string) => Promise<string>
   write: (file: string, text: string) => Promise<void>
   exists: (file: string) => Promise<boolean>
-  files: (dir: string, name: "opencode" | "tui") => string[]
+  files: (dir: string, name: "raccoon" | "opencode" | "tui") => string[] // raccoon_change - accept raccoon config name
 }
 
 export type PatchInput = {
@@ -334,11 +335,18 @@ function patchDir(input: PatchInput) {
   if (input.global) return input.config ?? Global.Path.config
   const git = input.vcs === "git" && input.worktree !== "/"
   const root = git ? input.worktree : input.directory
-  return path.join(root, ".opencode")
+  // raccoon_change start - prefer .raccoon dir, fall back to existing legacy .opencode
+  // Prefer the new `.raccoon` directory, but reuse an existing legacy `.opencode`
+  // directory so previously configured projects keep working.
+  const raccoonDir = path.join(root, ".raccoon")
+  const legacyDir = path.join(root, ".opencode")
+  if (!existsSync(raccoonDir) && existsSync(legacyDir)) return legacyDir
+  return raccoonDir
+  // raccoon_change end
 }
 
-function patchName(kind: Kind): "opencode" | "tui" {
-  if (kind === "server") return "opencode"
+function patchName(kind: Kind): "raccoon" | "tui" { // raccoon_change - server config named raccoon
+  if (kind === "server") return "raccoon" // raccoon_change - rebrand server config name
   return "tui"
 }
 
@@ -346,7 +354,11 @@ async function patchOne(dir: string, target: Target, spec: string, force: boolea
   const name = patchName(target.kind)
   await using _ = await Flock.acquire(`plug-config:${Filesystem.resolve(path.join(dir, name))}`)
 
-  const files = dep.files(dir, name)
+  // raccoon_change start - accept legacy opencode.json(c) as fallback to patch in place
+  // For the server config, accept a legacy `opencode.json(c)` as a fallback so
+  // existing setups are patched in place rather than creating a duplicate file.
+  const files = name === "raccoon" ? [...dep.files(dir, "raccoon"), ...dep.files(dir, "opencode")] : dep.files(dir, name)
+  // raccoon_change end
   let cfg = files[0]
   for (const file of files) {
     if (!(await dep.exists(file))) continue

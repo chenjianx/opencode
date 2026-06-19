@@ -68,6 +68,7 @@ type SessionStateContextValue = {
 type SessionActionsContextValue = {
   canSend: (text: string, files?: RaccoonFileAttachment[]) => boolean
   showChat: () => void
+  closeSubAgent: () => void
   createSession: () => void
   openHistory: () => void
   openSettings: () => void
@@ -183,9 +184,17 @@ export function SessionProvider(props: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = vscode.onMessage((message) => {
       if (message.type === "state") {
-        const next = normalizeState(message.state)
-        setState(next)
-        vscode.setState(next)
+        const incoming = normalizeState(message.state)
+        setState((current) => {
+          // postState() always forces view: "chat". Stay in the sub-agent view if the
+          // user opened one — it is driven by dedicated showSubAgent/closeSubAgent messages.
+          const next =
+            current.view === "subagent"
+              ? { ...incoming, view: "subagent" as const, subAgentView: current.subAgentView }
+              : incoming
+          vscode.setState(next)
+          return next
+        })
         return
       }
       if (message.type === "partUpdated" || message.type === "partsUpdated") {
@@ -366,6 +375,22 @@ export function SessionProvider(props: { children: ReactNode }) {
         })
         return
       }
+      if (message.type === "showSubAgent") {
+        setState((current) => {
+          const next = { ...current, view: "subagent" as const, subAgentView: message.view }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "closeSubAgent") {
+        setState((current) => {
+          const next = { ...current, view: "chat" as const, subAgentView: undefined }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
       if (message.type === "terminalContextResult" || message.type === "terminalContextError") return
       if (message.type === "gitChangesContextResult" || message.type === "gitChangesContextError") return
       if (message.type === "raccoonLoginFinished") {
@@ -453,6 +478,14 @@ export function SessionProvider(props: { children: ReactNode }) {
           vscode.setState(next)
           return next
         })
+      },
+      closeSubAgent: () => {
+        setState((current) => {
+          const next = { ...current, view: "chat" as const, subAgentView: undefined }
+          vscode.setState(next)
+          return next
+        })
+        vscode.postMessage({ type: "closeSubAgent" })
       },
       createSession: () => vscode.postMessage({ type: "createSession", mode: stateRef.current.mode }),
       openHistory: () => vscode.postMessage({ type: "openHistory" }),

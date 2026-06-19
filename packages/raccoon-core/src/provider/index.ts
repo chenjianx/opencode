@@ -234,6 +234,8 @@ export class RaccoonProvider {
       openSettings: () => this.openSettings(),
       closeSettings: () => this.webviewHost.closeSettings(),
       selectSession: (sessionID) => this.selectSession(sessionID),
+      openSubAgent: (sessionID, title) => this.sessions.openSubAgent(sessionID, title),
+      closeSubAgent: () => this.sessions.closeSubAgent(),
       renameSession: (sessionID, title) => this.renameSession(sessionID, title),
       deleteSession: (sessionID) => this.deleteSession(sessionID),
       exportSession: (sessionID) => this.exportSession(sessionID),

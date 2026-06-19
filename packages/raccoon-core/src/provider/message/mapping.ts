@@ -1,5 +1,12 @@
 import type { Message, Part, Provider, Session } from "@opencode-ai/sdk/v2/client"
-import type { RaccoonMessage, RaccoonMessagePart, RaccoonModel, RaccoonProviderInfo, RaccoonSession } from "@opencode-ai/raccoon-webview"
+import type {
+  RaccoonMessage,
+  RaccoonMessagePart,
+  RaccoonModel,
+  RaccoonProviderInfo,
+  RaccoonSession,
+  RaccoonSubSession,
+} from "@opencode-ai/raccoon-webview"
 import { AUTOCOMPLETE_MODELS } from "../../services/autocomplete/models.js"
 import { modelKey } from "../session/model-state.js"
 
@@ -118,6 +125,44 @@ export function mapMessage(message: SessionMessageWithParts): RaccoonMessage[] {
     ]
   }
   return []
+}
+
+// Derive a compact progress view of a subagent (task) child session from its raw
+// messages, so the webview can render its tool activity, count, and duration without
+// holding the full child-session message tree. Mirrors the TUI Task component logic.
+export function mapSubSession(
+  sessionID: string,
+  messages: SessionMessageWithParts[],
+  status: string,
+): RaccoonSubSession {
+  const sorted = [...messages].sort(
+    (a, b) => a.info.time.created - b.info.time.created || a.info.id.localeCompare(b.info.id),
+  )
+  const tools: RaccoonSubSession["tools"] = []
+  for (const message of sorted) {
+    for (const part of message.parts) {
+      if (part.type !== "tool") continue
+      tools.push({
+        id: part.id,
+        tool: part.tool,
+        status: part.state.status,
+        title: "title" in part.state && part.state.title ? part.state.title : undefined,
+      })
+    }
+  }
+  const startedAt = sorted.find((message) => message.info.role === "user")?.info.time.created
+  const completedAt = [...sorted]
+    .reverse()
+    .map((message) => (message.info.role === "assistant" ? message.info.time.completed : undefined))
+    .find((value): value is number => typeof value === "number")
+  return {
+    sessionID,
+    status,
+    tools,
+    toolcalls: tools.length,
+    startedAt,
+    completedAt,
+  }
 }
 
 export function mapProviderModels(provider: Provider, connected: boolean, disabledModels: Set<string>): RaccoonModel[] {

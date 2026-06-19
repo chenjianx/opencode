@@ -504,6 +504,10 @@
     @apply border-[color-mix(in_srgb,var(--color-error)_40%,transparent)];
   }
 
+  .tool-part.task-part {
+    @apply border-l-2 border-l-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))];
+  }
+
   .tool-part.muted {
     @apply flex items-center gap-2 px-2.5 py-1.5 text-[var(--color-muted)];
   }
@@ -535,6 +539,22 @@
   .tool-arrow,
   .tool-name {
     @apply overflow-hidden text-ellipsis whitespace-nowrap text-[var(--color-muted)];
+  }
+
+  .tool-part.task-row {
+    @apply flex w-full cursor-pointer items-center justify-between gap-2 bg-transparent px-2.5 py-1.5 text-left;
+  }
+
+  .tool-part.task-row:hover {
+    @apply bg-[var(--color-hover)];
+  }
+
+  .tool-part.task-row [data-component="tool-trigger"] {
+    @apply flex min-w-0 flex-1 items-center;
+  }
+
+  .tool-part.task-row > .tool-arrow {
+    @apply shrink-0 text-[var(--color-muted)];
   }
 
   .tool-details {
@@ -591,6 +611,50 @@
 
   .tool-section-title {
     @apply text-[11px] font-medium uppercase text-[var(--color-muted)];
+  }
+
+  .tool-task-summary {
+    @apply mb-1.5 text-[12px] italic text-[var(--color-muted)];
+  }
+
+  .task-progress-status {
+    @apply ml-2 normal-case text-[11px] font-normal text-[var(--color-muted)];
+  }
+
+  .task-progress-list {
+    @apply relative ml-2 flex flex-col gap-0.5;
+  }
+
+  .task-progress-list[data-rail]::before {
+    @apply pointer-events-none absolute bottom-2 left-[7px] top-2 w-px bg-[var(--color-border)] content-[''];
+  }
+
+  .task-progress-row {
+    @apply relative grid grid-cols-[14px_auto_1fr] items-baseline gap-1.5 text-[12px];
+  }
+
+  .task-progress-row.running {
+    @apply text-[var(--color-foreground)];
+  }
+
+  .task-progress-row.error .task-progress-mark {
+    @apply text-[var(--color-error)];
+  }
+
+  .task-progress-mark {
+    @apply relative z-[1] flex w-[14px] justify-center text-[10px] text-[var(--color-muted)];
+  }
+
+  .task-progress-row.running .task-progress-mark {
+    @apply text-[var(--color-focus)];
+  }
+
+  .task-progress-tool {
+    @apply font-medium;
+  }
+
+  .task-progress-title {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap text-[var(--color-muted)];
   }
 
   .tool-kv {

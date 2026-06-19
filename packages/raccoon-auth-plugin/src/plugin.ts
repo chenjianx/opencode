@@ -44,10 +44,6 @@ type UserInfoResponse = {
   }
 }
 
-function isProUser(user: UserInfoResponse["data"]) {
-  return Boolean(user?.pro || user?.pro_code_enabled || user?.orgs?.some((org) => org.pro_code_enabled))
-}
-
 type ServerSettingsResponse = {
   data?: {
     settings?: {
@@ -426,23 +422,6 @@ function modelTemplate(input: {
   }
 }
 
-function fallbackModels(baseUrl: string, pro?: boolean, orgScopeId?: string): Record<string, Model> {
-  const chat = orgScopeId || pro ? "raccoon-pro-chat" : "raccoon-chat"
-
-  // Completion models (raccoon-(pro-)completion) are FIM/autocomplete-only and are consumed
-  // directly by the editor plugin's autocomplete via /fim — never selected as a chat model.
-  // Omit them so they don't leak into the CLI / TUI model picker.
-  return {
-    [chat]: modelTemplate({
-      id: chat,
-      name: orgScopeId || pro ? "Raccoon Pro" : "Raccoon",
-      baseUrl,
-      contextLength: DEFAULT_CONTEXT_LENGTH,
-      orgScopeId,
-    }),
-  }
-}
-
 function isAutocompleteOnly(model: ProfileModel) {
   return Boolean(model.roles?.length) && model.roles!.every((role) => role === "autocomplete")
 }
@@ -801,20 +780,17 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
 
         const loginBaseUrl = normalizeUrl(ctx.auth.enterpriseUrl ?? baseUrl)
         // Refresh first: model discovery must not run with an expired access token, or it
-        // silently falls back to the non-pro model list.
-        const current = await getAccess(() => Promise.resolve(ctx.auth), _input, baseUrl).catch((error) => {
-          return undefined
-        })
-        const access = current?.access ?? (ctx.auth.access as string)
-        const accountId = current?.accountId
-        const user = await fetchUserInfo(loginBaseUrl, access).catch(() => undefined)
-        const serverModels = await fetchServerProfileModels(loginBaseUrl, access, accountId).catch((error) => {
-          return undefined
-        })
+        // silently falls back to the non-pro model list. If the refresh token itself is dead
+        // getAccess throws (reauth required) — return no models rather than fabricating a
+        // fallback, so a broken login surfaces as "no models" instead of a usable-looking
+        // picker the user can't actually call.
+        const current = await getAccess(() => Promise.resolve(ctx.auth), _input, baseUrl).catch(() => undefined)
+        if (!current) return {}
+        const serverModels = await fetchServerProfileModels(loginBaseUrl, current.access, current.accountId).catch(
+          () => undefined,
+        )
 
-        return Object.keys(serverModels ?? {}).length
-          ? serverModels!
-          : fallbackModels(loginBaseUrl, isProUser(user), accountId)
+        return serverModels ?? {}
       },
     },
     auth: {

@@ -11,6 +11,8 @@ type MessageRouterDeps = {
   openSettings: () => Promise<void>
   closeSettings: () => void
   selectSession: (sessionID: string) => Promise<void>
+  openSubAgent: (sessionID: string, title: string | undefined, source: RaccoonWebviewSource) => Promise<void>
+  closeSubAgent: () => void
   renameSession: (sessionID: string, title: string) => Promise<void>
   deleteSession: (sessionID: string) => Promise<void>
   exportSession: (sessionID: string) => Promise<void>
@@ -103,6 +105,14 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "selectSession") {
       await this.deps.selectSession(message.sessionID)
+      return
+    }
+    if (message.type === "openSubAgent") {
+      await this.deps.openSubAgent(message.sessionID, message.title, source)
+      return
+    }
+    if (message.type === "closeSubAgent") {
+      this.deps.closeSubAgent()
       return
     }
     if (message.type === "renameSession") {

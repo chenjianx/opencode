@@ -137,7 +137,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Co
 export const use = serviceUse(Service)
 
 function globalConfigFile() {
-  const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+  const candidates = ["raccoon.jsonc", "raccoon.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) => // raccoon_change - prefer raccoon global config files
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {
@@ -258,6 +258,8 @@ export const layer = Layer.effect(
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json"), env))
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.json"), env))
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "raccoon.json"), env)) // raccoon_change - merge raccoon global config
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "raccoon.jsonc"), env)) // raccoon_change - merge raccoon global config
 
       const legacy = path.join(Global.Path.config, "config")
       if (existsSync(legacy)) {
@@ -403,7 +405,9 @@ export const layer = Layer.effect(
         }
 
         if (!Flag.OPENCODE_DISABLE_PROJECT_CONFIG) {
-          for (const file of yield* ConfigPaths.files("opencode", ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
+          for (const file of yield* ConfigPaths.files(["raccoon", "opencode"], ctx.directory, ctx.worktree).pipe( // raccoon_change - load raccoon then opencode project files
+            Effect.orDie,
+          )) {
             yield* merge(file, yield* loadFile(file, authEnv), "local")
           }
         }
@@ -421,8 +425,8 @@ export const layer = Layer.effect(
         const deps: Fiber.Fiber<void>[] = []
 
         for (const dir of directories) {
-          if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
-            for (const file of ["opencode.json", "opencode.jsonc"]) {
+          if (dir.endsWith(".raccoon") || dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) { // raccoon_change - include .raccoon dirs
+            for (const file of ["opencode.json", "opencode.jsonc", "raccoon.json", "raccoon.jsonc"]) { // raccoon_change - load raccoon config files
               const source = path.join(dir, file)
               yield* Effect.logDebug(`loading config from ${source}`)
               yield* merge(source, yield* loadFile(source, authEnv))

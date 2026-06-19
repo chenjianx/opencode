@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react"
 import { ArrowDownIcon } from "@phosphor-icons/react"
+import type { RaccoonMessage } from "../../../protocol"
 import { useLanguage } from "../../../context/language"
 import { useSession } from "../../../context/session"
 import { turns } from "./message-list-model"
@@ -41,10 +42,11 @@ function WelcomeState() {
   )
 }
 
-export function MessageList() {
+export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean } = {}) {
   const language = useLanguage()
   const session = useSession()
-  const messageTurns = turns(session.visibleMessages)
+  const readonly = props.readonly ?? false
+  const messageTurns = turns(props.messages ?? session.visibleMessages)
   const rootRef = useRef<HTMLDivElement>(null)
   const followBottomRef = useRef(true)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
@@ -58,6 +60,9 @@ export function MessageList() {
   }
 
   useLayoutEffect(() => {
+    // Read-only views (e.g. the sub-agent viewer) are for reviewing a finished
+    // conversation — keep the scroll at the top instead of jumping to the bottom.
+    if (readonly) return
     const root = rootRef.current
     if (!root) return
     if (!followBottomRef.current) {
@@ -67,7 +72,7 @@ export function MessageList() {
     root.scrollTo({ top: root.scrollHeight, behavior: "auto" })
     setShowScrollBottom(false)
     followBottomRef.current = true
-  }, [session.messages, session.state.loading])
+  }, [readonly, props.messages, session.messages, session.state.loading])
 
   const scrollToBottom = () => {
     const root = rootRef.current
@@ -77,21 +82,27 @@ export function MessageList() {
     followBottomRef.current = true
   }
 
-  const inlineQuestions = session.questions.filter((request) => !!request.tool?.messageID)
-  const floatingQuestions = session.questions.filter((request) => !request.tool?.messageID)
+  const inlineQuestions = readonly ? [] : session.questions.filter((request) => !!request.tool?.messageID)
+  const floatingQuestions = readonly ? [] : session.questions.filter((request) => !request.tool?.messageID)
   // Show permission prompts one at a time — the rest queue behind the active one.
-  const activePermission = session.permissions[0]
+  const activePermission = readonly ? undefined : session.permissions[0]
 
   return (
     <div className="message-list-shell">
       <div className="message-list" ref={rootRef} onScroll={updateScrollButton}>
-        {session.state.error ? <div className="message-shell error">{session.state.error}</div> : null}
-        {!session.state.activeSessionID && !session.state.loading && session.messages.length === 0 ? <WelcomeState /> : null}
+        {!readonly && session.state.error ? <div className="message-shell error">{session.state.error}</div> : null}
+        {!readonly && !session.state.activeSessionID && !session.state.loading && session.messages.length === 0 ? <WelcomeState /> : null}
         {messageTurns.map((turn, index) => (
-          <MessageTurn key={turn.user?.id ?? turn.assistant[0]?.id ?? index} turn={turn} session={session} inlineQuestions={inlineQuestions} />
+          <MessageTurn
+            key={turn.user?.id ?? turn.assistant[0]?.id ?? index}
+            turn={turn}
+            session={session}
+            inlineQuestions={inlineQuestions}
+            readonly={readonly}
+          />
         ))}
-        {session.revertedMessages.length > 0 ? <RevertBar items={session.revertedMessages} /> : null}
-        {session.state.loading ? (
+        {!readonly && session.revertedMessages.length > 0 ? <RevertBar items={session.revertedMessages} /> : null}
+        {!readonly && session.state.loading ? (
           <div className="working-indicator">
             <span className="working-dot" />
             <span>{language.t("message.working")}</span>

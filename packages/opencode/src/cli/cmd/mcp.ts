@@ -403,12 +403,25 @@ export const McpLogoutCommand = effectCmd({
 })
 
 async function resolveConfigPath(baseDir: string, global = false) {
-  // Check for existing config files (prefer .jsonc over .json, check .opencode/ subdirectory too)
-  const candidates = [path.join(baseDir, "opencode.json"), path.join(baseDir, "opencode.jsonc")]
+  // raccoon_change start - prefer raccoon config files, keep opencode as fallback
+  // Check for existing config files (prefer raccoon over opencode, .jsonc over .json,
+  // and check the .raccoon/.opencode subdirectories too).
+  const candidates = [
+    path.join(baseDir, "raccoon.json"),
+    path.join(baseDir, "raccoon.jsonc"),
+    path.join(baseDir, "opencode.json"),
+    path.join(baseDir, "opencode.jsonc"),
+  ]
 
   if (!global) {
-    candidates.push(path.join(baseDir, ".opencode", "opencode.json"), path.join(baseDir, ".opencode", "opencode.jsonc"))
+    candidates.push(
+      path.join(baseDir, ".raccoon", "raccoon.json"),
+      path.join(baseDir, ".raccoon", "raccoon.jsonc"),
+      path.join(baseDir, ".opencode", "opencode.json"),
+      path.join(baseDir, ".opencode", "opencode.jsonc"),
+    )
   }
+  // raccoon_change end
 
   for (const candidate of candidates) {
     if (await Filesystem.exists(candidate)) {
@@ -416,7 +429,7 @@ async function resolveConfigPath(baseDir: string, global = false) {
     }
   }
 
-  // Default to opencode.json if none exist
+  // Default to raccoon.json if none exist // raccoon_change - default to raccoon config
   return candidates[0]
 }
 

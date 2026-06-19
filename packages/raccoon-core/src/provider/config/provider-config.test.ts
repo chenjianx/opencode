@@ -73,6 +73,99 @@ describe("RaccoonProviderConfig", () => {
     ).toEqual({ providerID: "raccoon", modelID: "big-pickle" })
   })
 
+  test("prefers raccoon when no model is configured (refresh/reload default)", () => {
+    const config = new RaccoonProviderConfig({
+      client: async () => {
+        throw new Error("not used")
+      },
+      directory: () => "/workspace",
+      getState: () => ({ mode: "build" } as never),
+      setState: () => {},
+      post: () => {},
+      refresh: async () => {},
+      withLoading: async (run) => await run(),
+      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+    })
+
+    // openai is listed first and has a server default, but raccoon is logged in (connected),
+    // so the unconfigured default must land on raccoon's server default.
+    expect(
+      config.resolveDefaultModel(
+        [model("openai", "gpt-5"), model("raccoon", "raccoon-chat"), model("raccoon", "raccoon-pro-chat")],
+        { openai: "gpt-5", raccoon: "raccoon-pro-chat" },
+      ),
+    ).toEqual({ providerID: "raccoon", modelID: "raccoon-pro-chat" })
+  })
+
+  test("uses first raccoon model when no raccoon server default is set", () => {
+    const config = new RaccoonProviderConfig({
+      client: async () => {
+        throw new Error("not used")
+      },
+      directory: () => "/workspace",
+      getState: () => ({ mode: "build" } as never),
+      setState: () => {},
+      post: () => {},
+      refresh: async () => {},
+      withLoading: async (run) => await run(),
+      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+    })
+
+    expect(
+      config.resolveDefaultModel(
+        [model("openai", "gpt-5"), model("raccoon", "raccoon-chat")],
+        { openai: "gpt-5" },
+      ),
+    ).toEqual({ providerID: "raccoon", modelID: "raccoon-chat" })
+  })
+
+  test("keeps a non-raccoon model the user explicitly selected across refresh", async () => {
+    const config = new RaccoonProviderConfig({
+      client: async () => {
+        throw new Error("not used")
+      },
+      directory: () => "/workspace",
+      getState: () => ({ mode: "build" } as never),
+      setState: () => {},
+      post: () => {},
+      refresh: async () => {},
+      withLoading: async (run) => await run(),
+      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+    })
+    // Simulate a persisted explicit selection of a non-raccoon model.
+    ;(config as unknown as { selectedModel?: { providerID: string; modelID: string } }).selectedModel = {
+      providerID: "openai",
+      modelID: "gpt-5",
+    }
+
+    expect(
+      config.resolveDefaultModel(
+        [model("openai", "gpt-5"), model("raccoon", "raccoon-chat")],
+        { raccoon: "raccoon-chat" },
+      ),
+    ).toEqual({ providerID: "openai", modelID: "gpt-5" })
+  })
+
+  test("falls back to non-raccoon default when raccoon is not connected", () => {
+    const config = new RaccoonProviderConfig({
+      client: async () => {
+        throw new Error("not used")
+      },
+      directory: () => "/workspace",
+      getState: () => ({ mode: "build" } as never),
+      setState: () => {},
+      post: () => {},
+      refresh: async () => {},
+      withLoading: async (run) => await run(),
+      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+    })
+
+    const raccoonDisconnected: RaccoonModel = { ...model("raccoon", "raccoon-chat"), connected: false }
+    expect(
+      config.resolveDefaultModel([model("openai", "gpt-5"), raccoonDisconnected], { openai: "gpt-5" }),
+    ).toEqual({ providerID: "openai", modelID: "gpt-5" })
+  })
+
   test("keeps global-only agents scoped to user when merged config includes them", async () => {
     const dir = await mkdtemp(join(tmpdir(), "raccoon-agent-"))
     try {
