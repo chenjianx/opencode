@@ -1,5 +1,5 @@
 import { useSession } from "../../../context/session"
-import { AssistantText } from "./message-list-text"
+import { AssistantCopyButton, AssistantText } from "./message-list-text"
 import { turns, visibleParts } from "./message-list-model"
 import { ToolPart } from "./message-list-tool"
 import { UserMessage } from "./message-list-user"
@@ -25,47 +25,60 @@ export function MessageTurn(props: {
       ) : null}
       {props.turn.assistant.map((message) => {
         const parts = visibleParts(message)
+        const lastTextPart = parts.filter((part) => part.type === "text").at(-1)
+        const hasTextPart = (message.parts ?? []).some((part) => part.type === "text" && part.text?.trim())
+        const copyText = lastTextPart?.text ?? message.text
         return (
-          <div className="turn-assistant" key={message.id}>
-            <div className="turn-role">Raccoon</div>
-            <div className="assistant-parts">
-              {parts.length > 0 ? (
-                <>
-                  {parts.map((part) => {
-                    if (part.type === "text") {
-                      return <AssistantText key={part.id} id={part.id} text={part.text ?? ""} onOpenFile={props.session.openFile} />
-                    }
-                    if (part.type === "reasoning") {
+          <div className="turn-assistant-group" key={message.id}>
+            <div className="turn-assistant">
+              <div className="turn-role">Raccoon</div>
+              <div className="assistant-parts">
+                {parts.length > 0 ? (
+                  <>
+                    {parts.map((part) => {
+                      if (part.type === "text") {
+                        return (
+                          <AssistantText
+                            key={part.id}
+                            id={part.id}
+                            text={part.text ?? ""}
+                            onOpenFile={props.session.openFile}
+                          />
+                        )
+                      }
+                      if (part.type === "reasoning") {
+                        return (
+                          <details className="assistant-reasoning" key={part.id}>
+                            <summary>Thinking</summary>
+                            <p>{part.text}</p>
+                          </details>
+                        )
+                      }
+                      if (part.type === "tool") {
+                        return <ToolPart part={part} key={part.id} />
+                      }
                       return (
-                        <details className="assistant-reasoning" key={part.id}>
-                          <summary>Thinking</summary>
-                          <p>{part.text}</p>
-                        </details>
+                        <div className="tool-part muted" key={part.id}>
+                          <span className="tool-dot" />
+                          <span className="tool-name">{part.title ?? part.type}</span>
+                        </div>
                       )
-                    }
-                    if (part.type === "tool") {
-                      return <ToolPart part={part} key={part.id} />
-                    }
-                    return (
-                      <div className="tool-part muted" key={part.id}>
-                        <span className="tool-dot" />
-                        <span className="tool-name">{part.title ?? part.type}</span>
-                      </div>
-                    )
-                  })}
-                  {!(message.parts ?? []).some((part) => part.type === "text" && part.text?.trim()) && message.text.trim() ? (
-                    <AssistantText id={message.id} text={message.text} onOpenFile={props.session.openFile} />
-                  ) : null}
-                </>
-              ) : (
-                <AssistantText id={message.id} text={message.text} onOpenFile={props.session.openFile} />
-              )}
-              {props.inlineQuestions
-                .filter((request) => request.tool?.messageID === message.id)
-                .map((request) => (
-                  <QuestionDock key={request.id} request={request} />
-                ))}
+                    })}
+                    {!hasTextPart && message.text.trim() ? (
+                      <AssistantText id={message.id} text={message.text} onOpenFile={props.session.openFile} />
+                    ) : null}
+                  </>
+                ) : (
+                  <AssistantText id={message.id} text={message.text} onOpenFile={props.session.openFile} />
+                )}
+                {props.inlineQuestions
+                  .filter((request) => request.tool?.messageID === message.id)
+                  .map((request) => (
+                    <QuestionDock key={request.id} request={request} />
+                  ))}
+              </div>
             </div>
+            <AssistantCopyButton text={copyText} />
           </div>
         )
       })}

@@ -469,6 +469,8 @@ export const dict = {
   "prompt.commandGroup.skill": "Skills",
   "tool.todo.active": "To-do",
   "tool.todo.completed": "Completed",
+  "assistant.copySummary": "Copy summary",
+  "assistant.copied": "Copied",
   "markdown.copy": "Copy code",
   "markdown.copied": "Copied",
   "welcome.title": "Raccoon",

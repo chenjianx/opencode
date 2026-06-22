@@ -470,6 +470,8 @@ export const dict = {
   "prompt.commandGroup.skill": "技能",
   "tool.todo.active": "待辦",
   "tool.todo.completed": "已完成",
+  "assistant.copySummary": "複製總結",
+  "assistant.copied": "已複製",
   "markdown.copy": "複製程式碼",
   "markdown.copied": "已複製",
   "welcome.title": "小浣熊",

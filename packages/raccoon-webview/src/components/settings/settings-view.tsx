@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, TerminalWindow, Translate } from "@phosphor-icons/react"
+import { Cloud, FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, TerminalWindow, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
@@ -76,21 +76,9 @@ export function SettingsView() {
         <nav className="settings-nav" aria-label={language.t("settings.nav.label")}>
           <button type="button" className={`settings-nav-item ${tab === "providers" ? "active" : ""}`} onClick={() => setTab("providers")}>
             <span className="settings-nav-icon">
-              <Plugs size={16} weight="bold" />
+              <Cloud size={16} weight="bold" />
             </span>
             <span>{language.t("settings.nav.providers")}</span>
-          </button>
-          <button type="button" className={`settings-nav-item ${tab === "mcp" ? "active" : ""}`} onClick={() => setTab("mcp")}>
-            <span className="settings-nav-icon">
-              <Plugs size={16} weight="bold" />
-            </span>
-            <span>{language.t("settings.nav.mcp")}</span>
-          </button>
-          <button type="button" className={`settings-nav-item ${tab === "skills" ? "active" : ""}`} onClick={() => setTab("skills")}>
-            <span className="settings-nav-icon">
-              <FileText size={16} weight="bold" />
-            </span>
-            <span>{language.t("settings.nav.skills")}</span>
           </button>
           <button type="button" className={`settings-nav-item ${tab === "models" ? "active" : ""}`} onClick={() => setTab("models")}>
             <span className="settings-nav-icon">
@@ -103,6 +91,18 @@ export function SettingsView() {
               <Robot size={16} weight="bold" />
             </span>
             <span>{language.t("settings.nav.agents")}</span>
+          </button>
+          <button type="button" className={`settings-nav-item ${tab === "mcp" ? "active" : ""}`} onClick={() => setTab("mcp")}>
+            <span className="settings-nav-icon">
+              <Plugs size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.mcp")}</span>
+          </button>
+          <button type="button" className={`settings-nav-item ${tab === "skills" ? "active" : ""}`} onClick={() => setTab("skills")}>
+            <span className="settings-nav-icon">
+              <FileText size={16} weight="bold" />
+            </span>
+            <span>{language.t("settings.nav.skills")}</span>
           </button>
           <button type="button" className={`settings-nav-item ${tab === "commands" ? "active" : ""}`} onClick={() => setTab("commands")}>
             <span className="settings-nav-icon">
