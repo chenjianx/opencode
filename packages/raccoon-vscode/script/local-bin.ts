@@ -1,53 +1,88 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
 import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
-import { basename, dirname, join, relative } from "node:path"
+import { join, relative } from "node:path"
 
 const dir = join(import.meta.dir, "..")
 const opencodeDir = join(dir, "..", "opencode")
 const targetDir = join(dir, "bin")
-// The upstream build now emits a binary named `raccoon`; we locate that
-// artifact and bundle it into the extension under the same name.
-const sourceBinName = process.platform === "win32" ? "raccoon.exe" : "raccoon"
-const targetBinName = process.platform === "win32" ? "raccoon.exe" : "raccoon"
-const targetPath = join(targetDir, targetBinName)
 
-async function findBuiltBinary() {
-  const distDir = join(opencodeDir, "dist")
-  if (!existsSync(distDir)) return
+// Map a VS Code platform target (as accepted by `vsce package --target`) to the
+// upstream `opencode` dist directory name and the binary file name produced
+// inside it. Keep this in sync with packages/opencode/script/build.ts.
+export const TARGETS: Record<string, { distDir: string; binName: string }> = {
+  "darwin-arm64": { distDir: "opencode-darwin-arm64", binName: "raccoon" },
+  "darwin-x64": { distDir: "opencode-darwin-x64", binName: "raccoon" },
+  "linux-x64": { distDir: "opencode-linux-x64", binName: "raccoon" },
+  "win32-x64": { distDir: "opencode-windows-x64", binName: "raccoon.exe" },
+}
 
-  for await (const entry of new Bun.Glob("**/*").scan({ cwd: distDir, absolute: true })) {
-    if (basename(entry) !== sourceBinName) continue
-    if (basename(dirname(entry)) !== "bin") continue
-    try {
-      statSync(entry)
-      return entry
-    } catch {
-      continue
-    }
+function currentTarget() {
+  const arch = process.arch === "arm64" ? "arm64" : "x64"
+  return `${process.platform}-${arch}`
+}
+
+// Resolve the requested target: `--target <t>` flag, else the current platform.
+function resolveTarget(): string {
+  const idx = process.argv.indexOf("--target")
+  const requested = idx !== -1 ? process.argv[idx + 1] : currentTarget()
+  if (!requested || !TARGETS[requested]) {
+    throw new Error(`Unsupported target "${requested}". Supported: ${Object.keys(TARGETS).join(", ")}`)
+  }
+  return requested
+}
+
+function sourceBinaryPath(target: string) {
+  const { distDir, binName } = TARGETS[target]
+  return join(opencodeDir, "dist", distDir, "bin", binName)
+}
+
+function findBuiltBinary(target: string) {
+  const sourcePath = sourceBinaryPath(target)
+  if (!existsSync(sourcePath)) return undefined
+  try {
+    statSync(sourcePath)
+    return sourcePath
+  } catch {
+    return undefined
   }
 }
 
-async function ensureBuiltBinary() {
-  const existing = await findBuiltBinary()
+async function ensureBuiltBinary(target: string) {
+  const existing = findBuiltBinary(target)
   if (existing) return existing
 
-  await $`bun run --cwd ${opencodeDir} build --single`
-  const built = await findBuiltBinary()
-  if (!built) throw new Error(`Could not find a built raccoon binary in ${relative(dir, join(opencodeDir, "dist"))}`)
+  // No `--single`: produce binaries for every supported platform in one pass so
+  // subsequent per-target packaging just reuses the already-built artifacts.
+  await $`bun run --cwd ${opencodeDir} build`
+  const built = findBuiltBinary(target)
+  if (!built) {
+    throw new Error(`Could not find built raccoon binary for ${target} at ${relative(dir, sourceBinaryPath(target))}`)
+  }
   return built
 }
 
-const source = await ensureBuiltBinary()
-mkdirSync(targetDir, { recursive: true })
+// Place the binary for `target` into bin/, replacing any previously bundled one.
+export async function stageBinary(target: string) {
+  const { binName } = TARGETS[target]
+  const source = await ensureBuiltBinary(target)
+  const targetPath = join(targetDir, binName)
+  mkdirSync(targetDir, { recursive: true })
 
-// Drop any previously bundled binaries (e.g. an old `opencode`) so the
-// extension package never ships a stale executable alongside `raccoon`.
-for (const entry of readdirSync(targetDir)) {
-  if (entry === ".gitignore") continue
-  rmSync(join(targetDir, entry), { recursive: true, force: true })
+  // Drop any previously bundled binaries (e.g. one for another platform) so the
+  // extension package never ships a stale or mismatched executable.
+  for (const entry of readdirSync(targetDir)) {
+    if (entry === ".gitignore") continue
+    rmSync(join(targetDir, entry), { recursive: true, force: true })
+  }
+
+  await $`cp ${source} ${targetPath}`
+  if (!target.startsWith("win32")) chmodSync(targetPath, 0o755)
+  console.log(`Copied ${target} raccoon binary to ${relative(dir, targetPath)}`)
+  return targetPath
 }
 
-await $`cp ${source} ${targetPath}`
-chmodSync(targetPath, 0o755)
-console.log(`Copied raccoon binary to ${relative(dir, targetPath)}`)
+// When run directly (not imported), stage the binary for the resolved target.
+if (import.meta.main) {
+  await stageBinary(resolveTarget())
+}
