@@ -29,13 +29,29 @@ export function ChatView() {
         <div className="chat-title" title={title}>
           {title}
         </div>
+        {usage.total > 0 ? (
+          <span
+            className="session-usage-total-inline ui-tip ui-tip-bottom"
+            data-tip={
+              showContext
+                ? language.t("message.contextUsage", {
+                    used: formatTokens(contextUsed),
+                    limit: formatTokens(contextLimit),
+                    pct: contextPct,
+                  })
+                : language.t("message.contextLabel")
+            }
+          >
+            {showContext ? `${contextPct}%` : formatTokens(contextUsed)}
+          </span>
+        ) : null}
         {session.state.activeSessionID ? (
           <button
             type="button"
-            className="chat-header-compact"
+            className="chat-header-compact ui-tip ui-tip-bottom"
             onClick={() => session.runSlashCommand("compact")}
             disabled={session.state.busy}
-            title={language.t("message.compactSession")}
+            data-tip={language.t("message.compactSession")}
             aria-label={language.t("message.compactSession")}
           >
             <BroomIcon className="chat-header-compact-icon" weight="bold" aria-hidden />
@@ -43,12 +59,6 @@ export function ChatView() {
         ) : null}
         {usage.total > 0 ? (
           <div className="chat-header-usage">
-            <span
-              className="session-usage-total-inline"
-              title={language.t("message.totalTokens", { count: formatTokens(usage.total) })}
-            >
-              {formatTokens(usage.total)}
-            </span>
             <Popover
               open={usageOpen}
               onOpenChange={setUsageOpen}
@@ -60,8 +70,9 @@ export function ChatView() {
               trigger={({ toggle, open }) => (
                 <button
                   type="button"
-                  className={`session-usage-trigger-btn${open ? " is-open" : ""}`}
+                  className={`session-usage-trigger-btn ui-tip ui-tip-bottom${open ? " is-open" : ""}`}
                   onClick={toggle}
+                  data-tip={language.t("message.usageDetails")}
                   aria-label={language.t("message.usageDetails")}
                 >
                   <CaretDownIcon className="session-usage-caret" weight="bold" aria-hidden />

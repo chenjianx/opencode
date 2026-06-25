@@ -45,15 +45,15 @@
   }
 
   .chat-header-compact {
-    @apply inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--color-border)] disabled:hover:text-[var(--color-muted)];
+    @apply inline-flex size-[22px] shrink-0 items-center justify-center rounded-[6px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--color-border)] disabled:hover:text-[var(--color-muted)];
   }
 
   .chat-header-compact-icon {
-    @apply size-[12px] shrink-0;
+    @apply size-[14px] shrink-0;
   }
 
   .session-usage-total-inline {
-    @apply tabular-nums text-[11px] font-medium leading-[16px] text-[var(--color-muted)];
+    @apply tabular-nums text-[13px] font-medium leading-[16px] text-[var(--color-muted)];
   }
 
   .session-usage-root {
@@ -61,7 +61,7 @@
   }
 
   .session-usage-trigger-btn {
-    @apply inline-flex size-[18px] items-center justify-center rounded-[5px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)];
+    @apply inline-flex size-[22px] items-center justify-center rounded-[6px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)];
   }
 
   .session-usage-trigger-btn.is-open {
@@ -69,7 +69,7 @@
   }
 
   .session-usage-caret {
-    @apply size-[11px] shrink-0 transition-transform;
+    @apply size-[13px] shrink-0 transition-transform;
   }
 
   .session-usage-trigger-btn.is-open .session-usage-caret {
@@ -403,6 +403,10 @@
   .ui-tip:hover::after,
   .ui-tip:focus-visible::after {
     @apply opacity-100;
+  }
+
+  .ui-tip-bottom::after {
+    @apply bottom-auto top-[calc(100%+6px)];
   }
 
   .permission-dock {

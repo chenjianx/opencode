@@ -465,6 +465,7 @@ export const dict = {
   "message.cacheTokenLabel": "快取",
   "message.costLabel": "費用",
   "message.contextLabel": "上下文視窗",
+  "message.contextUsage": "上下文 {{used}} / {{limit}}（{{pct}}%）",
   "message.usageDetails": "用量明細",
   "message.compactSession": "精簡工作階段",
   "prompt.placeholder": '輸入問題，鍵入 "/" 執行命令，鍵入 "@" 加入上下文',

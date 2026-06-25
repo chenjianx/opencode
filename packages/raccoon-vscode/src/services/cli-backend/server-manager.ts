@@ -60,7 +60,11 @@ export class RaccoonServerManager implements vscode.Disposable {
   }
 
   private async startServer(): Promise<ServerInstance> {
-    const configured = this.deps.getConfig("serverUrl")?.trim()
+    // Allow attaching to an externally-managed server (e.g. a source-built
+    // server launched under the debugger). RACCOON_SERVER_URL is only set when
+    // debugging via launch.json; packaged builds leave it unset and fall back
+    // to spawning bin/raccoon below.
+    const configured = this.deps.getConfig("serverUrl")?.trim() || process.env.RACCOON_SERVER_URL?.trim()
     if (configured) return { url: configured.replace(/\/+$/, "") }
 
     const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384

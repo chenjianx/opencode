@@ -464,6 +464,7 @@ export const dict = {
   "message.cacheTokenLabel": "Cache",
   "message.costLabel": "Cost",
   "message.contextLabel": "Context window",
+  "message.contextUsage": "Context {{used}} / {{limit}} ({{pct}}%)",
   "message.usageDetails": "Usage details",
   "message.compactSession": "Compact session",
   "prompt.placeholder": 'Ask a question, type "/" for commands, "@" to add context',
