@@ -9,13 +9,17 @@ import { RevertBar } from "./message-list-user"
 import { QuestionDock } from "./question-dock"
 import { PermissionDock } from "./permission-dock"
 
-export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean } = {}) {
+export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean; follow?: boolean } = {}) {
   const language = useLanguage()
   const session = useSession()
   const readonly = props.readonly ?? false
+  const follow = props.follow ?? false
   const messageTurns = turns(props.messages ?? session.visibleMessages)
   const rootRef = useRef<HTMLDivElement>(null)
-  const followBottomRef = useRef(true)
+  // Normal chat starts pinned to the bottom (newest message). Read-only views start
+  // at the top; the sub-agent viewer opts into sticky-bottom via `follow`, but only
+  // sticks once the user is actually at the bottom (followBottomRef flips on scroll).
+  const followBottomRef = useRef(!readonly)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
 
   const updateScrollButton = () => {
@@ -27,9 +31,10 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
   }
 
   useLayoutEffect(() => {
-    // Read-only views (e.g. the sub-agent viewer) are for reviewing a finished
-    // conversation — keep the scroll at the top instead of jumping to the bottom.
-    if (readonly) return
+    // Read-only views without `follow` (e.g. reviewing a finished conversation) keep
+    // their scroll position. The streaming sub-agent viewer passes `follow` to track
+    // the bottom as new content arrives — but only while the user is already there.
+    if (readonly && !follow) return
     const root = rootRef.current
     if (!root) return
     if (!followBottomRef.current) {
@@ -39,7 +44,7 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
     root.scrollTo({ top: root.scrollHeight, behavior: "auto" })
     setShowScrollBottom(false)
     followBottomRef.current = true
-  }, [readonly, props.messages, session.messages, session.state.loading])
+  }, [readonly, follow, props.messages, session.messages, session.state.loading])
 
   const scrollToBottom = () => {
     const root = rootRef.current

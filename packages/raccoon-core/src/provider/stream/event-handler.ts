@@ -47,6 +47,7 @@ type EventHandlerDeps = {
   stopPromptRefresh: (sessionID: string) => void
   clearPromptRefresh: (sessionID: string) => void
   scheduleEventRefresh: () => void
+  scheduleSubAgentRefresh: (sessionID: string) => void
   refreshMcpInstalled: () => void
   postMessage: (message: ExtensionToWebview) => void
   onReauthRequired: () => void
@@ -88,7 +89,13 @@ export class RaccoonEventHandler {
     if (event.type === "session.error" && this.isReauthError(event.properties.error)) {
       this.deps.onReauthRequired()
     }
-    if (eventSessionID(event) !== this.deps.getState().activeSessionID) return
+    const sessionID = eventSessionID(event)
+    // The open sub-agent runs in a child session distinct from the active one, so
+    // its events would be dropped by the active-session filter below. Drive an
+    // incremental refresh of the sub-agent view first (no-op unless it matches the
+    // currently open child session).
+    if (sessionID) this.deps.scheduleSubAgentRefresh(sessionID)
+    if (sessionID !== this.deps.getState().activeSessionID) return
     if (event.type === "message.updated") {
       this.deps.stopPromptRefresh(event.properties.info.sessionID)
       this.deps.upsertMessage(event.properties.info)

@@ -219,6 +219,7 @@ export class RaccoonProvider {
       stopPromptRefresh: (sessionID) => this.sessions.stopPromptRefresh(sessionID),
       clearPromptRefresh: (sessionID) => this.sessions.clearPromptRefresh(sessionID),
       scheduleEventRefresh: () => this.scheduleEventRefresh(),
+      scheduleSubAgentRefresh: (sessionID) => this.sessions.scheduleSubAgentRefresh(sessionID),
       refreshMcpInstalled: () => this.refreshMcpInstalled(),
       postMessage: (message) => this.webviewHost.post("chat", message),
       onReauthRequired: () => this.handleReauthRequired(),

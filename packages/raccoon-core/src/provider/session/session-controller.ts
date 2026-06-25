@@ -46,7 +46,11 @@ type SessionControllerDeps = {
 export class RaccoonSessionController {
   private eventRefreshTimer?: ReturnType<typeof setTimeout>
   private promptRefreshTimer?: ReturnType<typeof setTimeout>
+  private subAgentRefreshTimer?: ReturnType<typeof setTimeout>
   private refreshingFromEvent = false
+  private refreshingSubAgent = false
+  private openSubAgentSessionID?: string
+  private openSubAgentTitle?: string
   private readonly pendingOptimisticMessages = new Set<string>()
   private activePromptSessionID?: string
   private activePromptMessageID?: string
@@ -530,21 +534,20 @@ export class RaccoonSessionController {
     // mapMessage pipeline as the main message stream so rendering stays identical.
     // Drive the view via a dedicated message (not state.view) because postState()
     // hard-codes view: "chat" for the chat webview.
+    //
+    // The child session keeps emitting events while the parent task runs; we track
+    // the open sub-agent here so the event handler can drive incremental refreshes
+    // (see scheduleSubAgentRefresh), giving the view a streaming-like update.
+    this.openSubAgentSessionID = sessionID
+    this.openSubAgentTitle = title
+    this.clearSubAgentRefresh()
     this.deps.webviewHost.post("chat", {
       type: "showSubAgent",
       view: { sessionID, title, messages: [], loading: true },
     } satisfies ExtensionToWebview)
     try {
-      const client = await this.deps.client()
-      const response = await client.session.messages(
-        { sessionID, directory: this.deps.directory(), limit: 200 },
-        { throwOnError: true },
-      )
-      const messages = sortMessages(
-        response.data
-          .flatMap((message) => mapMessage(message))
-          .filter((message) => message.text.trim() || message.parts.length > 0),
-      )
+      const messages = await this.fetchSubAgentMessages(sessionID)
+      if (this.openSubAgentSessionID !== sessionID) return
       this.deps.webviewHost.post("chat", {
         type: "showSubAgent",
         view: { sessionID, title, messages, loading: false },
@@ -552,6 +555,7 @@ export class RaccoonSessionController {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       this.deps.log(`open sub-agent failed (${sessionID}): ${message}`)
+      if (this.openSubAgentSessionID !== sessionID) return
       this.deps.webviewHost.post("chat", {
         type: "showSubAgent",
         view: { sessionID, title, messages: [], loading: false, error: message },
@@ -559,7 +563,59 @@ export class RaccoonSessionController {
     }
   }
 
+  // Debounced incremental refresh of the open sub-agent view. Called by the event
+  // handler for every event whose sessionID matches the open child session, so the
+  // view updates as the sub-agent works instead of staying a one-shot snapshot.
+  scheduleSubAgentRefresh(sessionID: string) {
+    if (this.openSubAgentSessionID !== sessionID) return
+    if (this.subAgentRefreshTimer) return
+    this.subAgentRefreshTimer = setTimeout(() => {
+      this.subAgentRefreshTimer = undefined
+      void this.refreshSubAgent(sessionID)
+    }, 120)
+  }
+
+  private async refreshSubAgent(sessionID: string) {
+    if (this.refreshingSubAgent || this.openSubAgentSessionID !== sessionID) return
+    this.refreshingSubAgent = true
+    try {
+      const messages = await this.fetchSubAgentMessages(sessionID)
+      if (this.openSubAgentSessionID !== sessionID) return
+      this.deps.webviewHost.post("chat", {
+        type: "showSubAgent",
+        view: { sessionID, title: this.openSubAgentTitle, messages, loading: false },
+      } satisfies ExtensionToWebview)
+    } catch (error) {
+      // Transient refresh failures must not clobber the rendered view; the next
+      // event (or the final idle event) will retry the fetch.
+      this.deps.log(`refresh sub-agent failed (${sessionID}): ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      this.refreshingSubAgent = false
+    }
+  }
+
+  private async fetchSubAgentMessages(sessionID: string) {
+    const client = await this.deps.client()
+    const response = await client.session.messages(
+      { sessionID, directory: this.deps.directory(), limit: 200 },
+      { throwOnError: true },
+    )
+    return sortMessages(
+      response.data
+        .flatMap((message) => mapMessage(message))
+        .filter((message) => message.text.trim() || message.parts.length > 0),
+    )
+  }
+
+  private clearSubAgentRefresh() {
+    if (this.subAgentRefreshTimer) clearTimeout(this.subAgentRefreshTimer)
+    this.subAgentRefreshTimer = undefined
+  }
+
   closeSubAgent() {
+    this.openSubAgentSessionID = undefined
+    this.openSubAgentTitle = undefined
+    this.clearSubAgentRefresh()
     this.deps.webviewHost.post("chat", { type: "closeSubAgent" } satisfies ExtensionToWebview)
   }
 
@@ -608,6 +664,7 @@ export class RaccoonSessionController {
 
   dispose() {
     this.clearEventRefreshTimer()
+    this.clearSubAgentRefresh()
     if (this.promptRefreshTimer) clearTimeout(this.promptRefreshTimer)
   }
 

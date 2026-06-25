@@ -38,7 +38,7 @@ export function SubAgentView() {
           <span>{language.t("message.working")}</span>
         </div>
       ) : (
-        <MessageList messages={view?.messages ?? []} readonly />
+        <MessageList messages={view?.messages ?? []} readonly follow />
       )}
     </section>
   )
