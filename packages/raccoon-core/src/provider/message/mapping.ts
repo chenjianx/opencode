@@ -121,6 +121,8 @@ export function mapMessage(message: SessionMessageWithParts): RaccoonMessage[] {
         role: "assistant",
         parts,
         text: messageText(parts),
+        tokens: message.info.tokens,
+        cost: message.info.cost,
       },
     ]
   }
@@ -177,6 +179,7 @@ export function mapProviderModels(provider: Provider, connected: boolean, disabl
       source: provider.source,
       connected: selectable,
       enabled: !disabledModels.has(modelKey({ providerID: provider.id, modelID: model.id })),
+      contextLimit: model.limit?.context && model.limit.context > 0 ? model.limit.context : undefined,
     }))
     .sort((a, b) => a.modelName.localeCompare(b.modelName))
 }

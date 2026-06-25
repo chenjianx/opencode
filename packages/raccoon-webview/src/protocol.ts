@@ -63,6 +63,7 @@ export type RaccoonModel = {
   enabled: boolean
   connected: boolean
   source?: "env" | "config" | "custom" | "api"
+  contextLimit?: number
 }
 
 export type RaccoonProviderInfo = {
@@ -184,12 +185,22 @@ export type RaccoonSession = {
   }
 }
 
+export type RaccoonMessageTokens = {
+  input: number
+  output: number
+  reasoning: number
+  cache: { read: number; write: number }
+  total?: number
+}
+
 export type RaccoonMessage = {
   id: string
   role: "user" | "assistant" | "system"
   text: string
   parts: RaccoonMessagePart[]
   createdAt: number
+  tokens?: RaccoonMessageTokens
+  cost?: number
 }
 
 export type RaccoonSubSessionTool = {

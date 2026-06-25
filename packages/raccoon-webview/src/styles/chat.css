@@ -24,6 +24,114 @@
     @apply rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] px-2.5 py-1.5 text-[12px] leading-[18px] text-[var(--color-muted)];
   }
 
+  .assistant-usage {
+    @apply flex items-center gap-2 text-[11px] leading-[16px] text-[var(--color-muted)];
+  }
+
+  .chat-input-stack {
+    @apply relative shrink-0;
+  }
+
+  .chat-header {
+    @apply flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-[5px] pb-[5px] pt-[7px];
+  }
+
+  .chat-title {
+    @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold leading-[18px] text-[var(--color-foreground)];
+  }
+
+  .chat-header-usage {
+    @apply flex shrink-0 items-center gap-1;
+  }
+
+  .session-usage-total-inline {
+    @apply tabular-nums text-[11px] font-medium leading-[16px] text-[var(--color-muted)];
+  }
+
+  .session-usage-root {
+    @apply relative inline-flex;
+  }
+
+  .session-usage-trigger-btn {
+    @apply inline-flex size-[18px] items-center justify-center rounded-[5px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)];
+  }
+
+  .session-usage-trigger-btn.is-open {
+    @apply border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] text-[var(--color-foreground)];
+  }
+
+  .session-usage-caret {
+    @apply size-[11px] shrink-0 transition-transform;
+  }
+
+  .session-usage-trigger-btn.is-open .session-usage-caret {
+    @apply rotate-180;
+  }
+
+  .session-usage-popover {
+    @apply flex flex-col gap-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-background)] p-2 text-[11px] leading-[16px] shadow-[0_8px_24px_rgba(0,0,0,0.18)];
+  }
+
+  .session-usage-detail {
+    @apply flex flex-col gap-0.5;
+  }
+
+  .session-usage-row {
+    @apply flex items-center justify-between gap-4;
+  }
+
+  .session-usage-row-label {
+    @apply inline-flex items-center gap-1 text-[var(--color-muted)];
+  }
+
+  .session-usage-row-total {
+    @apply mt-0.5 border-t border-[var(--color-border)] pt-1 font-medium;
+  }
+
+  .session-usage-row-total .session-usage-row-label {
+    @apply text-[var(--color-foreground)];
+  }
+
+  .session-usage-icon {
+    @apply size-[12px] shrink-0 text-[var(--color-muted)];
+  }
+
+  .session-usage-value {
+    @apply shrink-0 font-medium tabular-nums text-[var(--color-foreground)];
+  }
+
+  .session-usage-cost {
+    @apply text-[var(--color-focus)];
+  }
+
+  .session-context {
+    @apply flex flex-col gap-1 border-t border-[var(--color-border)] pt-2 text-[var(--color-muted)];
+  }
+
+  .session-context-head {
+    @apply flex items-center justify-between gap-4;
+  }
+
+  .session-context-title {
+    @apply text-[var(--color-muted)];
+  }
+
+  .session-context-pct {
+    @apply self-end text-[10px] tabular-nums text-[var(--color-muted)];
+  }
+
+  .session-context-bar {
+    @apply relative h-[5px] w-full overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_12%,transparent)];
+  }
+
+  .session-context-used {
+    @apply h-full rounded-full bg-[var(--color-focus)] transition-[width] duration-300;
+  }
+
+  .session-context-used--hot {
+    @apply bg-[color-mix(in_srgb,var(--color-error,#e5484d)_70%,var(--color-focus))];
+  }
+
   .assistant-reasoning summary {
     @apply cursor-pointer font-medium text-[var(--color-foreground)];
   }
@@ -367,52 +475,6 @@
 
   .permission-dock-once {
     @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[white] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,black)];
-  }
-
-  .welcome-state {
-    @apply flex min-h-full items-center justify-center px-3 py-4;
-  }
-
-  .welcome-card {
-    @apply max-w-[520px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-4 text-[13px] leading-[21px] text-[var(--color-foreground)];
-  }
-
-  .welcome-top {
-    @apply mb-3 flex items-center gap-2.5;
-  }
-
-  .welcome-mark {
-    @apply flex h-7 w-7 items-center justify-center rounded-[6px] bg-[var(--color-button)] text-[13px] font-semibold text-[var(--color-foreground)];
-  }
-
-  .welcome-title {
-    @apply text-[16px] font-semibold;
-  }
-
-  .welcome-copy,
-  .welcome-footer {
-    @apply m-0 text-[var(--color-foreground)];
-  }
-
-  .welcome-mention,
-  .welcome-footer a {
-    @apply text-[var(--color-focus)];
-  }
-
-  .welcome-tip {
-    @apply mt-3 flex items-center gap-2 text-[12px] text-[var(--color-muted)];
-  }
-
-  .welcome-tip-icon {
-    @apply text-[10px] text-[var(--color-focus)];
-  }
-
-  .welcome-list {
-    @apply my-2.5 list-disc space-y-0.5 pl-5 text-[12px] text-[var(--color-muted)];
-  }
-
-  .welcome-list kbd {
-    @apply rounded-[4px] border border-[var(--color-border)] bg-[var(--color-button)] px-1 py-0.5 text-[11px] text-[var(--color-foreground)];
   }
 
   .session-turn {

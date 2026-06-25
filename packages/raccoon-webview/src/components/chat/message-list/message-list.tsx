@@ -9,39 +9,6 @@ import { RevertBar } from "./message-list-user"
 import { QuestionDock } from "./question-dock"
 import { PermissionDock } from "./permission-dock"
 
-function WelcomeState() {
-  const { t } = useLanguage()
-  return (
-    <div className="welcome-state">
-      <div className="welcome-card">
-        <div className="welcome-top">
-          <div className="welcome-mark">R</div>
-          <div className="welcome-title">{t("welcome.title")}</div>
-        </div>
-        <p className="welcome-copy">
-          {t("welcome.greetingPrefix")}
-          <span className="welcome-mention">@RaccoonEthan</span>
-          {t("welcome.greetingSuffix")}
-        </p>
-        <div className="welcome-tip">
-          <span className="welcome-tip-icon">◉</span>
-          <span>{t("welcome.tip")}</span>
-        </div>
-        <ul className="welcome-list">
-          <li>{t("welcome.shortcut.invokePrefix")}<kbd>⌘L</kbd>{t("welcome.shortcut.invokeSuffix")}</li>
-          <li>{t("welcome.shortcut.contextPrefix")}<kbd>@</kbd>{t("welcome.shortcut.contextSuffix")}</li>
-          <li>{t("welcome.shortcut.commandsPrefix")}<kbd>/</kbd>{t("welcome.shortcut.commandsSuffix")}</li>
-        </ul>
-        <p className="welcome-footer">
-          {t("welcome.footerPrefix")}
-          <a href="#" onClick={(event) => event.preventDefault()}>{t("welcome.footerLink")}</a>
-          {t("welcome.footerSuffix")}
-        </p>
-      </div>
-    </div>
-  )
-}
-
 export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean } = {}) {
   const language = useLanguage()
   const session = useSession()
@@ -91,7 +58,6 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
     <div className="message-list-shell">
       <div className="message-list" ref={rootRef} onScroll={updateScrollButton}>
         {!readonly && session.state.error ? <div className="message-shell error">{session.state.error}</div> : null}
-        {!readonly && !session.state.activeSessionID && !session.state.loading && session.messages.length === 0 ? <WelcomeState /> : null}
         {messageTurns.map((turn, index) => (
           <MessageTurn
             key={turn.user?.id ?? turn.assistant[0]?.id ?? index}
