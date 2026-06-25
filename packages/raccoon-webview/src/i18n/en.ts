@@ -465,6 +465,7 @@ export const dict = {
   "message.costLabel": "Cost",
   "message.contextLabel": "Context window",
   "message.usageDetails": "Usage details",
+  "message.compactSession": "Compact session",
   "prompt.placeholder": 'Ask a question, type "/" for commands, "@" to add context',
   "prompt.mode": "Mode",
   "prompt.model": "Model",

@@ -44,6 +44,14 @@
     @apply flex shrink-0 items-center gap-1;
   }
 
+  .chat-header-compact {
+    @apply inline-flex size-[18px] shrink-0 items-center justify-center rounded-[5px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--color-border)] disabled:hover:text-[var(--color-muted)];
+  }
+
+  .chat-header-compact-icon {
+    @apply size-[12px] shrink-0;
+  }
+
   .session-usage-total-inline {
     @apply tabular-nums text-[11px] font-medium leading-[16px] text-[var(--color-muted)];
   }

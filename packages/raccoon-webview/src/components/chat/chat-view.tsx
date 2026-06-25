@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ArrowDownIcon, ArrowUpIcon, CaretDownIcon, DatabaseIcon } from "@phosphor-icons/react"
+import { ArrowDownIcon, ArrowUpIcon, BroomIcon, CaretDownIcon, DatabaseIcon } from "@phosphor-icons/react"
 import { MessageList } from "./message-list/message-list"
 import { PromptInput } from "./prompt/prompt-input"
 import { Popover } from "../ui/popover"
@@ -29,6 +29,18 @@ export function ChatView() {
         <div className="chat-title" title={title}>
           {title}
         </div>
+        {session.state.activeSessionID ? (
+          <button
+            type="button"
+            className="chat-header-compact"
+            onClick={() => session.runSlashCommand("compact")}
+            disabled={session.state.busy}
+            title={language.t("message.compactSession")}
+            aria-label={language.t("message.compactSession")}
+          >
+            <BroomIcon className="chat-header-compact-icon" weight="bold" aria-hidden />
+          </button>
+        ) : null}
         {usage.total > 0 ? (
           <div className="chat-header-usage">
             <span

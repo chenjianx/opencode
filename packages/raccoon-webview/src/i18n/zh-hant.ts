@@ -466,6 +466,7 @@ export const dict = {
   "message.costLabel": "費用",
   "message.contextLabel": "上下文視窗",
   "message.usageDetails": "用量明細",
+  "message.compactSession": "精簡工作階段",
   "prompt.placeholder": '輸入問題，鍵入 "/" 執行命令，鍵入 "@" 加入上下文',
   "prompt.mode": "模式",
   "prompt.model": "模型",
