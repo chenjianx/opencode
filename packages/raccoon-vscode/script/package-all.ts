@@ -1,10 +1,12 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
 import { join } from "node:path"
+import { mkdir } from "node:fs/promises"
 import { stageBinary, TARGETS } from "./local-bin.ts"
 import pkg from "../package.json"
 
 const dir = join(import.meta.dir, "..")
+const outDir = join(dir, "build")
 
 // Platform targets to build VSIX files for. Each produces a dedicated,
 // platform-specific package containing only that platform's `raccoon` binary.
@@ -20,6 +22,7 @@ const vsceSecretArgs = [
 
 // 1. Build the shared (platform-agnostic) artifacts once: webview + bundled JS.
 console.log("Building shared artifacts (webview + extension bundle)…")
+await mkdir(outDir, { recursive: true })
 await $`bun run --cwd ${dir} build:webview`
 await $`bun run --cwd ${dir} check-types`
 await $`bun run --cwd ${dir} lint`
@@ -35,7 +38,7 @@ for (const target of PACKAGE_TARGETS) {
   if (!TARGETS[target]) throw new Error(`Unknown target ${target}`)
   console.log(`\n=== Packaging ${target} ===`)
   await stageBinary(target)
-  const out = join(dir, `raccoon-${target}-${pkg.version}.vsix`)
+  const out = join(outDir, `raccoon-${target}-${pkg.version}.vsix`)
   await $`vsce package --target ${target} ${vsceSecretArgs} -o ${out}`.cwd(dir)
   produced.push(out)
 }

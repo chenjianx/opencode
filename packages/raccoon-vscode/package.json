@@ -233,7 +233,7 @@
     "compile": "bun run build:cli && bun run build:webview && bun run check-types && bun run lint && node esbuild.cjs",
     "package": "bun run build:cli && bun run build:webview && bun run check-types && bun run lint && node esbuild.cjs --production",
     "vscode:prepublish": "bun run package",
-    "vsix": "vsce package --no-dependencies --allow-package-secrets github --allow-package-secrets slack",
+    "vsix": "mkdir -p build && vsce package --no-dependencies --allow-package-secrets github --allow-package-secrets slack -o build",
     "vsix:target": "bun run script/local-bin.ts --target",
     "package:all": "bun run script/package-all.ts",
     "watch": "node esbuild.cjs --watch",

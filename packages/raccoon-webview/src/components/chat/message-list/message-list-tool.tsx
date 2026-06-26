@@ -318,7 +318,7 @@ export function ToolPart(props: { part: RaccoonMessagePart }) {
   }
 
   return (
-    <details className={`tool-part ${props.part.error ? "errored" : ""}`} open={props.part.status === "running"}>
+    <details className={`tool-part ${props.part.error ? "errored" : ""}`}>
       <ToolSummary info={info} status={props.part.status} showArrow={hasDetails} />
       {hasDetails ? (
         <div data-slot="collapsible-content" className="tool-details">
