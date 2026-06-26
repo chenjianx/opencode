@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ArrowClockwiseIcon, ArrowUUpLeftIcon, CheckIcon, CopyIcon, ImageIcon, PaperclipIcon } from "@phosphor-icons/react"
+import { ArrowClockwiseIcon, ArrowUUpLeftIcon, CheckIcon, CopyIcon, ImageIcon } from "@phosphor-icons/react"
 import { useLanguage } from "../../../context/language"
 import { useSession } from "../../../context/session"
 import { RESERVED_MENTION_PATHS } from "../prompt/file-mention"
@@ -16,7 +16,7 @@ function mentionFilePath(token: string): string | undefined {
 
 export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean; onRevert?: () => void }) {
   const text = props.message.parts.filter((part) => part.type === "text" && !part.synthetic).map((part) => part.text ?? "").join("\n\n").trim()
-  const attachments = props.message.parts.filter((part) => part.type === "file")
+  const attachments = props.message.parts.filter((part) => part.type === "file" && part.mime?.startsWith("image/"))
   const [copied, setCopied] = useState(false)
   const session = useSession()
 
@@ -32,12 +32,8 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
   }
 
   const handleAttachmentClick = (attachment: typeof attachments[number]) => {
-    if (attachment.mime?.startsWith("image/")) {
-      if (!attachment.url) return
-      session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime })
-    } else if (attachment.path) {
-      session.openFile(attachment.path)
-    }
+    if (!attachment.url) return
+    session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime })
   }
 
   const handleMentionClick = (path: string) => {
@@ -53,30 +49,15 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
           <div className="user-message-attachments">
             {attachments.map((attachment) => (
               <div className="user-message-attachment" key={`${attachment.id}-${attachment.url}`}>
-                {attachment.mime?.startsWith("image/") ? (
-                  <button
-                    type="button"
-                    className="user-message-attachment-image-button"
-                    onClick={() => handleAttachmentClick(attachment)}
-                  >
-                    <img className="user-message-attachment-image" src={attachment.url} alt={attachment.filename ?? "attachment"} />
-                  </button>
-                ) : attachment.path ? (
-                  <button
-                    type="button"
-                    className="user-message-attachment-file-button"
-                    onClick={() => handleAttachmentClick(attachment)}
-                  >
-                    <span>{attachment.filename ?? "attachment"}</span>
-                  </button>
-                ) : (
-                  <div className="user-message-attachment-fallback">
-                    <PaperclipIcon size={16} weight="bold" />
-                    <span>{attachment.filename ?? "attachment"}</span>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  className="user-message-attachment-image-button"
+                  onClick={() => handleAttachmentClick(attachment)}
+                >
+                  <img className="user-message-attachment-image" src={attachment.url} alt={attachment.filename ?? "attachment"} />
+                </button>
                 <span className="user-message-attachment-label">
-                  {attachment.mime?.startsWith("image/") ? <ImageIcon size={12} weight="bold" /> : <PaperclipIcon size={12} weight="bold" />}
+                  <ImageIcon size={12} weight="bold" />
                   <span>{attachment.filename ?? "attachment"}</span>
                 </span>
               </div>

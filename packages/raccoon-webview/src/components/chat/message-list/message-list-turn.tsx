@@ -23,11 +23,12 @@ export function MessageTurn(props: {
           />
         </div>
       ) : null}
-      {props.turn.assistant.map((message) => {
+      {props.turn.assistant.map((message, index) => {
         const parts = visibleParts(message)
         const lastTextPart = parts.filter((part) => part.type === "text").at(-1)
         const hasTextPart = (message.parts ?? []).some((part) => part.type === "text" && part.text?.trim())
         const copyText = lastTextPart?.text ?? message.text
+        const isLastAssistant = index === props.turn.assistant.length - 1
         return (
           <div className="turn-assistant-group" key={message.id}>
             <div className="turn-assistant">
@@ -78,7 +79,7 @@ export function MessageTurn(props: {
                   ))}
               </div>
             </div>
-            <AssistantCopyButton text={copyText} />
+            {isLastAssistant ? <AssistantCopyButton text={copyText} /> : null}
           </div>
         )
       })}
