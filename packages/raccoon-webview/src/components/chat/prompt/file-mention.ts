@@ -13,6 +13,10 @@ export const SPECIAL_MENTIONS: RaccoonFileSearchItem[] = [
   { type: "folder-group", path: "folder", label: "Folder", description: "Search workspace folders" },
 ]
 
+// Mention paths that don't map to a workspace file (terminal/git-changes specials and the
+// file/folder group triggers). Clicking these should not attempt to open a document.
+export const RESERVED_MENTION_PATHS = new Set(SPECIAL_MENTIONS.map((item) => item.path))
+
 const TERMINAL_PATTERN = /(^|\s)@terminal(?=\s|$)/
 const GIT_CHANGES_PATTERN = /(^|\s)@git-changes(?=\s|$)/
 

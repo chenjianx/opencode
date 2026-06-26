@@ -44,6 +44,7 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     private readonly workspacePath: string,
     private readonly onFatalError?: (status: number | null) => void,
     private readonly log: (msg: string) => void = () => {},
+    private readonly onActivity?: (active: boolean) => void,
   ) {
     this.modelId = modelId || DEFAULT_AUTOCOMPLETE_MODEL.id
 
@@ -166,13 +167,18 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
       isUntitledFile: document.isUntitled,
     }
 
-    const outcome = await this.completionProvider.provideInlineCompletionItems(input, signal)
+    this.onActivity?.(true)
+    let outcome: AutocompleteOutcome | undefined
+    try {
+      outcome = await this.completionProvider.provideInlineCompletionItems(input, signal)
+    } finally {
+      this.onActivity?.(false)
+    }
 
     if (signal.aborted || !outcome || !outcome.completion) {
       this.setHasSuggestions(false)
       return undefined
     }
-
     this.lastOutcome = outcome
 
     const startPos = selectedCompletionInfo?.range.start ?? position

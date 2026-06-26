@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import { AutocompleteInlineCompletionProvider, type AutocompleteSettings } from "./vscodeProvider.js"
+import { AutocompleteStatusBar } from "./StatusBar.js"
 import type { RaccoonConnectionService } from "../cli-backend/index.js"
 import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel } from "@opencode-ai/raccoon-core"
 
@@ -29,9 +30,12 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   private inlineCompletionProviderDisposable: vscode.Disposable | null = null
   private unsubscribeState: (() => void) | null = null
   private snoozeTimer: NodeJS.Timeout | null = null
+  private readonly statusBar: AutocompleteStatusBar
+  private generating = false
 
   constructor(connectionService: RaccoonConnectionService, log?: (msg: string) => void) {
     this.connectionService = connectionService
+    this.statusBar = new AutocompleteStatusBar()
 
     const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? ""
 
@@ -43,6 +47,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
       workspacePath,
       (status) => this.handleFatalAutocompleteError(status),
       log,
+      (active) => this.handleActivity(active),
     )
 
     // Reload when backend connection state changes, and reset error backoff —
@@ -62,6 +67,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
     }
     await this.ensureInlineCompletionProviderRegistration()
     this.setupSnoozeTimerIfNeeded()
+    this.refreshStatus()
   }
 
   private async ensureInlineCompletionProviderRegistration(): Promise<void> {
@@ -84,6 +90,11 @@ export class AutocompleteServiceManager implements vscode.Disposable {
 
   public async disable(): Promise<void> {
     await writeSettings({ enableAutoTrigger: false })
+    await this.load()
+  }
+
+  public async enable(): Promise<void> {
+    await writeSettings({ enableAutoTrigger: true })
     await this.load()
   }
 
@@ -156,7 +167,46 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   }
 
   private updateCostTracking(): void {
-    // No-op for now; cost tracking / status bar can be added later.
+    // No-op for now; cost tracking can be added later.
+  }
+
+  private handleActivity(active: boolean): void {
+    this.generating = active
+    this.refreshStatus()
+  }
+
+  /** Recompute and push the current state to the status bar. */
+  private refreshStatus(): void {
+    if (this.generating) {
+      this.statusBar.setStatus("generating")
+      return
+    }
+    if (this.connectionService.getConnectionState() !== "connected") {
+      this.statusBar.setStatus("error")
+      return
+    }
+    if (this.isSnoozed()) {
+      this.statusBar.setStatus("snoozed")
+      return
+    }
+    if (!(this.settings?.enableAutoTrigger ?? false)) {
+      this.statusBar.setStatus("disabled")
+      return
+    }
+    this.statusBar.setStatus("idle")
+  }
+
+  /** Quick-pick shown when the status bar item is clicked. */
+  public async showStatusMenu(): Promise<void> {
+    const enabled = (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
+    const items: (vscode.QuickPickItem & { action: () => Promise<void> | void })[] = enabled
+      ? [{ label: "$(circle-slash) Disable autocomplete", action: () => this.disable() }]
+      : [{ label: "$(check) Enable autocomplete", action: () => this.enable() }]
+
+    const picked = await vscode.window.showQuickPick(items, {
+      placeHolder: "Raccoon autocomplete",
+    })
+    await picked?.action()
   }
 
   private handleFatalAutocompleteError(status: number | null): void {
@@ -165,6 +215,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
         ? "Raccoon autocomplete paused: credits exhausted."
         : "Raccoon autocomplete paused: authentication error."
     vscode.window.showWarningMessage(msg)
+    this.statusBar.setStatus("error")
   }
 
   public dispose(): void {
@@ -178,6 +229,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
       this.inlineCompletionProviderDisposable.dispose()
       this.inlineCompletionProviderDisposable = null
     }
+    this.statusBar.dispose()
     this.inlineCompletionProvider.dispose()
   }
 }

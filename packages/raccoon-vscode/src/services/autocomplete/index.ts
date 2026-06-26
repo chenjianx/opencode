@@ -31,6 +31,9 @@ export const registerAutocompleteProvider = (
     vscode.commands.registerCommand("raccoon.autocomplete.disable", async () => {
       await manager.disable()
     }),
+    vscode.commands.registerCommand("raccoon.autocomplete.statusMenu", async () => {
+      await manager.showStatusMenu()
+    }),
   )
 
   // Reload when autocomplete settings change (toggled from settings UI).

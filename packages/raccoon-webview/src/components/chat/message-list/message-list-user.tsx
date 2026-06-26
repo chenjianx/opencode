@@ -2,7 +2,17 @@ import { useState } from "react"
 import { ArrowClockwiseIcon, ArrowUUpLeftIcon, CheckIcon, CopyIcon, ImageIcon, PaperclipIcon } from "@phosphor-icons/react"
 import { useLanguage } from "../../../context/language"
 import { useSession } from "../../../context/session"
+import { RESERVED_MENTION_PATHS } from "../prompt/file-mention"
 import type { RaccoonMessage } from "../../../protocol"
+
+// Resolve the openable file path from an `@mention` token, or undefined when the token is not a
+// file mention: reserved specials (@terminal, @git-changes, @file, @folder) or just stray `@text`.
+// Trailing punctuation that commonly abuts prose (e.g. "@src/foo.ts,") is trimmed off the path.
+function mentionFilePath(token: string): string | undefined {
+  const path = token.slice(1).replace(/[.,;:!?)\]}'"]+$/, "")
+  if (!path || RESERVED_MENTION_PATHS.has(path)) return undefined
+  return path
+}
 
 export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean; onRevert?: () => void }) {
   const text = props.message.parts.filter((part) => part.type === "text" && !part.synthetic).map((part) => part.text ?? "").join("\n\n").trim()
@@ -21,6 +31,19 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
     )
   }
 
+  const handleAttachmentClick = (attachment: typeof attachments[number]) => {
+    if (attachment.mime?.startsWith("image/")) {
+      if (!attachment.url) return
+      session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime })
+    } else if (attachment.path) {
+      session.openFile(attachment.path)
+    }
+  }
+
+  const handleMentionClick = (path: string) => {
+    session.openFile(path)
+  }
+
   if (!text && attachments.length === 0) return null
 
   return (
@@ -34,12 +57,17 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
                   <button
                     type="button"
                     className="user-message-attachment-image-button"
-                    onClick={() => {
-                      if (!attachment.url) return
-                      session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime })
-                    }}
+                    onClick={() => handleAttachmentClick(attachment)}
                   >
                     <img className="user-message-attachment-image" src={attachment.url} alt={attachment.filename ?? "attachment"} />
+                  </button>
+                ) : attachment.path ? (
+                  <button
+                    type="button"
+                    className="user-message-attachment-file-button"
+                    onClick={() => handleAttachmentClick(attachment)}
+                  >
+                    <span>{attachment.filename ?? "attachment"}</span>
                   </button>
                 ) : (
                   <div className="user-message-attachment-fallback">
@@ -57,15 +85,34 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
         ) : null}
         {text ? (
           <p>
-            {text.split(/(@\S+)/g).map((part, index) =>
-              part.startsWith("@") ? (
-                <span className="user-mention" key={index}>
+            {text.split(/(@\S+)/g).map((part, index) => {
+              if (!part.startsWith("@")) return part
+              const filePath = mentionFilePath(part)
+              if (!filePath) {
+                return (
+                  <span className="user-mention" key={index}>
+                    {part}
+                  </span>
+                )
+              }
+              return (
+                <span
+                  className="user-mention user-mention-clickable"
+                  key={index}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleMentionClick(filePath)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault()
+                      handleMentionClick(filePath)
+                    }
+                  }}
+                >
                   {part}
                 </span>
-              ) : (
-                part
-              ),
-            )}
+              )
+            })}
           </p>
         ) : null}
       </div>

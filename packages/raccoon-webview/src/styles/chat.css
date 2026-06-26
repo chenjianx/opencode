@@ -366,6 +366,14 @@
     @apply h-full w-full object-cover;
   }
 
+  .user-message-attachment-file-button {
+    @apply flex h-[52px] w-[52px] cursor-pointer items-center justify-center bg-transparent px-1 text-center text-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)];
+  }
+
+  .user-message-attachment-file-button span {
+    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
   .user-message-attachment-fallback {
     @apply flex h-[52px] w-[52px] items-center justify-center px-1 text-center text-[10px] text-[var(--color-muted)];
   }
@@ -540,6 +548,10 @@
 
   .user-mention {
     @apply text-[var(--color-focus)];
+  }
+
+  .user-mention-clickable {
+    @apply cursor-pointer underline decoration-transparent transition-colors hover:decoration-current;
   }
 
   .revert-bar {

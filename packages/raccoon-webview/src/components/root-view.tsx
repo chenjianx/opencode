@@ -36,6 +36,18 @@ export function RootView() {
   if (session.state.view === "settings") return <SettingsView />
   if (session.state.view === "history") return <HistoryView onClose={() => session.showChat()} />
   if (session.state.view === "subagent") return <SubAgentView />
+  // First entry: the extension posts an intermediate `loading: true` state (with the auth
+  // flag known) before `refresh()` resolves an active session. Without this gate ChatView
+  // would render with a placeholder title and a disabled send button until the active
+  // session arrives. `loading && !activeSessionID` only matches that pre-hydration window:
+  // selectSession sets activeSessionID immediately, and refresh clears loading when done.
+  if (session.state.loading && !session.state.activeSessionID) {
+    return (
+      <div className="login-view">
+        <p className="login-description">{language.t("login.loading")}</p>
+      </div>
+    )
+  }
   return <ChatView />
 }
 

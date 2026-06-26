@@ -226,6 +226,7 @@ export type RaccoonMessagePart = {
   mime?: string
   filename?: string
   url?: string
+  path?: string
   tool?: string
   status?: string
   title?: string
