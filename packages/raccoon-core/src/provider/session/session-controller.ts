@@ -293,8 +293,12 @@ export class RaccoonSessionController {
     model?: { providerID: string; modelID: string },
     files?: { path: string; filename?: string; mime?: string; url: string; source?: FilePartInput["source"] }[],
   ) {
-    const sessionID = this.deps.getState().activeSessionID
-    if (!sessionID) return
+    let sessionID = this.deps.getState().activeSessionID
+    if (!sessionID) {
+      await this.createSession(mode)
+      sessionID = this.deps.getState().activeSessionID
+      if (!sessionID) return
+    }
     const client = await this.deps.client()
     const status = await client.session.status({ directory: this.deps.directory() }, { throwOnError: true })
     const sessionStatus = status.data[sessionID]?.type ?? "idle"

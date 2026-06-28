@@ -94,6 +94,37 @@ Use this skill.
     }),
   )
 
+  it.instance("execute loads bundled Raccoon knowledge skill resources", () =>
+    Effect.gen(function* () {
+      const registry = yield* ToolRegistry.Service
+      const agent = { name: "build", mode: "primary" as const, permission: [], options: {} }
+      const tool = (yield* registry.tools({
+        providerID: "opencode" as any,
+        modelID: "gpt-5" as any,
+        agent,
+      })).find((tool) => tool.id === SkillTool.id)
+      if (!tool) throw new Error("Skill tool not found")
+
+      const requests: Array<Omit<PermissionV1.Request, "id" | "sessionID" | "tool">> = []
+      const result = yield* tool.execute(
+        { name: "knowledge" },
+        {
+          ...baseCtx,
+          ask: (req) =>
+            Effect.sync(() => {
+              requests.push(req)
+            }),
+        },
+      )
+
+      expect(requests[0].patterns).toContain("knowledge")
+      expect(result.metadata.dir).toContain(path.join("builtin-skills", "knowledge"))
+      expect(result.output).toContain(`<skill_content name="knowledge">`)
+      expect(result.output).toContain(path.join("references", "api.md"))
+      expect(result.output).toContain(path.join("scripts", "knowledge_mcp_client.py"))
+    }),
+  )
+
   it.instance("execute preserves not found message", () =>
     Effect.gen(function* () {
       const dir = (yield* TestInstance).directory

@@ -76,6 +76,9 @@ const withHome = <A, E, R>(home: string, self: Effect.Effect<A, E, R>) =>
       }),
   )
 
+const userSkills = (skills: Skill.Info[]) =>
+  skills.filter((skill) => !["customize-opencode", "knowledge"].includes(skill.name)) // raccoon_change - exclude bundled Raccoon skill from user-skill assertions
+
 describe("skill", () => {
   it.live("discovers skills from .opencode/skill/ directory", () =>
     provideTmpdirInstance(
@@ -97,7 +100,7 @@ Instructions here.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.length).toBe(1)
           const item = list.find((x) => x.name === "test-skill")
           expect(item).toBeDefined()
@@ -167,7 +170,7 @@ description: Second test skill.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.length).toBe(2)
           expect(list.find((x) => x.name === "skill-one")).toBeDefined()
           expect(list.find((x) => x.name === "skill-two")).toBeDefined()
@@ -191,7 +194,7 @@ Just some content without YAML frontmatter.
           )
 
           const skill = yield* Skill.Service
-          expect((yield* skill.all()).filter((s) => s.location !== "<built-in>")).toEqual([])
+          expect(userSkills(yield* skill.all())).toEqual([])
         }),
       { git: true },
     ),
@@ -216,7 +219,7 @@ Instructions here.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.length).toBe(1)
           const item = list.find((x) => x.name === "manual-skill")
           expect(item).toBeDefined()
@@ -246,7 +249,7 @@ description: A skill in the .claude/skills directory.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.length).toBe(1)
           const item = list.find((x) => x.name === "claude-skill")
           expect(item).toBeDefined()
@@ -269,7 +272,7 @@ description: A skill in the .claude/skills directory.
           yield* Effect.promise(() => createGlobalSkill(tmp.path))
           yield* Effect.gen(function* () {
             const skill = yield* Skill.Service
-            const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+            const list = userSkills(yield* skill.all())
             expect(list.length).toBe(1)
             expect(list[0].name).toBe("global-test-skill")
             expect(list[0].description).toBe("A global skill from ~/.claude/skills for testing.")
@@ -285,7 +288,25 @@ description: A skill in the .claude/skills directory.
       () =>
         Effect.gen(function* () {
           const skill = yield* Skill.Service
-          expect((yield* skill.all()).filter((s) => s.location !== "<built-in>")).toEqual([])
+          expect(userSkills(yield* skill.all())).toEqual([])
+        }),
+      { git: true },
+    ),
+  )
+
+  it.live("registers bundled Raccoon knowledge skill with materialized resources", () =>
+    provideTmpdirInstance(
+      () =>
+        Effect.gen(function* () {
+          const skill = yield* Skill.Service
+          const info = yield* skill.require("knowledge")
+          const dir = path.dirname(info.location)
+          expect(info.description).toContain("Raccoon cloud knowledge")
+          expect(info.location).toBe(path.join(dir, "SKILL.md"))
+          expect(yield* Effect.promise(() => Bun.file(path.join(dir, "references", "api.md")).exists())).toBe(true)
+          expect(yield* Effect.promise(() => Bun.file(path.join(dir, "scripts", "knowledge_mcp_client.py")).exists())).toBe(
+            true,
+          )
         }),
       { git: true },
     ),
@@ -340,7 +361,7 @@ description: A skill in the .agents/skills directory.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.length).toBe(1)
           const item = list.find((x) => x.name === "agent-skill")
           expect(item).toBeDefined()
@@ -379,7 +400,7 @@ This skill is loaded from the global home directory.
 
           yield* Effect.gen(function* () {
             const skill = yield* Skill.Service
-            const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+            const list = userSkills(yield* skill.all())
             expect(list.length).toBe(1)
             expect(list[0].name).toBe("global-agent-skill")
             expect(list[0].description).toBe("A global skill from ~/.agents/skills for testing.")
@@ -420,7 +441,7 @@ description: A skill in the .agents/skills directory.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.length).toBe(2)
           expect(list.find((x) => x.name === "claude-skill")).toBeDefined()
           expect(list.find((x) => x.name === "agent-skill")).toBeDefined()
@@ -459,7 +480,7 @@ description: A skill in the .agents/skills directory.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.map((s) => s.name)).toEqual(["agent-skill"])
         }),
       { git: true },
@@ -506,7 +527,7 @@ description: A skill in the .opencode/skill directory.
           )
 
           const skill = yield* Skill.Service
-          const list = (yield* skill.all()).filter((s) => s.location !== "<built-in>")
+          const list = userSkills(yield* skill.all())
           expect(list.map((s) => s.name)).toEqual(["opencode-skill"])
         }),
       { git: true },

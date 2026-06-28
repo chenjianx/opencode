@@ -471,7 +471,7 @@ export function SessionProvider(props: { children: ReactNode }) {
 
   const sessionActions = useMemo<SessionActionsContextValue>(() => {
     return {
-      canSend: (text, files = []) => (text.trim().length > 0 || files.length > 0) && !!stateRef.current.activeSessionID && !stateRef.current.busy,
+      canSend: (text, files = []) => (text.trim().length > 0 || files.length > 0) && !stateRef.current.busy,
       showChat: () => {
         setState((current) => {
           const next = { ...current, view: "chat" as const }

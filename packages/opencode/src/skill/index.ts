@@ -17,6 +17,7 @@ import { RuntimeFlags } from "@/effect/runtime-flags"
 import { Glob } from "@opencode-ai/core/util/glob"
 import { Discovery } from "./discovery"
 import { isRecord } from "@/util/record"
+import { RaccoonKnowledgeSkill } from "@/raccoon/knowledge-skill" // raccoon_change - register built-in Raccoon knowledge skill
 
 const CLAUDE_EXTERNAL_DIR = ".claude"
 const AGENTS_EXTERNAL_DIR = ".agents"
@@ -281,6 +282,7 @@ export const layer = Layer.effect(
           location: "<built-in>",
           content: CUSTOMIZE_OPENCODE_SKILL_BODY,
         }
+        s.skills[RaccoonKnowledgeSkill.name] = yield* RaccoonKnowledgeSkill.legacyInfo() // raccoon_change - include bundled Raccoon knowledge skill
         yield* loadSkills(s, yield* InstanceState.get(discovered), events)
         return s
       }),
