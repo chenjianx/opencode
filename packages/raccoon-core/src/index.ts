@@ -20,6 +20,8 @@ export type {
   FileSearchResult,
 } from "./provider/platform.js"
 
+export { isRaccoonLoggedIn } from "./provider/session/raccoon-auth-state.js"
+
 export { createPrompt } from "./provider/editor/editor-prompt.js"
 export { formatTerminalOutput, gitChangesContext } from "./provider/editor/context-mentions.js"
 

@@ -45,7 +45,7 @@
   }
 
   .chat-header-compact {
-    @apply inline-flex size-[22px] shrink-0 items-center justify-center rounded-[6px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-[var(--color-border)] disabled:hover:text-[var(--color-muted)];
+    @apply inline-flex size-[22px] shrink-0 items-center justify-center rounded-[6px] border border-[var(--color-border)] bg-transparent text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover-strong)] disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .chat-header-compact-icon {
@@ -61,11 +61,11 @@
   }
 
   .session-usage-trigger-btn {
-    @apply inline-flex size-[22px] items-center justify-center rounded-[6px] border border-[var(--color-border)] text-[var(--color-muted)] transition-colors hover:border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] hover:text-[var(--color-foreground)];
+    @apply inline-flex size-[22px] items-center justify-center rounded-[6px] border border-[var(--color-border)] bg-transparent text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover-strong)];
   }
 
   .session-usage-trigger-btn.is-open {
-    @apply border-[color-mix(in_srgb,var(--color-focus)_45%,var(--color-border))] text-[var(--color-foreground)];
+    @apply bg-[var(--color-hover-strong)];
   }
 
   .session-usage-caret {
@@ -210,7 +210,7 @@
   }
 
   .question-dock-submit {
-    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[white] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,black)];
+    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[var(--vscode-button-foreground,#ffffff)] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,light-dark(black,white))];
   }
 
   .question-dock-back {
@@ -494,7 +494,7 @@
   }
 
   .permission-dock-once {
-    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[white] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,black)];
+    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[var(--vscode-button-foreground,#ffffff)] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,light-dark(black,white))];
   }
 
   .session-turn {
@@ -887,22 +887,22 @@
 
   .prose[data-component="markdown-lite"] {
     @apply min-w-0 bg-transparent text-[12px] leading-[17px] text-[var(--color-foreground)];
-    --tw-prose-body: var(--color-foreground);
-    --tw-prose-headings: var(--color-foreground);
-    --tw-prose-lead: var(--color-foreground);
-    --tw-prose-links: var(--color-focus);
-    --tw-prose-bold: var(--color-foreground);
-    --tw-prose-counters: var(--color-muted);
-    --tw-prose-bullets: var(--color-muted);
-    --tw-prose-hr: var(--color-border);
-    --tw-prose-quotes: var(--color-muted);
-    --tw-prose-quote-borders: var(--color-border);
-    --tw-prose-captions: var(--color-muted);
-    --tw-prose-code: var(--color-foreground);
-    --tw-prose-pre-code: var(--color-foreground);
-    --tw-prose-pre-bg: var(--color-button);
-    --tw-prose-th-borders: var(--color-border);
-    --tw-prose-td-borders: var(--color-border);
+    --tw-prose-body: var(--color-foreground) !important;
+    --tw-prose-headings: var(--color-foreground) !important;
+    --tw-prose-lead: var(--color-foreground) !important;
+    --tw-prose-links: var(--color-focus) !important;
+    --tw-prose-bold: var(--color-foreground) !important;
+    --tw-prose-counters: var(--color-muted) !important;
+    --tw-prose-bullets: var(--color-muted) !important;
+    --tw-prose-hr: var(--color-border) !important;
+    --tw-prose-quotes: var(--color-muted) !important;
+    --tw-prose-quote-borders: var(--color-border) !important;
+    --tw-prose-captions: var(--color-muted) !important;
+    --tw-prose-code: var(--color-foreground) !important;
+    --tw-prose-pre-code: var(--color-foreground) !important;
+    --tw-prose-pre-bg: var(--color-button) !important;
+    --tw-prose-th-borders: var(--color-border) !important;
+    --tw-prose-td-borders: var(--color-border) !important;
     font-family: var(--font-sans);
     overflow-wrap: anywhere;
   }
@@ -995,19 +995,19 @@
 
   [data-component="markdown-code"] {
     @apply min-w-0 overflow-hidden rounded-[6px] border;
-    border-color: #d8dee4;
-    background: #ffffff;
+    border-color: var(--color-border);
+    background: var(--vscode-textCodeBlock-background, var(--color-background));
   }
 
   [data-slot="markdown-code-toolbar"] {
     @apply flex items-center justify-between gap-2 border-b px-2.5 py-0.5;
-    border-color: #d8dee4;
-    background: #f6f8fa;
+    border-color: var(--color-border);
+    background: color-mix(in srgb, var(--color-foreground) 5%, var(--color-background));
   }
 
   [data-slot="markdown-code-language"] {
     @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[9.5px] leading-[13.5px];
-    color: #57606a;
+    color: var(--color-muted);
   }
 
   [data-slot="markdown-code-copy"] {
@@ -1019,19 +1019,19 @@
   }
 
   [data-slot="markdown-code-body"] {
-    background: #ffffff;
+    background: var(--vscode-textCodeBlock-background, var(--color-background));
   }
 
   [data-slot="markdown-code-language"],
   [data-slot="markdown-code-body"],
   [data-component="markdown-code"] pre {
-    background: #ffffff !important;
+    background: var(--vscode-textCodeBlock-background, var(--color-background)) !important;
   }
 
   [data-component="markdown-code"] pre {
     @apply m-0 whitespace-pre-wrap break-words px-2 py-2 font-mono text-[10.5px] leading-[15.5px];
     tab-size: 2;
-    background: #ffffff !important;
+    background: var(--vscode-textCodeBlock-background, var(--color-background)) !important;
   }
 
   [data-component="markdown-code"] code {
@@ -1040,7 +1040,7 @@
   }
 
   [data-component="markdown-code"] .shiki {
-    color: #24292f;
+    color: var(--vscode-editor-foreground, var(--color-foreground));
   }
 
   [data-component="markdown-code"] .shiki-line {
@@ -1049,35 +1049,35 @@
   }
 
   [data-component="markdown-code"] .shiki-token-keyword {
-    color: #0000ff;
+    color: var(--vscode-debugTokenExpression-name, #569cd6);
   }
 
   [data-component="markdown-code"] .shiki-token-type {
-    color: #267f99;
+    color: var(--vscode-symbolIcon-classForeground, #4ec9b0);
   }
 
   [data-component="markdown-code"] .shiki-token-variable {
-    color: #001080;
+    color: var(--vscode-debugTokenExpression-name, #9cdcfe);
   }
 
   [data-component="markdown-code"] .shiki-token-string {
-    color: #a31515;
+    color: var(--vscode-debugTokenExpression-string, #ce9178);
   }
 
   [data-component="markdown-code"] .shiki-token-number {
-    color: #098658;
+    color: var(--vscode-debugTokenExpression-number, #b5cea8);
   }
 
   [data-component="markdown-code"] .shiki-token-function {
-    color: #795e26;
+    color: var(--vscode-symbolIcon-functionForeground, #dcdcaa);
   }
 
   [data-component="markdown-code"] .shiki-token-control {
-    color: #af00db;
+    color: var(--vscode-debugTokenExpression-name, #c586c0);
   }
 
   [data-component="markdown-code"] .shiki-token-comment {
-    color: #008000;
+    color: var(--vscode-debugConsole-infoForeground, #6a9955);
   }
 
   [data-component="markdown-code"] span {

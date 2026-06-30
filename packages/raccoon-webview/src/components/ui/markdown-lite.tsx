@@ -214,7 +214,7 @@ function components(onOpenFile?: (filePath: string, line?: number, column?: numb
 
 export function MarkdownLite(props: { text: string; onOpenFile?: (filePath: string, line?: number, column?: number) => void }) {
   return (
-    <div className="prose max-w-none text-[12px] leading-[17px]" data-component="markdown-lite">
+    <div className="prose max-w-none text-[12px] leading-[17px] text-[var(--color-foreground)]" data-component="markdown-lite">
       <ReactMarkdown components={components(props.onOpenFile)} remarkPlugins={[remarkGfm]} skipHtml>
         {props.text}
       </ReactMarkdown>

@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import { AutocompleteInlineCompletionProvider, type AutocompleteSettings } from "./vscodeProvider.js"
 import { AutocompleteStatusBar } from "./StatusBar.js"
 import type { RaccoonConnectionService } from "../cli-backend/index.js"
-import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel } from "@opencode-ai/raccoon-core"
+import { DEFAULT_AUTOCOMPLETE_MODEL, getAutocompleteModel, isRaccoonLoggedIn } from "@opencode-ai/raccoon-core"
 
 const CONFIG_SECTION = "raccoon.autocomplete"
 
@@ -32,6 +32,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   private snoozeTimer: NodeJS.Timeout | null = null
   private readonly statusBar: AutocompleteStatusBar
   private generating = false
+  private loggedIn = false
 
   constructor(connectionService: RaccoonConnectionService, log?: (msg: string) => void) {
     this.connectionService = connectionService
@@ -62,6 +63,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
 
   public async load(): Promise<void> {
     this.settings = readSettings()
+    this.loggedIn = await isRaccoonLoggedIn()
     if (this.settings.model) {
       this.inlineCompletionProvider.setModel(this.settings.model)
     }
@@ -71,7 +73,8 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   }
 
   private async ensureInlineCompletionProviderRegistration(): Promise<void> {
-    const shouldBeRegistered = (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
+    const shouldBeRegistered =
+      this.loggedIn && (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
     const isRegistered = this.inlineCompletionProviderDisposable !== null
 
     if (shouldBeRegistered === isRegistered) return
@@ -181,6 +184,10 @@ export class AutocompleteServiceManager implements vscode.Disposable {
       this.statusBar.setStatus("generating")
       return
     }
+    if (!this.loggedIn) {
+      this.statusBar.setStatus("loggedOut")
+      return
+    }
     if (this.connectionService.getConnectionState() !== "connected") {
       this.statusBar.setStatus("error")
       return
@@ -198,10 +205,18 @@ export class AutocompleteServiceManager implements vscode.Disposable {
 
   /** Quick-pick shown when the status bar item is clicked. */
   public async showStatusMenu(): Promise<void> {
-    const enabled = (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
-    const items: (vscode.QuickPickItem & { action: () => Promise<void> | void })[] = enabled
-      ? [{ label: "$(circle-slash) Disable autocomplete", action: () => this.disable() }]
-      : [{ label: "$(check) Enable autocomplete", action: () => this.enable() }]
+    const items: (vscode.QuickPickItem & { action: () => Promise<void> | void })[] = !this.loggedIn
+      ? [
+          {
+            label: "$(sign-in) Sign in to Raccoon",
+            action: async () => {
+              await vscode.commands.executeCommand("raccoon.openChat")
+            },
+          },
+        ]
+      : (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
+        ? [{ label: "$(circle-slash) Disable autocomplete", action: () => this.disable() }]
+        : [{ label: "$(check) Enable autocomplete", action: () => this.enable() }]
 
     const picked = await vscode.window.showQuickPick(items, {
       placeHolder: "Raccoon autocomplete",

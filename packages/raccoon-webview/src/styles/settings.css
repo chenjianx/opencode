@@ -126,7 +126,7 @@
   }
 
   .settings-agent-list-item.active {
-    @apply bg-[var(--color-button)];
+    @apply bg-[var(--color-selection)] text-[var(--color-selection-foreground)];
     box-shadow: inset 3px 0 0 var(--color-focus);
   }
 
@@ -959,7 +959,7 @@
 
 
   .settings-dialog-backdrop {
-    @apply absolute inset-0 z-30 flex items-stretch justify-center bg-black/20 p-2;
+    @apply absolute inset-0 z-30 flex items-stretch justify-center bg-[light-dark(rgba(0,0,0,0.2),rgba(0,0,0,0.55))] p-2;
   }
 
   .settings-dialog {

@@ -83,7 +83,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.languages.registerCodeLensProvider({ scheme: "file" }, new RaccoonCodeLensProvider(provider, output)),
   )
 
-  registerAutocompleteProvider(context, connection)
+  registerAutocompleteProvider(context, connection, provider)
 
   // Connect to the backend eagerly so inline completion works without first
   // opening the chat panel. Errors are non-fatal — the manager retries on the

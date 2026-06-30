@@ -1,10 +1,12 @@
 import * as vscode from "vscode"
 import { AutocompleteServiceManager } from "./AutocompleteServiceManager.js"
 import type { RaccoonConnectionService } from "../cli-backend/index.js"
+import type { RaccoonProvider } from "@opencode-ai/raccoon-core"
 
 export const registerAutocompleteProvider = (
   context: vscode.ExtensionContext,
   connectionService: RaccoonConnectionService,
+  provider: RaccoonProvider,
 ): void => {
   const output = vscode.window.createOutputChannel("Raccoon Autocomplete")
   context.subscriptions.push(output)
@@ -42,6 +44,19 @@ export const registerAutocompleteProvider = (
       if (e.affectsConfiguration("raccoon.autocomplete")) {
         void manager.load()
       }
+    }),
+  )
+
+  // Reload when the Raccoon login state flips. The backend connection stays
+  // "connected" across login/logout (it's a local managed server), so this is
+  // the only signal that the user just signed in or out.
+  let lastLoggedIn = provider.getState().raccoonLoggedIn
+  context.subscriptions.push(
+    provider.onDidChangeState(() => {
+      const next = provider.getState().raccoonLoggedIn
+      if (next === lastLoggedIn) return
+      lastLoggedIn = next
+      void manager.load()
     }),
   )
 }

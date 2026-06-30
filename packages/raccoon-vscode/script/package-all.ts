@@ -39,7 +39,14 @@ for (const target of PACKAGE_TARGETS) {
   console.log(`\n=== Packaging ${target} ===`)
   await stageBinary(target)
   const out = join(outDir, `raccoon-${target}-${pkg.version}.vsix`)
-  await $`vsce package --target ${target} ${vsceSecretArgs} -o ${out}`.cwd(dir)
+  // `vsce package` re-runs the `vscode:prepublish` script, which invokes local-bin.ts
+  // again. Without this env var local-bin defaults to the current platform and would
+  // overwrite the just-staged binary — so every per-target VSIX ended up with the host's
+  // binary. Pin the target so the prepublish rebuild stages the correct one.
+  await $`vsce package --target ${target} ${vsceSecretArgs} -o ${out}`.cwd(dir).env({
+    ...process.env,
+    RACCOON_PACKAGE_TARGET: target,
+  })
   produced.push(out)
 }
 

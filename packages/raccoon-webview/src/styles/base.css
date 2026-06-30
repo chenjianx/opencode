@@ -14,15 +14,17 @@
   --font-weight-bold: 700;
   --tracking-normal: 0;
   --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --color-background: var(--vscode-editor-background, #ffffff);
-  --color-foreground: var(--vscode-foreground, #333333);
-  --color-muted: var(--vscode-descriptionForeground, #666666);
-  --color-border: var(--vscode-panel-border, rgba(0, 0, 0, 0.08));
-  --color-hover: var(--vscode-list-hoverBackground, rgba(127, 127, 127, 0.12));
-  --color-hover-strong: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, rgba(127, 127, 127, 0.12)));
-  --color-input: var(--vscode-input-background, var(--vscode-editor-background, #ffffff));
-  --color-input-foreground: var(--vscode-input-foreground, var(--vscode-foreground, #333333));
-  --color-button: var(--vscode-button-secondaryBackground, rgba(127, 127, 127, 0.08));
+  --color-background: var(--vscode-editor-background, light-dark(#ffffff, #1e1e1e));
+  --color-foreground: var(--vscode-foreground, light-dark(#333333, #cccccc));
+  --color-muted: var(--vscode-descriptionForeground, light-dark(#666666, #8c8c8c));
+  --color-border: var(--vscode-panel-border, light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1)));
+  --color-hover: var(--vscode-list-hoverBackground, light-dark(rgba(127, 127, 127, 0.12), rgba(255, 255, 255, 0.08)));
+  --color-hover-strong: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, light-dark(rgba(127, 127, 127, 0.12), rgba(255, 255, 255, 0.08))));
+  --color-input: var(--vscode-input-background, var(--vscode-editor-background, light-dark(#ffffff, #1e1e1e)));
+  --color-input-foreground: var(--vscode-input-foreground, var(--vscode-foreground, light-dark(#333333, #cccccc)));
+  --color-button: var(--vscode-button-secondaryBackground, light-dark(rgba(127, 127, 127, 0.08), rgba(255, 255, 255, 0.08)));
+  --color-selection: var(--vscode-list-activeSelectionBackground, light-dark(rgba(0, 127, 212, 0.12), rgba(0, 127, 212, 0.28)));
+  --color-selection-foreground: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground, light-dark(#333333, #cccccc)));
   --color-focus: var(--vscode-focusBorder, #007fd4);
   --color-error: var(--vscode-errorForeground, #f85149);
   --radius-sm: 0.25rem;
@@ -43,11 +45,28 @@
   body {
     margin: 0;
     overflow: hidden;
+    /* Default for standalone/browser preview (no VSCode theme class) — follows OS. */
     color-scheme: light dark;
     color: var(--color-foreground);
     background: var(--color-background);
     font-family: var(--vscode-font-family, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
     font-size: var(--vscode-font-size, 13px);
+  }
+
+  /*
+   * Pin color-scheme to the active VSCode theme rather than the OS preference.
+   * VSCode injects one of these classes on <body>; without this, light-dark()
+   * fallbacks (borders, button/card backgrounds) resolve from the OS scheme and
+   * render the light branch on a dark theme when the OS is in light mode.
+   */
+  body.vscode-light,
+  body.vscode-high-contrast-light {
+    color-scheme: light;
+  }
+
+  body.vscode-dark,
+  body.vscode-high-contrast {
+    color-scheme: dark;
   }
 
   * {

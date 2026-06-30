@@ -22,10 +22,12 @@ function currentTarget() {
   return `${process.platform}-${arch}`
 }
 
-// Resolve the requested target: `--target <t>` flag, else the current platform.
+// Resolve the requested target: `--target <t>` flag, else the RACCOON_PACKAGE_TARGET
+// env var (set by package-all.ts so the prepublish-triggered rebuild stages the right
+// binary instead of silently falling back to the current platform), else current platform.
 function resolveTarget(): string {
   const idx = process.argv.indexOf("--target")
-  const requested = idx !== -1 ? process.argv[idx + 1] : currentTarget()
+  const requested = idx !== -1 ? process.argv[idx + 1] : process.env.RACCOON_PACKAGE_TARGET || currentTarget()
   if (!requested || !TARGETS[requested]) {
     throw new Error(`Unsupported target "${requested}". Supported: ${Object.keys(TARGETS).join(", ")}`)
   }
