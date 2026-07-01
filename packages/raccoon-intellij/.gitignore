@@ -1,0 +1,8 @@
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+# Generated resources (produced by `bun run build`)
+src/main/resources/webview/
+src/main/resources/sidecar/sidecar.cjs
+src/main/resources/sidecar/sidecar.cjs.map
+.DS_Store

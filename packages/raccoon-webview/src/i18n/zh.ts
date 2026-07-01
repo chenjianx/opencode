@@ -462,6 +462,8 @@ export const dict = {
   "message.inputTokenLabel": "输入",
   "message.outputTokenLabel": "输出",
   "message.totalTokenLabel": "总计",
+  "message.reasoningTokenLabel": "推理",
+  "message.contextTotalLabel": "上下文占用",
   "message.cacheTokenLabel": "缓存",
   "message.costLabel": "费用",
   "message.contextLabel": "上下文窗口",

@@ -739,6 +739,20 @@
         "typescript": "^5.8.3",
       },
     },
+    "packages/raccoon-intellij": {
+      "name": "@opencode-ai/raccoon-intellij",
+      "version": "0.0.0",
+      "dependencies": {
+        "@opencode-ai/raccoon-core": "workspace:*",
+        "@opencode-ai/raccoon-webview": "workspace:*",
+        "@opencode-ai/sdk": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "20.x",
+        "esbuild": "^0.25.3",
+        "typescript": "^5.8.3",
+      },
+    },
     "packages/raccoon-vscode": {
       "name": "raccoon",
       "version": "0.0.0",
@@ -2085,6 +2099,8 @@
     "@opencode-ai/raccoon-auth-plugin": ["@opencode-ai/raccoon-auth-plugin@workspace:packages/raccoon-auth-plugin"],
 
     "@opencode-ai/raccoon-core": ["@opencode-ai/raccoon-core@workspace:packages/raccoon-core"],
+
+    "@opencode-ai/raccoon-intellij": ["@opencode-ai/raccoon-intellij@workspace:packages/raccoon-intellij"],
 
     "@opencode-ai/raccoon-webview": ["@opencode-ai/raccoon-webview@workspace:packages/raccoon-webview"],
 
@@ -6411,6 +6427,8 @@
     "@opencode-ai/raccoon-core/jsonc-parser": ["jsonc-parser@2.3.1", "", {}, "sha512-H8jvkz1O50L3dMZCsLqiuB2tA7muqbSg1AtGEkN0leAqGjsUzDJir3Zwr02BhqdcITPg3ei3mZ+HjMocAknhhg=="],
 
     "@opencode-ai/raccoon-core/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@opencode-ai/raccoon-intellij/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
 
     "@opencode-ai/raccoon-webview/@types/react": ["@types/react@19.2.17", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-MXfmqaVPEVgkBT/aY0aGCkRWWtByiYQXo3xdQ8r5RzuFrPiRn8Gar2tQdXSUQ2GKV3bkXckek89V8wQBY2Q/Aw=="],
 

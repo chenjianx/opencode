@@ -49,7 +49,7 @@
   }
 
   .chat-header-compact-icon {
-    @apply size-[14px] shrink-0;
+    @apply size-[15px] shrink-0;
   }
 
   .session-usage-total-inline {
@@ -68,12 +68,22 @@
     @apply bg-[var(--color-hover-strong)];
   }
 
-  .session-usage-caret {
-    @apply size-[13px] shrink-0 transition-transform;
+  .session-usage-ring {
+    @apply size-[15px] shrink-0;
   }
 
-  .session-usage-trigger-btn.is-open .session-usage-caret {
-    @apply rotate-180;
+  .session-usage-ring-track {
+    @apply stroke-[color-mix(in_srgb,var(--color-foreground)_18%,transparent)];
+    stroke-width: 2;
+  }
+
+  .session-usage-ring-fill {
+    @apply stroke-[var(--color-focus)] transition-[stroke-dashoffset] duration-300;
+    stroke-width: 2;
+  }
+
+  .session-usage-ring-fill--hot {
+    @apply stroke-[color-mix(in_srgb,var(--color-error,#e5484d)_70%,var(--color-focus))];
   }
 
   .session-usage-popover {

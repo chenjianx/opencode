@@ -79,6 +79,26 @@ export function contextTokens(messages: RaccoonMessage[]) {
   return 0
 }
 
+// Per-type token footprint of the current context window — the most recent
+// assistant turn, split into the buckets we surface (input/cache/reasoning/output).
+// `total` matches contextTokens() so the ring percentage and the breakdown agree.
+export function contextBreakdown(messages: RaccoonMessage[]) {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message?.role === "assistant" && message.tokens) {
+      const tokens = message.tokens
+      return {
+        input: tokens.input,
+        output: tokens.output,
+        reasoning: tokens.reasoning,
+        cache: tokens.cache.read + tokens.cache.write,
+        total: messageTokenTotal(tokens),
+      }
+    }
+  }
+  return { input: 0, output: 0, reasoning: 0, cache: 0, total: 0 }
+}
+
 // Compact token count, e.g. 950, 12.3K, 1.2M.
 export function formatTokens(value: number) {
   if (value < 1000) return String(value)

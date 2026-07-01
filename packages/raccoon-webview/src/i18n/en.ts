@@ -461,6 +461,8 @@ export const dict = {
   "message.inputTokenLabel": "Input",
   "message.outputTokenLabel": "Output",
   "message.totalTokenLabel": "Total",
+  "message.reasoningTokenLabel": "Reasoning",
+  "message.contextTotalLabel": "Context used",
   "message.cacheTokenLabel": "Cache",
   "message.costLabel": "Cost",
   "message.contextLabel": "Context window",

@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { ArrowDownIcon, ArrowUpIcon, BroomIcon, CaretDownIcon, DatabaseIcon } from "@phosphor-icons/react"
+import { ArrowDownIcon, ArrowUpIcon, BrainIcon, BroomIcon, DatabaseIcon } from "@phosphor-icons/react"
 import { MessageList } from "./message-list/message-list"
 import { PromptInput } from "./prompt/prompt-input"
 import { Popover } from "../ui/popover"
-import { sessionUsage, contextTokens, formatTokens, formatCost } from "./message-list/message-list-format"
+import { sessionUsage, contextTokens, contextBreakdown, formatTokens, formatCost } from "./message-list/message-list-format"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
 
@@ -16,7 +16,7 @@ export function ChatView() {
   const hasRealTitle = !!activeSession?.title && activeSession.title !== "New session"
   const title = hasRealTitle ? activeSession!.title : session.latestUserMessage?.text || language.t("chat.newSession")
   const usage = sessionUsage(session.visibleMessages)
-  const usedCache = usage.cacheRead + usage.cacheWrite
+  const breakdown = contextBreakdown(session.visibleMessages)
 
   const contextLimit = session.selectedModel?.contextLimit ?? 0
   const contextUsed = contextTokens(session.visibleMessages)
@@ -75,39 +75,52 @@ export function ChatView() {
                   data-tip={language.t("message.usageDetails")}
                   aria-label={language.t("message.usageDetails")}
                 >
-                  <CaretDownIcon className="session-usage-caret" weight="bold" aria-hidden />
+                  <ContextRing pct={contextPct} hot={contextPct >= 50} />
                 </button>
               )}
             >
               {() => (
                 <>
                   <div className="session-usage-detail">
-                    <div className="session-usage-row">
-                      <span className="session-usage-row-label">
-                        <ArrowUpIcon className="session-usage-icon" weight="bold" aria-hidden />
-                        {language.t("message.inputTokenLabel")}
-                      </span>
-                      <span className="session-usage-value">{formatTokens(usage.input)}</span>
-                    </div>
-                    <div className="session-usage-row">
-                      <span className="session-usage-row-label">
-                        <ArrowDownIcon className="session-usage-icon" weight="bold" aria-hidden />
-                        {language.t("message.outputTokenLabel")}
-                      </span>
-                      <span className="session-usage-value">{formatTokens(usage.output)}</span>
-                    </div>
-                    {usedCache > 0 ? (
+                    {breakdown.input > 0 ? (
+                      <div className="session-usage-row">
+                        <span className="session-usage-row-label">
+                          <ArrowUpIcon className="session-usage-icon" weight="bold" aria-hidden />
+                          {language.t("message.inputTokenLabel")}
+                        </span>
+                        <span className="session-usage-value">{formatTokens(breakdown.input)}</span>
+                      </div>
+                    ) : null}
+                    {breakdown.cache > 0 ? (
                       <div className="session-usage-row">
                         <span className="session-usage-row-label">
                           <DatabaseIcon className="session-usage-icon" weight="bold" aria-hidden />
                           {language.t("message.cacheTokenLabel")}
                         </span>
-                        <span className="session-usage-value">{formatTokens(usedCache)}</span>
+                        <span className="session-usage-value">{formatTokens(breakdown.cache)}</span>
+                      </div>
+                    ) : null}
+                    {breakdown.reasoning > 0 ? (
+                      <div className="session-usage-row">
+                        <span className="session-usage-row-label">
+                          <BrainIcon className="session-usage-icon" weight="bold" aria-hidden />
+                          {language.t("message.reasoningTokenLabel")}
+                        </span>
+                        <span className="session-usage-value">{formatTokens(breakdown.reasoning)}</span>
+                      </div>
+                    ) : null}
+                    {breakdown.output > 0 ? (
+                      <div className="session-usage-row">
+                        <span className="session-usage-row-label">
+                          <ArrowDownIcon className="session-usage-icon" weight="bold" aria-hidden />
+                          {language.t("message.outputTokenLabel")}
+                        </span>
+                        <span className="session-usage-value">{formatTokens(breakdown.output)}</span>
                       </div>
                     ) : null}
                     <div className="session-usage-row session-usage-row-total">
-                      <span className="session-usage-row-label">{language.t("message.totalTokenLabel")}</span>
-                      <span className="session-usage-value">{formatTokens(usage.total)}</span>
+                      <span className="session-usage-row-label">{language.t("message.contextTotalLabel")}</span>
+                      <span className="session-usage-value">{formatTokens(breakdown.total)}</span>
                     </div>
                     {usage.cost > 0 ? (
                       <div className="session-usage-row">
@@ -142,5 +155,27 @@ export function ChatView() {
       <MessageList />
       <PromptInput />
     </section>
+  )
+}
+
+// Stroke ring whose fill encodes how full the context window is.
+function ContextRing({ pct, hot }: { pct: number; hot: boolean }) {
+  const radius = 6
+  const circumference = 2 * Math.PI * radius
+  return (
+    <svg className="session-usage-ring" viewBox="0 0 16 16" aria-hidden>
+      <circle className="session-usage-ring-track" cx="8" cy="8" r={radius} fill="none" />
+      <circle
+        className={`session-usage-ring-fill${hot ? " session-usage-ring-fill--hot" : ""}`}
+        cx="8"
+        cy="8"
+        r={radius}
+        fill="none"
+        strokeDasharray={circumference}
+        strokeDashoffset={circumference * (1 - Math.max(0, Math.min(100, pct)) / 100)}
+        strokeLinecap="round"
+        transform="rotate(-90 8 8)"
+      />
+    </svg>
   )
 }

@@ -1,0 +1,20 @@
+<idea-plugin>
+  <id>ai.opencode.raccoon</id>
+  <name>Raccoon</name>
+  <vendor email="support@sensetime.com" url="https://github.com/anomalyco/opencode">Raccoon</vendor>
+
+  <description><![CDATA[
+    Raccoon AI coding assistant for JetBrains IDEs. Chat with an AI agent that can read and edit
+    your project, powered by the same opencode engine as the Raccoon VSCode extension.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow
+      id="Raccoon"
+      anchor="right"
+      icon="/icons/raccoonToolWindow.svg"
+      factoryClass="com.sensetime.sensecode.jetbrains.raccoon.RaccoonToolWindowFactory"/>
+  </extensions>
+</idea-plugin>

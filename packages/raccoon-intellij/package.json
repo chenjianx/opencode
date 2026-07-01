@@ -1,0 +1,22 @@
+{
+  "name": "@opencode-ai/raccoon-intellij",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:webview": "RACCOON_WEBVIEW_OUTDIR=\"$PWD/src/main/resources/webview\" bash -c 'cd ../raccoon-webview && exec ./node_modules/.bin/vite build'",
+    "build:sidecar": "node esbuild.sidecar.mjs",
+    "build": "bun run build:webview && bun run build:sidecar",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode-ai/raccoon-core": "workspace:*",
+    "@opencode-ai/raccoon-webview": "workspace:*",
+    "@opencode-ai/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "esbuild": "^0.25.3",
+    "typescript": "^5.8.3"
+  }
+}
