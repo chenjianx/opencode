@@ -1,5 +1,5 @@
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
-import { MARKETPLACE_CATALOG } from "./catalog.js"
+import { loadCatalog, type LoadCatalogResult } from "./catalog.js"
 import { MarketplaceInstaller } from "./installer.js"
 import type {
   MarketplaceDataResponse,
@@ -16,14 +16,43 @@ import type {
 
 export class MarketplaceService {
   private readonly installer = new MarketplaceInstaller()
+  // Cached remote catalog. The marketplace YAML rarely changes within a session, so we
+  // serve a successful fetch from cache for CATALOG_TTL_MS to avoid refetching on every open.
+  private catalogCache?: { result: LoadCatalogResult; fetchedAt: number }
+  private catalogInflight?: Promise<LoadCatalogResult>
+  private static readonly CATALOG_TTL_MS = 5 * 60 * 1000
 
   // `notify` surfaces a success toast; the host supplies it (no-op by default) so this service
   // stays free of any editor API.
   constructor(private readonly notify: (message: string) => void = () => {}) {}
 
+  // Load the catalog, serving a fresh successful fetch from cache. A cached result that only
+  // carries the reference baseline (i.e. the remote fetch failed) is not cached, so the next
+  // open retries the network.
+  private async getCatalog(): Promise<LoadCatalogResult> {
+    const now = Date.now()
+    if (this.catalogCache && now - this.catalogCache.fetchedAt < MarketplaceService.CATALOG_TTL_MS) {
+      return this.catalogCache.result
+    }
+    if (this.catalogInflight) return this.catalogInflight
+    this.catalogInflight = loadCatalog()
+      .then((result) => {
+        // Only cache a full remote load; keep retrying while we're stuck on the baseline.
+        if (!result.errors?.length) this.catalogCache = { result, fetchedAt: Date.now() }
+        return result
+      })
+      .finally(() => {
+        this.catalogInflight = undefined
+      })
+    return this.catalogInflight
+  }
+
   async fetchData(client: OpencodeClient, directory: string): Promise<MarketplaceDataResponse> {
-    const installed = await this.installer.detect(client, directory)
-    return { items: MARKETPLACE_CATALOG, installed }
+    const [catalog, installed] = await Promise.all([
+      this.getCatalog(),
+      this.installer.detect(client, directory),
+    ])
+    return { items: catalog.items, installed, errors: catalog.errors }
   }
 
   async install(
@@ -109,7 +138,7 @@ export class MarketplaceService {
   }
 
   dispose() {
-    // No resources to release; the catalog is static.
+    // No resources to release; the catalog cache is plain in-memory state.
   }
 }
 

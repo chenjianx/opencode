@@ -118,10 +118,6 @@ export function ChatView() {
                         <span className="session-usage-value">{formatTokens(breakdown.output)}</span>
                       </div>
                     ) : null}
-                    <div className="session-usage-row session-usage-row-total">
-                      <span className="session-usage-row-label">{language.t("message.contextTotalLabel")}</span>
-                      <span className="session-usage-value">{formatTokens(breakdown.total)}</span>
-                    </div>
                     {usage.cost > 0 ? (
                       <div className="session-usage-row">
                         <span className="session-usage-row-label">{language.t("message.costLabel")}</span>

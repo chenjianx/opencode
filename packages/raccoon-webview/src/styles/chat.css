@@ -102,14 +102,6 @@
     @apply inline-flex items-center gap-1 text-[var(--color-muted)];
   }
 
-  .session-usage-row-total {
-    @apply mt-0.5 border-t border-[var(--color-border)] pt-1 font-medium;
-  }
-
-  .session-usage-row-total .session-usage-row-label {
-    @apply text-[var(--color-foreground)];
-  }
-
   .session-usage-icon {
     @apply size-[12px] shrink-0 text-[var(--color-muted)];
   }

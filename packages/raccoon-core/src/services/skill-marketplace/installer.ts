@@ -1,9 +1,8 @@
-import { access, cp, lstat, mkdir, readdir, readFile, rm } from "node:fs/promises"
+import { access, cp, lstat, mkdir, readdir, rm } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
-import { dirname, join, resolve } from "node:path"
+import { dirname, join, resolve, sep } from "node:path"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import { assertGitAvailable, looksLikeAuthError, runGit } from "./git.js"
-import { parseSkillFrontmatter } from "./frontmatter.js"
 import { parseSkillRepoSource } from "./source.js"
 import type {
   SkillMarketplaceInstallOptions,
@@ -30,11 +29,18 @@ export class SkillMarketplaceInstaller {
   }
 
   async listInstalled(client: OpencodeClient, directory: string): Promise<SkillMarketplaceInstalledSkill[]> {
-    const [project, user] = await Promise.all([
-      readInstalledSkills(projectSkillRoot(directory), "project"),
-      this.userSkillRoot(client, directory).then((root) => readInstalledSkills(root, "user")),
+    // Source the full, authoritative list from opencode's /skill API so built-in skills
+    // (location "<built-in>") and skills from .claude/.agents/config URLs show up too — the
+    // on-disk scan of .opencode/skills + <config>/skills alone misses all of those.
+    const [response, projectRoot, userRoot] = await Promise.all([
+      client.app.skills({ directory }, { throwOnError: true }),
+      Promise.resolve(projectSkillRoot(directory)),
+      this.userSkillRoot(client, directory),
     ])
-    return [...project, ...user].sort((a, b) => a.name.localeCompare(b.name))
+    const skills = response.data ?? []
+    return skills
+      .map((skill) => classifyInstalledSkill(skill, projectRoot, userRoot))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }
 
   async install(
@@ -162,21 +168,24 @@ async function listSkillNames(root: string) {
   return names.filter((name): name is string => name !== undefined)
 }
 
-async function readInstalledSkills(root: string, scope: SkillMarketplaceScope): Promise<SkillMarketplaceInstalledSkill[]> {
-  const names = await listSkillNames(root)
-  return await Promise.all(
-    names.map(async (name) => {
-      const location = join(root, name, "SKILL.md")
-      const frontmatter = parseSkillFrontmatter(await readFile(location, "utf8").catch(() => ""))
-      return {
-        id: name,
-        name: frontmatter.name ?? name,
-        description: frontmatter.description,
-        scope,
-        location,
-      }
-    }),
-  )
+// Classify a skill returned by opencode's /skill API. On-disk project/user skills are
+// removable; everything else (built-in "<built-in>", .claude/.agents, config-URL cache) is
+// shown read-only so the panel can hide its Remove button.
+function classifyInstalledSkill(
+  skill: { name: string; description?: string; location: string },
+  projectRoot: string,
+  userRoot: string,
+): SkillMarketplaceInstalledSkill {
+  const normalized = resolve(skill.location)
+  const base = { id: skill.name, name: skill.name, description: skill.description, location: skill.location }
+  if (isUnder(normalized, projectRoot)) return { ...base, scope: "project", removable: true }
+  if (isUnder(normalized, userRoot)) return { ...base, scope: "user", removable: true }
+  return { ...base, scope: "user", builtin: true, removable: false }
+}
+
+function isUnder(target: string, root: string) {
+  const base = resolve(root)
+  return target === base || target.startsWith(base + sep)
 }
 
 async function assertNoSymlinks(root: string) {

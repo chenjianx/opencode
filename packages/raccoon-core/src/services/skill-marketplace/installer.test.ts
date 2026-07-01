@@ -4,8 +4,15 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { SkillMarketplaceInstaller } from "./installer"
 
-function client(config: string, calls?: { instanceDispose: number; globalDispose: number }) {
+function client(
+  config: string,
+  calls?: { instanceDispose: number; globalDispose: number },
+  skills?: Array<{ name: string; description?: string; location: string; content?: string }>,
+) {
   return {
+    app: {
+      skills: async () => ({ data: skills ?? [] }),
+    },
     path: {
       get: async () => ({ data: { config } }),
     },
@@ -41,11 +48,25 @@ describe("SkillMarketplaceInstaller", () => {
 
       const installer = new SkillMarketplaceInstaller()
       const installed = await installer.detect(client(configDir), workspace)
-      const list = await installer.listInstalled(client(configDir), workspace)
+      // listInstalled sources from opencode's /skill API, which reports every loaded skill
+      // including built-ins that live outside the project/user skill dirs.
+      const apiSkills = [
+        { name: "project-skill", description: "Project skill", location: join(workspace, ".opencode", "skills", "project-skill", "SKILL.md") },
+        { name: "user-skill", description: "User skill", location: join(configDir, "skills", "user-skill", "SKILL.md") },
+        { name: "customize-opencode", description: "Built-in skill", location: "<built-in>" },
+      ]
+      const list = await installer.listInstalled(client(configDir, undefined, apiSkills), workspace)
 
       expect(installed.project["project-skill"]).toEqual({ type: "skill" })
       expect(installed.user["user-skill"]).toEqual({ type: "skill" })
-      expect(list.map((skill) => `${skill.scope}:${skill.id}`)).toEqual(["project:project-skill", "user:user-skill"])
+      expect(list.map((skill) => `${skill.scope}:${skill.id}`)).toEqual([
+        "user:customize-opencode",
+        "project:project-skill",
+        "user:user-skill",
+      ])
+      expect(list.find((skill) => skill.id === "project-skill")).toMatchObject({ scope: "project", removable: true })
+      expect(list.find((skill) => skill.id === "user-skill")).toMatchObject({ scope: "user", removable: true })
+      expect(list.find((skill) => skill.id === "customize-opencode")).toMatchObject({ builtin: true, removable: false })
       expect(list.find((skill) => skill.id === "project-skill")?.description).toBe("Project skill")
     } finally {
       await rm(workspace, { recursive: true, force: true })

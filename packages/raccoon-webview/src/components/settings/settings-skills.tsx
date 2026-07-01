@@ -9,21 +9,24 @@ import { SelectField, TextInput } from "./settings-common"
 import { SettingsDialog } from "./settings-dialog"
 
 type SkillTab = "marketplace" | "installed"
-type SkillCategory = "all" | "coding" | "review" | "docs" | "testing" | "workflow" | "cloud" | "other"
+type SkillCategory = "all" | "data" | "development" | "observability" | "business" | "creative-media" | "search" | "productivity" | "other"
 type InstallDraft = {
   item: RaccoonSkillMarketplaceItem
   scope: RaccoonMarketplaceScope
 }
 
-const SKILL_CATEGORIES: SkillCategory[] = ["all", "coding", "review", "docs", "testing", "workflow", "cloud", "other"]
+const SKILL_CATEGORIES: SkillCategory[] = ["all", "data", "development", "observability", "business", "creative-media", "search", "productivity", "other"]
 
-const SKILL_CATEGORY_KEYWORDS: Array<{ category: Exclude<SkillCategory, "all" | "other">; keywords: string[] }> = [
-  { category: "coding", keywords: ["code", "coding", "frontend", "backend", "typescript", "react", "api", "sdk"] },
-  { category: "review", keywords: ["review", "audit", "security", "quality", "bug", "debug"] },
-  { category: "docs", keywords: ["doc", "docs", "documentation", "readme", "write", "content"] },
-  { category: "testing", keywords: ["test", "testing", "spec", "coverage", "playwright", "unit"] },
-  { category: "workflow", keywords: ["workflow", "plan", "project", "task", "release", "commit", "pr"] },
-  { category: "cloud", keywords: ["cloud", "aws", "azure", "gcp", "cloudflare", "deploy"] },
+// Categories the marketplace YAML is known to emit. Anything else falls into "other".
+const KNOWN_CATEGORIES: ReadonlyArray<Exclude<SkillCategory, "all">> = [
+  "data",
+  "development",
+  "observability",
+  "business",
+  "creative-media",
+  "search",
+  "productivity",
+  "other",
 ]
 
 export function SettingsSkills() {
@@ -59,7 +62,6 @@ function SettingsSkillMarketplace() {
   const vscode = useVSCode()
   const marketplace = session.state.skillMarketplace ?? { sources: [], items: [], installed: { project: {}, user: {} } }
   const [query, setQuery] = useState("")
-  const [sourceID, setSourceID] = useState("all")
   const [category, setCategory] = useState<SkillCategory>("all")
   const [selectedID, setSelectedID] = useState<string>()
   const [draft, setDraft] = useState<InstallDraft>()
@@ -101,23 +103,19 @@ function SettingsSkillMarketplace() {
     return marketplace.items.filter((item) => {
       const itemCategory = skillCategory(item)
       if (category !== "all" && itemCategory !== category) return false
-      if (sourceID !== "all" && item.sourceID !== sourceID) return false
       if (!text) return true
-      return `${item.title ?? ""} ${item.name} ${item.description ?? ""} ${item.sourceLabel} ${itemCategory} ${language.t(`settings.skillsMarketplace.category.${itemCategory}`)}`.toLowerCase().includes(text)
+      return `${item.title ?? ""} ${item.name} ${item.description ?? ""} ${itemCategory} ${language.t(`settings.skillsMarketplace.category.${itemCategory}`)}`.toLowerCase().includes(text)
     })
-  }, [category, language, marketplace.items, query, sourceID])
+  }, [category, language, marketplace.items, query])
 
   const categoryCounts = useMemo(() => {
-    return marketplace.items.reduce<Record<SkillCategory, number>>(
-      (counts, item) => {
-        const itemCategory = skillCategory(item)
-        return {
-          ...counts,
-          [itemCategory]: counts[itemCategory] + 1,
-        }
-      },
-      { all: marketplace.items.length, coding: 0, review: 0, docs: 0, testing: 0, workflow: 0, cloud: 0, other: 0 },
-    )
+    const initial = Object.fromEntries(SKILL_CATEGORIES.map((entry) => [entry, 0])) as Record<SkillCategory, number>
+    initial.all = marketplace.items.length
+    return marketplace.items.reduce<Record<SkillCategory, number>>((counts, item) => {
+      const itemCategory = skillCategory(item)
+      counts[itemCategory] += 1
+      return counts
+    }, initial)
   }, [marketplace.items])
 
   const selected = filtered.find((item) => item.id === selectedID) ?? filtered[0]
@@ -164,16 +162,6 @@ function SettingsSkillMarketplace() {
             ariaLabel={language.t("settings.skillsMarketplace.search")}
           />
         </div>
-        <SelectField
-          label={language.t("settings.skillsMarketplace.source")}
-          value={sourceID}
-          onChange={setSourceID}
-          className="settings-browser-filter"
-          options={[
-            { value: "all", label: language.t("settings.skillsMarketplace.source.all") },
-            ...marketplace.sources.map((source) => ({ value: source.id, label: source.label })),
-          ]}
-        />
       </div>
 
       <div className="settings-browser-category-strip" aria-label={language.t("settings.skillsMarketplace.category")}>
@@ -228,7 +216,6 @@ function SettingsSkillMarketplace() {
                     <span className="settings-browser-item-description">{item.description ?? item.name}</span>
                     <span className="settings-browser-item-meta">
                       <span className="settings-browser-chip">{language.t(`settings.skillsMarketplace.category.${skillCategory(item)}`)}</span>
-                      <span className="settings-browser-chip">{item.sourceLabel}</span>
                       {!item.installable ? <span className="settings-browser-chip">{language.t("settings.skillsMarketplace.notInstallable")}</span> : null}
                     </span>
                   </span>
@@ -268,7 +255,6 @@ function SettingsSkillMarketplace() {
               <p className="settings-browser-description">{selected.description ?? language.t("settings.skillsMarketplace.noDescription")}</p>
               <div className="settings-browser-tags">
                 <span>{language.t(`settings.skillsMarketplace.category.${skillCategory(selected)}`)}</span>
-                <span>{selected.sourceLabel}</span>
                 <span>{selected.name}</span>
                 <span>{selected.installable ? language.t("settings.skillsMarketplace.installable") : language.t("settings.skillsMarketplace.notInstallable")}</span>
               </div>
@@ -278,11 +264,6 @@ function SettingsSkillMarketplace() {
                 </div>
               ) : null}
               <div className="settings-browser-transport">
-                <div>
-                  <div className="settings-browser-transport-title">{language.t("settings.skillsMarketplace.source")}</div>
-                  <code>{selected.repoSource}</code>
-                  <p>{selected.skillDir}</p>
-                </div>
                 <div>
                   <div className="settings-browser-transport-title">{language.t("settings.skillsMarketplace.installPreview")}</div>
                   <div className="settings-skill-path-grid">
@@ -385,25 +366,31 @@ function SettingsSkillInstalled() {
                     className={`settings-browser-installed-caret ${expandedID === `${skill.scope}:${skill.id}` ? "open" : ""}`.trim()}
                   />
                   <span className="settings-browser-installed-name">{skill.name}</span>
-                  <span className="settings-browser-installed-scope">{language.t(`settings.mcpMarketplace.scope.${skill.scope}`)}</span>
+                  <span className="settings-browser-installed-scope">
+                    {skill.builtin
+                      ? language.t("settings.skillsInstalled.builtin")
+                      : language.t(`settings.mcpMarketplace.scope.${skill.scope}`)}
+                  </span>
                   <span className="settings-browser-installed-type">{skill.id}</span>
                 </button>
                 <div className="settings-browser-installed-actions">
-                  <Button
-                    disabled={pendingID === `${skill.scope}:${skill.id}`}
-                    onClick={() => {
-                      setPendingID(`${skill.scope}:${skill.id}`)
-                      setError(undefined)
-                      vscode.postMessage({
-                        type: "removeSkillMarketplaceItem",
-                        item: installedItemToMarketplaceItem(skill),
-                        scope: skill.scope,
-                      })
-                    }}
-                    icon={<Trash size={14} weight="bold" />}
-                  >
-                    {language.t("settings.skillsInstalled.remove")}
-                  </Button>
+                  {skill.removable ? (
+                    <Button
+                      disabled={pendingID === `${skill.scope}:${skill.id}`}
+                      onClick={() => {
+                        setPendingID(`${skill.scope}:${skill.id}`)
+                        setError(undefined)
+                        vscode.postMessage({
+                          type: "removeSkillMarketplaceItem",
+                          item: installedItemToMarketplaceItem(skill),
+                          scope: skill.scope,
+                        })
+                      }}
+                      icon={<Trash size={14} weight="bold" />}
+                    >
+                      {language.t("settings.skillsInstalled.remove")}
+                    </Button>
+                  ) : null}
                 </div>
               </div>
               {expandedID === `${skill.scope}:${skill.id}` ? (
@@ -506,8 +493,8 @@ function avatarHue(id: string) {
 }
 
 function skillCategory(item: RaccoonSkillMarketplaceItem): Exclude<SkillCategory, "all"> {
-  const text = `${item.name} ${item.title ?? ""} ${item.description ?? ""} ${item.skillDir}`.toLowerCase()
-  return SKILL_CATEGORY_KEYWORDS.find((entry) => entry.keywords.some((keyword) => text.includes(keyword)))?.category ?? "other"
+  const category = item.category as Exclude<SkillCategory, "all"> | undefined
+  return category && KNOWN_CATEGORIES.includes(category) ? category : "other"
 }
 
 function installedItemToMarketplaceItem(skill: {

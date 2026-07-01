@@ -338,6 +338,7 @@ export type RaccoonSkillMarketplaceItem = {
   name: string
   title?: string
   description?: string
+  category?: string
   sourceID: string
   sourceLabel: string
   repoSource: string
@@ -359,6 +360,8 @@ export type RaccoonInstalledSkill = {
   description?: string
   scope: RaccoonMarketplaceScope
   location: string
+  builtin?: boolean
+  removable: boolean
 }
 
 export type RaccoonMcpLocalConfig = {

@@ -1,102 +1,38 @@
 import type { MarketplaceMcpItem } from "./types.js"
-import generated from "./catalog.data.json" with { type: "json" }
+import { buildCatalogFromYaml } from "./transform.js"
 
-// Built-in catalog of the official reference MCP servers from modelcontextprotocol/servers.
-// Every entry is a local stdio package installable via npx/uvx — no network lookup, no env required.
-const REPO = "https://github.com/modelcontextprotocol/servers/tree/main/src"
+// The MCP catalog is served entirely from the raccoon-marketplace repo and fetched at
+// runtime — there is no bundled data. `REMOTE_CATALOG_URL` points at the raw YAML.
+const REMOTE_CATALOG_URL =
+  "https://raw.githubusercontent.com/chenjianx/raccoon-marketplace/main/mcps/marketplace.yaml"
 
-function npm(identifier: string): MarketplaceMcpItem["packages"] {
-  return [{ registryType: "npm", identifier, transport: { type: "stdio" } }]
+const FETCH_TIMEOUT_MS = 15_000
+
+export type LoadCatalogResult = {
+  items: MarketplaceMcpItem[]
+  errors?: string[]
 }
 
-function pypi(identifier: string): MarketplaceMcpItem["packages"] {
-  return [{ registryType: "pypi", identifier, runtimeHint: "uvx", transport: { type: "stdio" } }]
-}
-
-function entry(
-  id: string,
-  title: string,
-  description: string,
-  packages: MarketplaceMcpItem["packages"],
-  repoPath: string,
-): MarketplaceMcpItem {
-  return {
-    id,
-    name: id,
-    title,
-    description,
-    version: "",
-    repositoryUrl: `${REPO}/${repoPath}`,
-    remotes: [],
-    packages,
-    headers: [],
-    environmentVariables: [],
-    variables: [],
-    transportTypes: ["package"],
+// Fetch and parse the remote marketplace catalog. On any network/parse failure this
+// returns an empty catalog with an error string so the caller can surface it.
+export async function loadCatalog(): Promise<LoadCatalogResult> {
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+    let yamlText: string
+    try {
+      const response = await fetch(REMOTE_CATALOG_URL, { signal: controller.signal })
+      if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`)
+      yamlText = await response.text()
+    } finally {
+      clearTimeout(timer)
+    }
+    return { items: buildCatalogFromYaml(yamlText) }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      items: [],
+      errors: [`Failed to load MCP marketplace from ${REMOTE_CATALOG_URL}: ${message}`],
+    }
   }
-}
-
-export const MARKETPLACE_CATALOG: MarketplaceMcpItem[] = dedupeById([
-  entry(
-    "filesystem",
-    "Filesystem",
-    "Secure file operations with configurable access controls. After installing, add an allowed directory path to the command in opencode.json.",
-    npm("@modelcontextprotocol/server-filesystem"),
-    "filesystem",
-  ),
-  entry(
-    "fetch",
-    "Fetch",
-    "Web content fetching and conversion for efficient LLM usage.",
-    pypi("mcp-server-fetch"),
-    "fetch",
-  ),
-  entry(
-    "git",
-    "Git",
-    "Tools to read, search, and manipulate Git repositories.",
-    pypi("mcp-server-git"),
-    "git",
-  ),
-  entry(
-    "memory",
-    "Memory",
-    "Knowledge graph-based persistent memory system.",
-    npm("@modelcontextprotocol/server-memory"),
-    "memory",
-  ),
-  entry(
-    "sequential-thinking",
-    "Sequential Thinking",
-    "Dynamic and reflective problem-solving through thought sequences.",
-    npm("@modelcontextprotocol/server-sequential-thinking"),
-    "sequentialthinking",
-  ),
-  entry(
-    "time",
-    "Time",
-    "Time and timezone conversion capabilities.",
-    pypi("mcp-server-time"),
-    "time",
-  ),
-  entry(
-    "everything",
-    "Everything",
-    "Reference / test server with prompts, resources, and tools.",
-    npm("@modelcontextprotocol/server-everything"),
-    "everything",
-  ),
-  // Curated servers generated from the Kilo marketplace (scripts/build-mcp-catalog.mjs).
-  ...(generated as MarketplaceMcpItem[]),
-])
-
-// Keep the first occurrence of each id so the hand-written reference entries above
-// win over any same-id entry in the generated catalog.
-function dedupeById(items: MarketplaceMcpItem[]): MarketplaceMcpItem[] {
-  const seen = new Set<string>()
-  return items.filter((item) => {
-    if (seen.has(item.id)) return false
-    seen.add(item.id)
-    return true
-  })
 }

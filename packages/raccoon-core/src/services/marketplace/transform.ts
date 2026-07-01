@@ -1,15 +1,9 @@
-// Generate catalog.data.json from the Kilo marketplace catalog.
-//
-// Data source: https://github.com/Kilo-Org/kilo-marketplace (mcps/marketplace.yaml),
-// vendored alongside this script as kilo-marketplace.yaml.
-//
-// Regenerate:
-//   cd packages/raccoon-vscode
-//   curl -s https://raw.githubusercontent.com/Kilo-Org/kilo-marketplace/main/mcps/marketplace.yaml \
-//     -o scripts/kilo-marketplace.yaml
-//   node scripts/build-mcp-catalog.mjs
-//
-// Output: src/services/marketplace/catalog.data.json (a MarketplaceMcpItem[]).
+import yaml from "js-yaml"
+import type { MarketplaceMcpItem, RegistryEnvironmentVariable, RegistryPackage, RegistryVariable } from "./types.js"
+
+// Transform a raccoon-marketplace `mcps/marketplace.yaml` document into the
+// MarketplaceMcpItem[] the webview consumes. This is the runtime port of the old
+// build-time scripts/build-mcp-catalog.mjs — same rules, applied to fetched YAML.
 //
 // Only install methods the opencode installer can reconstruct are kept:
 //   - `npx -y <pkg>`  -> npm stdio package
@@ -18,26 +12,28 @@
 // Entries that only ship docker/node/python/binary commands are dropped, since
 // the installer cannot synthesise those commands from a package identifier.
 
-import { readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
-import { fileURLToPath } from "node:url"
-import yaml from "js-yaml"
-
-const here = dirname(fileURLToPath(import.meta.url))
-const SOURCE = join(here, "kilo-marketplace.yaml")
-const OUTPUT = join(here, "..", "src", "services", "marketplace", "catalog.data.json")
-
 const REMOTE_TYPES = new Set(["sse", "http", "streamable-http", "streamable_http"])
 
-function isSecretKey(key) {
+type RawParameter = { key?: string; name?: string; placeholder?: string }
+type RawMethod = { content?: unknown; parameters?: RawParameter[] }
+type RawItem = {
+  id?: unknown
+  name?: unknown
+  description?: unknown
+  url?: unknown
+  content?: RawMethod[] | string
+  parameters?: RawParameter[]
+}
+
+function isSecretKey(key: string): boolean {
   return /TOKEN|KEY|SECRET|PASSWORD|PAT|CREDENTIAL|APIKEY/i.test(key)
 }
 
 // Parse the embedded JSON config string of one install method.
-function parseContent(content) {
+function parseContent(content: unknown): Record<string, unknown> | undefined {
   if (typeof content !== "string") return undefined
   try {
-    return JSON.parse(content)
+    return JSON.parse(content) as Record<string, unknown>
   } catch {
     return undefined
   }
@@ -45,7 +41,7 @@ function parseContent(content) {
 
 // Pull the npm package specifier out of an `npx` args array: the first
 // positional after `-y`/`--yes`, falling back to the first non-flag arg.
-function npmIdentifier(args) {
+function npmIdentifier(args: unknown): string | undefined {
   if (!Array.isArray(args)) return undefined
   const yesIndex = args.findIndex((arg) => arg === "-y" || arg === "--yes")
   if (yesIndex >= 0) {
@@ -64,7 +60,7 @@ const UVX_VALUE_FLAGS = new Set([
 // Pull the runnable package out of a `uvx` args array. uvx runs the FIRST
 // positional that isn't consumed by a uvx option (e.g. in
 // `--from pkg==1.2 --hash <h> pkg --tool-tier core` the tool is `pkg`).
-function pypiIdentifier(args) {
+function pypiIdentifier(args: unknown): string | undefined {
   if (!Array.isArray(args)) return undefined
   for (let index = 0; index < args.length; index++) {
     const arg = args[index]
@@ -82,40 +78,42 @@ function pypiIdentifier(args) {
 }
 
 // Collect {{PLACEHOLDER}} env keys from a method's env object.
-function placeholderEnvKeys(env) {
+function placeholderEnvKeys(env: unknown): string[] {
   if (!env || typeof env !== "object") return []
-  return Object.entries(env)
+  return Object.entries(env as Record<string, unknown>)
     .filter(([, value]) => typeof value === "string" && /\{\{.*\}\}/.test(value))
     .map(([key]) => key)
 }
 
 // Collect {{TOKEN}} keys referenced inside a single string (arg or url).
-function placeholderTokens(value) {
+function placeholderTokens(value: unknown): string[] {
   if (typeof value !== "string") return []
-  const keys = []
-  for (const match of value.matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)) keys.push(match[1])
+  const keys: string[] = []
+  for (const match of value.matchAll(/\{\{\s*([^}]+?)\s*\}\}/g)) {
+    if (match[1]) keys.push(match[1])
+  }
   return keys
 }
 
-function buildItem(raw) {
+function buildItem(raw: RawItem): MarketplaceMcpItem | undefined {
   // `content` is either an array of install methods or, for single-method
   // servers, the embedded JSON string directly.
-  const methods = Array.isArray(raw.content)
+  const methods: RawMethod[] = Array.isArray(raw.content)
     ? raw.content
     : typeof raw.content === "string"
       ? [{ content: raw.content }]
       : []
-  const packages = []
-  const seenPackages = new Set()
-  const remotes = []
-  const seenRemotes = new Set()
-  const envKeys = new Set()
+  const packages: RegistryPackage[] = []
+  const seenPackages = new Set<string>()
+  const remotes: MarketplaceMcpItem["remotes"] = []
+  const seenRemotes = new Set<string>()
+  const envKeys = new Set<string>()
   // {{TOKEN}} placeholders found in command args / remote urls (textual substitution).
-  const varKeys = new Set()
+  const varKeys = new Set<string>()
 
   // Index parameters (top-level + per-method) by key for placeholder/description.
-  const params = new Map()
-  const collectParams = (list) => {
+  const params = new Map<string, RawParameter>()
+  const collectParams = (list: RawParameter[] | undefined) => {
     if (!Array.isArray(list)) return
     for (const param of list) {
       if (param && typeof param.key === "string" && !params.has(param.key)) params.set(param.key, param)
@@ -170,7 +168,7 @@ function buildItem(raw) {
   // Drop entries with no installable method.
   if (packages.length === 0 && remotes.length === 0) return undefined
 
-  const toRegistryEntry = (name) => {
+  const toRegistryEntry = (name: string): RegistryEnvironmentVariable & RegistryVariable => {
     const param = params.get(name)
     return {
       name,
@@ -198,15 +196,18 @@ function buildItem(raw) {
     environmentVariables,
     variables,
     transportTypes: [
-      ...(packages.length > 0 ? ["package"] : []),
-      ...(remotes.length > 0 ? ["remote"] : []),
+      ...(packages.length > 0 ? (["package"] as const) : []),
+      ...(remotes.length > 0 ? (["remote"] as const) : []),
     ],
   }
 }
 
-const doc = yaml.load(readFileSync(SOURCE, "utf8"))
-const items = Array.isArray(doc?.items) ? doc.items : []
-const catalog = items.map(buildItem).filter(Boolean).sort((a, b) => a.title.localeCompare(b.title))
-
-writeFileSync(OUTPUT, `${JSON.stringify(catalog, null, 2)}\n`)
-console.log(`Wrote ${catalog.length} servers (of ${items.length} source entries) to ${OUTPUT}`)
+// Parse a marketplace.yaml document and build the sorted catalog of installable servers.
+export function buildCatalogFromYaml(yamlText: string): MarketplaceMcpItem[] {
+  const doc = yaml.load(yamlText) as { items?: RawItem[] } | undefined
+  const items = Array.isArray(doc?.items) ? doc.items : []
+  return items
+    .map(buildItem)
+    .filter((item): item is MarketplaceMcpItem => Boolean(item))
+    .sort((a, b) => a.title!.localeCompare(b.title!))
+}
