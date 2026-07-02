@@ -1,21 +1,15 @@
+import * as vscode from "vscode"
 import type { FilePartInput, OpencodeClient } from "@opencode-ai/sdk/v2/client"
-import type {
-  ChatMode,
-  ExtensionToWebview,
-  RaccoonMessagePart,
-  RaccoonState,
-  RaccoonSubSession,
-  WebviewToExtension,
-} from "@opencode-ai/raccoon-webview"
-import { uiSlashCommands } from "../config/commands.js"
-import { contextMentionAttachments } from "../editor/context-mentions.js"
-import { exportMarkdown } from "../message/export-markdown.js"
-import { ascendingID } from "../message/ids.js"
-import { mapMessage, mapSession, mapSubSession, responseText, sortMessages, sortSessions } from "../message/mapping.js"
+import type { ChatMode, ExtensionToWebview, RaccoonMessagePart, RaccoonState } from "@opencode-ai/raccoon-webview"
+import { uiSlashCommands } from "./commands.js"
+import { contextMentionAttachments } from "./context-mentions.js"
+import { exportMarkdown } from "./export-markdown.js"
+import { ascendingID } from "./ids.js"
+import { mapMessage, mapSession, responseText, sortMessages, sortSessions } from "./mapping.js"
 import type { ModelSelection } from "./model-state.js"
-import type { RaccoonProviderConfig } from "../config/provider-config.js"
-import type { RaccoonStreamScheduler } from "../stream/stream-scheduler.js"
-import type { RaccoonWebviewSource, WebviewTransport } from "../platform.js"
+import type { RaccoonProviderConfig } from "./provider-config.js"
+import type { RaccoonStreamScheduler } from "./stream-scheduler.js"
+import type { RaccoonWebviewHost, RaccoonWebviewSource } from "./webview-host.js"
 
 type SessionControllerDeps = {
   client: () => Promise<OpencodeClient>
@@ -29,34 +23,18 @@ type SessionControllerDeps = {
   removeSession: (sessionID: string) => void
   report: (error: unknown) => void
   log: (message: string) => void
-  saveFile: (options: {
-    title: string
-    saveLabel?: string
-    defaultName: string
-    directory: string
-    filters?: Record<string, string[]>
-    data: Uint8Array
-  }) => Promise<boolean>
-  captureTerminal: () => Promise<string>
   config: RaccoonProviderConfig
   streams: RaccoonStreamScheduler
-  webviewHost: WebviewTransport
+  webviewHost: RaccoonWebviewHost
 }
 
 export class RaccoonSessionController {
   private eventRefreshTimer?: ReturnType<typeof setTimeout>
   private promptRefreshTimer?: ReturnType<typeof setTimeout>
-  private subAgentRefreshTimer?: ReturnType<typeof setTimeout>
   private refreshingFromEvent = false
-  private refreshingSubAgent = false
-  private openSubAgentSessionID?: string
-  private openSubAgentTitle?: string
   private readonly pendingOptimisticMessages = new Set<string>()
   private activePromptSessionID?: string
   private activePromptMessageID?: string
-  // Monotonic token for loadMessages: any newer load invalidates in-flight
-  // older ones so a slow/stale response can't overwrite fresher state.
-  private loadGeneration = 0
 
   constructor(private readonly deps: SessionControllerDeps) {}
 
@@ -143,14 +121,15 @@ export class RaccoonSessionController {
       client.session.messages({ sessionID }, { throwOnError: true }),
     ])
     const filename = `${(info.data.title || sessionID).replace(/[\\/:*?"<>|]/g, "-")}.md`
-    await this.deps.saveFile({
+    const base = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd()
+    const file = await vscode.window.showSaveDialog({
       title: "Export session",
       saveLabel: "Export",
-      defaultName: filename,
-      directory: this.deps.directory(),
       filters: { Markdown: ["md"] },
-      data: Buffer.from(exportMarkdown({ info: info.data, messages: messages.data })),
+      defaultUri: vscode.Uri.file(`${base}/${filename}`),
     })
+    if (!file) return
+    await vscode.workspace.fs.writeFile(file, Buffer.from(exportMarkdown({ info: info.data, messages: messages.data })))
   }
 
   async revertSession(sessionID: string, messageID: string, source: RaccoonWebviewSource) {
@@ -211,7 +190,6 @@ export class RaccoonSessionController {
 
   async loadMessages(sessionID: string) {
     this.deps.streams.drop()
-    const generation = ++this.loadGeneration
     const client = await this.deps.client()
     const [info, response, status] = await Promise.all([
       client.session.get(
@@ -231,8 +209,6 @@ export class RaccoonSessionController {
       ),
       client.session.status({ directory: this.deps.directory() }, { throwOnError: true }),
     ])
-    // Discard stale responses: a newer loadMessages has superseded this one.
-    if (generation !== this.loadGeneration) return
     const messages = response.data
       .flatMap((message) => mapMessage(message))
       .filter((message) => message.text.trim() || message.parts.length > 0)
@@ -256,43 +232,17 @@ export class RaccoonSessionController {
     if (hasAssistantAfterLatestUser) this.stopPromptRefresh(sessionID)
     const sessionStatus = status.data[sessionID]?.type ?? "idle"
     if (sessionStatus === "idle" && this.activePromptSessionID === sessionID) this.stopPromptRefresh(sessionID)
-    const subSessions = await this.loadSubSessions(merged, status.data)
-    // Re-check after loadSubSessions' await: a newer load may have started meanwhile.
-    if (generation !== this.loadGeneration) return
     this.deps.setState({
       ...this.deps.getState(),
       activeSessionID: sessionID,
       sessions: sortSessions(this.deps.getState().sessions.map((session) => (session.id === sessionID ? mapSession(info.data) : session))),
       activeSession: mapSession(info.data),
       messages: merged,
-      subSessions,
       loading: sessionStatus !== "idle",
       busy: sessionStatus !== "idle",
       error: undefined,
     })
     this.deps.post()
-    await this.recoverPendingQuestions(sessionID)
-  }
-
-  async recoverPendingQuestions(sessionID = this.deps.getState().activeSessionID) {
-    if (!sessionID) return
-    try {
-      const response = await (await this.deps.client()).question.list({ directory: this.deps.directory() })
-      for (const question of response.data ?? []) {
-        if (question.sessionID !== sessionID) continue
-        this.deps.webviewHost.post("chat", {
-          type: "questionRequest",
-          question: {
-            id: question.id,
-            sessionID: question.sessionID,
-            questions: question.questions,
-            tool: question.tool,
-          },
-        } satisfies ExtensionToWebview)
-      }
-    } catch (error) {
-      this.deps.log(`pending question recovery failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
   }
 
   async sendMessage(
@@ -301,12 +251,8 @@ export class RaccoonSessionController {
     model?: { providerID: string; modelID: string },
     files?: { path: string; filename?: string; mime?: string; url: string; source?: FilePartInput["source"] }[],
   ) {
-    let sessionID = this.deps.getState().activeSessionID
-    if (!sessionID) {
-      await this.createSession(mode)
-      sessionID = this.deps.getState().activeSessionID
-      if (!sessionID) return
-    }
+    const sessionID = this.deps.getState().activeSessionID
+    if (!sessionID) return
     const client = await this.deps.client()
     const status = await client.session.status({ directory: this.deps.directory() }, { throwOnError: true })
     const sessionStatus = status.data[sessionID]?.type ?? "idle"
@@ -329,7 +275,6 @@ export class RaccoonSessionController {
     const contextFiles = await contextMentionAttachments(
       text,
       this.deps.directory(),
-      this.deps.captureTerminal,
       inputFiles.map((item) => item.filename ?? item.path),
     )
     const fileParts: (FilePartInput & RaccoonMessagePart)[] = [...inputFiles, ...contextFiles].map((file) => ({
@@ -398,65 +343,6 @@ export class RaccoonSessionController {
         if (this.activePromptMessageID === messageID) this.activePromptMessageID = undefined
         this.deps.report(error)
       })
-  }
-
-  async questionReply(message: Extract<WebviewToExtension, { type: "questionReply" }>) {
-    try {
-      const client = await this.deps.client()
-      await client.question.reply(
-        {
-          requestID: message.requestID,
-          answers: message.answers,
-          directory: this.deps.directory(),
-        },
-        { throwOnError: true },
-      )
-      this.deps.webviewHost.post("chat", { type: "questionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
-      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
-      if (sessionID) await this.loadMessages(sessionID)
-    } catch (error) {
-      this.deps.webviewHost.post("chat", { type: "questionError", requestID: message.requestID } satisfies ExtensionToWebview)
-      this.deps.report(error)
-    }
-  }
-
-  async questionReject(message: Extract<WebviewToExtension, { type: "questionReject" }>) {
-    try {
-      const client = await this.deps.client()
-      await client.question.reject(
-        {
-          requestID: message.requestID,
-          directory: this.deps.directory(),
-        },
-        { throwOnError: true },
-      )
-      this.deps.webviewHost.post("chat", { type: "questionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
-      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
-      if (sessionID) await this.loadMessages(sessionID)
-    } catch (error) {
-      this.deps.webviewHost.post("chat", { type: "questionError", requestID: message.requestID } satisfies ExtensionToWebview)
-      this.deps.report(error)
-    }
-  }
-
-  async permissionReply(message: Extract<WebviewToExtension, { type: "permissionReply" }>) {
-    try {
-      const client = await this.deps.client()
-      await client.permission.reply(
-        {
-          requestID: message.requestID,
-          reply: message.reply,
-          directory: this.deps.directory(),
-        },
-        { throwOnError: true },
-      )
-      this.deps.webviewHost.post("chat", { type: "permissionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
-      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
-      if (sessionID) await this.loadMessages(sessionID)
-    } catch (error) {
-      this.deps.webviewHost.post("chat", { type: "permissionError", requestID: message.requestID } satisfies ExtensionToWebview)
-      this.deps.report(error)
-    }
   }
 
   async runSlashCommand(name: string, source: RaccoonWebviewSource) {
@@ -540,97 +426,6 @@ export class RaccoonSessionController {
     this.deps.webviewHost.post("chat", { type: "showHistory" } satisfies ExtensionToWebview)
   }
 
-  async openSubAgent(sessionID: string, title: string | undefined) {
-    // Show the sub-agent view immediately in a loading state, then fetch the
-    // child session's full conversation and render it read-only. Reuses the same
-    // mapMessage pipeline as the main message stream so rendering stays identical.
-    // Drive the view via a dedicated message (not state.view) because postState()
-    // hard-codes view: "chat" for the chat webview.
-    //
-    // The child session keeps emitting events while the parent task runs; we track
-    // the open sub-agent here so the event handler can drive incremental refreshes
-    // (see scheduleSubAgentRefresh), giving the view a streaming-like update.
-    this.openSubAgentSessionID = sessionID
-    this.openSubAgentTitle = title
-    this.clearSubAgentRefresh()
-    this.deps.webviewHost.post("chat", {
-      type: "showSubAgent",
-      view: { sessionID, title, messages: [], loading: true },
-    } satisfies ExtensionToWebview)
-    try {
-      const messages = await this.fetchSubAgentMessages(sessionID)
-      if (this.openSubAgentSessionID !== sessionID) return
-      this.deps.webviewHost.post("chat", {
-        type: "showSubAgent",
-        view: { sessionID, title, messages, loading: false },
-      } satisfies ExtensionToWebview)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.deps.log(`open sub-agent failed (${sessionID}): ${message}`)
-      if (this.openSubAgentSessionID !== sessionID) return
-      this.deps.webviewHost.post("chat", {
-        type: "showSubAgent",
-        view: { sessionID, title, messages: [], loading: false, error: message },
-      } satisfies ExtensionToWebview)
-    }
-  }
-
-  // Debounced incremental refresh of the open sub-agent view. Called by the event
-  // handler for every event whose sessionID matches the open child session, so the
-  // view updates as the sub-agent works instead of staying a one-shot snapshot.
-  scheduleSubAgentRefresh(sessionID: string) {
-    if (this.openSubAgentSessionID !== sessionID) return
-    if (this.subAgentRefreshTimer) return
-    this.subAgentRefreshTimer = setTimeout(() => {
-      this.subAgentRefreshTimer = undefined
-      void this.refreshSubAgent(sessionID)
-    }, 120)
-  }
-
-  private async refreshSubAgent(sessionID: string) {
-    if (this.refreshingSubAgent || this.openSubAgentSessionID !== sessionID) return
-    this.refreshingSubAgent = true
-    try {
-      const messages = await this.fetchSubAgentMessages(sessionID)
-      if (this.openSubAgentSessionID !== sessionID) return
-      this.deps.webviewHost.post("chat", {
-        type: "showSubAgent",
-        view: { sessionID, title: this.openSubAgentTitle, messages, loading: false },
-      } satisfies ExtensionToWebview)
-    } catch (error) {
-      // Transient refresh failures must not clobber the rendered view; the next
-      // event (or the final idle event) will retry the fetch.
-      this.deps.log(`refresh sub-agent failed (${sessionID}): ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-      this.refreshingSubAgent = false
-    }
-  }
-
-  private async fetchSubAgentMessages(sessionID: string) {
-    const client = await this.deps.client()
-    const response = await client.session.messages(
-      { sessionID, directory: this.deps.directory(), limit: 200 },
-      { throwOnError: true },
-    )
-    return sortMessages(
-      response.data
-        .flatMap((message) => mapMessage(message))
-        .filter((message) => message.text.trim() || message.parts.length > 0),
-    )
-  }
-
-  private clearSubAgentRefresh() {
-    if (this.subAgentRefreshTimer) clearTimeout(this.subAgentRefreshTimer)
-    this.subAgentRefreshTimer = undefined
-  }
-
-  closeSubAgent() {
-    this.openSubAgentSessionID = undefined
-    this.openSubAgentTitle = undefined
-    this.clearSubAgentRefresh()
-    this.deps.webviewHost.post("chat", { type: "closeSubAgent" } satisfies ExtensionToWebview)
-  }
-
   openSettings() {
     this.deps.webviewHost.openSettings()
   }
@@ -676,41 +471,7 @@ export class RaccoonSessionController {
 
   dispose() {
     this.clearEventRefreshTimer()
-    this.clearSubAgentRefresh()
     if (this.promptRefreshTimer) clearTimeout(this.promptRefreshTimer)
-  }
-
-  private async loadSubSessions(
-    messages: { parts: RaccoonMessagePart[] }[],
-    status: Record<string, { type: string } | undefined>,
-  ): Promise<Record<string, RaccoonSubSession> | undefined> {
-    const ids = new Set<string>()
-    for (const message of messages) {
-      for (const part of message.parts) {
-        if (part.type !== "tool" || part.tool !== "task") continue
-        const sessionId = part.metadata?.sessionId
-        if (typeof sessionId === "string" && sessionId) ids.add(sessionId)
-      }
-    }
-    if (ids.size === 0) return undefined
-    const client = await this.deps.client()
-    const entries = await Promise.all(
-      [...ids].map(async (childID) => {
-        try {
-          const response = await client.session.messages(
-            { sessionID: childID, directory: this.deps.directory(), limit: 200 },
-            { throwOnError: true },
-          )
-          return [childID, mapSubSession(childID, response.data, status[childID]?.type ?? "idle")] as const
-        } catch (error) {
-          this.deps.log(`sub-session load failed (${childID}): ${error instanceof Error ? error.message : String(error)}`)
-          return undefined
-        }
-      }),
-    )
-    const record: Record<string, RaccoonSubSession> = {}
-    for (const entry of entries) if (entry) record[entry[0]] = entry[1]
-    return Object.keys(record).length > 0 ? record : undefined
   }
 
   private async refreshSessionList() {

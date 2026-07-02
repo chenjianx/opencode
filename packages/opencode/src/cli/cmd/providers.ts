@@ -370,6 +370,8 @@ export const ProvidersLoginCommand = effectCmd({
     const hooks = yield* pluginSvc.list()
 
     const priority: Record<string, number> = {
+      // raccoon_change start - prefer Raccoon as the default provider login
+      raccoon: 0,
       opencode: 1,
       openai: 2,
       "github-copilot": 3,
@@ -377,6 +379,7 @@ export const ProvidersLoginCommand = effectCmd({
       anthropic: 5,
       openrouter: 6,
       vercel: 7,
+      // raccoon_change end
     }
     const pluginProviders = resolvePluginProviders({
       hooks,

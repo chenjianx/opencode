@@ -17,6 +17,9 @@ const MAX_LINE_SUFFIX = `... (line truncated to ${MAX_LINE_LENGTH} chars)`
 const MAX_BYTES = 50 * 1024
 const MAX_BYTES_LABEL = `${MAX_BYTES / 1024} KB`
 const SAMPLE_BYTES = 4096
+// raccoon_change start - inline folder files for directory mentions
+const DIRECTORY_CONCURRENCY = 8
+// raccoon_change end
 const SUPPORTED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"])
 
 class ReadStop extends Schema.TaggedErrorClass<ReadStop>()("ReadStop", {}) {}
@@ -226,6 +229,45 @@ export const ReadTool = Tool.define<
 
       return nonPrintableCount / bytes.length > 0.3
     }
+
+    // raccoon_change start - inline folder files for directory mentions
+    type DirectoryFile = {
+      filepath: string
+      content: string
+    }
+    const readDirectoryFiles = Effect.fn("ReadTool.readDirectoryFiles")(function* (
+      filepath: string,
+      items: string[],
+      directory: string,
+    ) {
+      const entries = yield* fs.readDirectoryEntries(filepath).pipe(Effect.catch(() => Effect.succeed([])))
+      const types = new Map(entries.map((entry) => [entry.name, entry.type]))
+      const files = yield* Effect.forEach(
+        items.filter((item) => !item.endsWith("/") && types.get(item) === "file"),
+        Effect.fnUntraced(function* (item) {
+          const child = path.join(filepath, item)
+          const info = yield* fs.stat(child).pipe(Effect.catch(() => Effect.void))
+          if (info?.type !== "File") return
+          const sample = yield* readSample(child, Number(info.size), SAMPLE_BYTES).pipe(
+            Effect.catch(() => Effect.succeed(new Uint8Array())),
+          )
+          if (isBinaryFile(child, sample)) return
+          const file = yield* Effect.promise(() => lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 })).pipe(
+            Effect.catch(() => Effect.void),
+          )
+          if (!file) return
+          const rel = path.relative(directory, child).replaceAll("\\", "/")
+          const note = file.cut || file.more ? "\n\n(File truncated)" : ""
+          return {
+            filepath: child,
+            content: `<file_content path="${rel}">\n${file.raw.join("\n")}${note}\n</file_content>`,
+          }
+        }),
+        { concurrency: DIRECTORY_CONCURRENCY },
+      )
+      return files.filter((item): item is DirectoryFile => item !== undefined)
+    })
+    // raccoon_change end
 
     const run = Effect.fn("ReadTool.execute")(function* (
       params: Schema.Schema.Type<typeof Parameters>,

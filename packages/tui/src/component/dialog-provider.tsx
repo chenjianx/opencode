@@ -18,12 +18,15 @@ import { useClipboard } from "../context/clipboard"
 import { RaccoonBranding } from "@opencode-ai/core/raccoon/branding" // raccoon_change - provider branding shared from core/src/raccoon
 
 const PROVIDER_PRIORITY: Record<string, number> = {
+  // raccoon_change start - prefer Raccoon as the default provider login
+  raccoon: 0,
   opencode: 1,
   "opencode-go": 2,
   openai: 3,
   "github-copilot": 4,
   anthropic: 5,
   google: 6,
+  // raccoon_change end
 }
 
 const CUSTOM_PROVIDER_OPTION_VALUE = "__opencode_custom_provider__"
