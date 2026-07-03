@@ -2,28 +2,18 @@ import { useEffect, useMemo, useState } from "react"
 import { Plus, Trash } from "@phosphor-icons/react"
 import type { RaccoonAgentScope, RaccoonRule } from "../../protocol"
 import { useLanguage } from "../../context/language"
-import { useSession } from "../../context/session"
+import { useSessionActions } from "../../context/session"
 import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
 import { Select } from "./settings-common"
 import { MarkdownLite } from "../ui/markdown-lite"
-
-const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
+import { NAME_RE, uniqueName } from "./utils"
 
 type RuleDraft = {
   scope: RaccoonAgentScope
   originalName: string // "" when creating
   name: string
   content: string
-}
-
-function uniqueName(base: string, existing: RaccoonRule[]): string {
-  const names = new Set(existing.map((rule) => rule.name))
-  return (
-    Array.from({ length: 100 }, (_, index) => (index === 0 ? base : `${base}-${index + 1}`)).find(
-      (candidate) => !names.has(candidate),
-    ) ?? base
-  )
 }
 
 export function SettingsRules(props: {
@@ -33,7 +23,7 @@ export function SettingsRules(props: {
   onDeleteRule: (scope: RaccoonAgentScope, name: string) => void
 }) {
   const language = useLanguage()
-  const session = useSession()
+  const actions = useSessionActions()
   const { rules, onSaveRule, onToggleRule, onDeleteRule } = props
   const [draft, setDraft] = useState<RuleDraft | undefined>()
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("edit")
@@ -68,7 +58,7 @@ export function SettingsRules(props: {
     setDraft({
       scope: "project",
       originalName: "",
-      name: uniqueName("new-rule", rules.filter((rule) => rule.scope === "project")),
+      name: uniqueName("new-rule", rules.filter((rule) => rule.scope === "project").map((rule) => rule.name)),
       content: "",
     })
   }
@@ -175,7 +165,7 @@ export function SettingsRules(props: {
                           return {
                             ...current,
                             scope: nextScope,
-                            name: uniqueName(current.name, rules.filter((rule) => rule.scope === nextScope)),
+                            name: uniqueName(current.name, rules.filter((rule) => rule.scope === nextScope).map((rule) => rule.name)),
                           }
                         })
                       }}
@@ -225,7 +215,7 @@ export function SettingsRules(props: {
                   ) : (
                     <div className="settings-rules-preview">
                       {draft.content.trim() ? (
-                        <MarkdownLite text={draft.content} onOpenFile={session.openFile} />
+                        <MarkdownLite text={draft.content} onOpenFile={actions.openFile} />
                       ) : (
                         <div className="settings-rules-hint">{language.t("settings.rules.preview.empty")}</div>
                       )}

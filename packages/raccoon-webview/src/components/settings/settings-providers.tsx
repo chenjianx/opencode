@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useLanguage } from "../../context/language"
-import { useSession } from "../../context/session"
+import { useSessionActions, useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
 import type { RaccoonProviderAuthMethod } from "../../protocol"
 import { RACCOON_LOGIN_URL } from "../../config"
@@ -48,7 +48,8 @@ function visiblePrompt(prompt: Prompt, values: Record<string, string>) {
 
 export function SettingsProviders() {
   const language = useLanguage()
-  const session = useSession()
+  const config = useSessionConfig()
+  const actions = useSessionActions()
   const vscode = useVSCode()
   const apiKeyMethod: RaccoonProviderAuthMethod = { type: "api", label: language.t("settings.providers.connect.apiKey") }
   const [activeProvider, setActiveProvider] = useState<string>()
@@ -135,11 +136,11 @@ export function SettingsProviders() {
     })
   }, [savingCustom, vscode])
 
-  const customProviders = session.state.customProviders ?? []
+  const customProviders = config.customProviders ?? []
   // raccoon is a config-source provider, so `connected` is always true. Use the
   // ground-truth login flag from the extension instead.
-  const raccoonConnected = session.state.raccoonLoggedIn === true
-  const providerAuthMethods = session.state.providerAuthMethods ?? {}
+  const raccoonConnected = config.raccoonLoggedIn === true
+  const providerAuthMethods = config.providerAuthMethods ?? {}
 
   const customProviderIDs = useMemo(() => new Set(customProviders.map((item) => item.providerID)), [customProviders])
   const isCustomProvider = (id: string) => customProviderIDs.has(id)
@@ -151,8 +152,8 @@ export function SettingsProviders() {
     return language.t("settings.providers.tag.apiKey")
   }
   const connectedProviders = useMemo(
-    () => session.state.providers.filter((item) => item.connected && !builtinProviderIDs.has(item.id)),
-    [session.state.providers],
+    () => config.providers.filter((item) => item.connected && !builtinProviderIDs.has(item.id)),
+    [config.providers],
   )
   const connectedIDs = useMemo(() => new Set(connectedProviders.map((item) => item.id)), [connectedProviders])
   const unconnectedPopular = popularProviders.filter((item) => !connectedIDs.has(item.id))
@@ -208,7 +209,7 @@ export function SettingsProviders() {
       return
     }
     setSavingCustom(true)
-    session.configureCustomProvider({ ...custom, providerID, name, baseURL, models, editing: !!editingProviderID })
+    actions.configureCustomProvider({ ...custom, providerID, name, baseURL, models, editing: !!editingProviderID })
   }
 
   const deleteCustomProvider = (providerID: string) => {
@@ -228,7 +229,7 @@ export function SettingsProviders() {
     }
     setProviderError(undefined)
     setConnectingProviderID(providerID)
-    session.disconnectProvider(providerID)
+    actions.disconnectProvider(providerID)
   }
 
   const editCustomProvider = (providerID: string) => {
@@ -298,7 +299,7 @@ export function SettingsProviders() {
     }
     setProviderError(undefined)
     setConnectingProviderID(providerID)
-    session.connectProvider({
+    actions.connectProvider({
       providerID,
       methodIndex: draft.methodIndex,
       apiKey: method.type === "api" ? draft.apiKey : undefined,
@@ -307,13 +308,13 @@ export function SettingsProviders() {
   }
 
   const closeRaccoonDialog = () => {
-    if (raccoonLoggingIn) session.cancelRaccoonLogin()
+    if (raccoonLoggingIn) actions.cancelRaccoonLogin()
     setRaccoonLoggingIn(false)
     setRaccoonDialogOpen(false)
   }
 
   const closeProviderDialog = () => {
-    if (activeProvider && connectingProviderID === activeProvider) session.cancelProviderConnect(activeProvider)
+    if (activeProvider && connectingProviderID === activeProvider) actions.cancelProviderConnect(activeProvider)
     setConnectingProviderID(undefined)
     setActiveProvider(undefined)
   }
@@ -478,7 +479,7 @@ export function SettingsProviders() {
         <SettingsProviderConnectDialog
           providerID={activeProvider}
           name={popularProviders.find((item) => item.id === activeProvider)?.name ?? activeProvider}
-          connected={!!session.state.providers.find((entry) => entry.id === activeProvider)?.connected}
+          connected={!!config.providers.find((entry) => entry.id === activeProvider)?.connected}
           methods={providerAuthMethods[activeProvider] ?? [apiKeyMethod]}
           draft={providerDraft(activeProvider)}
           error={providerError}
@@ -523,7 +524,7 @@ export function SettingsProviders() {
                 onClick={() => {
                   setRaccoonLoggingIn(true)
                   setRaccoonLoginError(undefined)
-                  session.loginRaccoon(raccoonServerUrl.trim() || RACCOON_LOGIN_URL)
+                  actions.loginRaccoon(raccoonServerUrl.trim() || RACCOON_LOGIN_URL)
                 }}
               >
                 {raccoonLoggingIn ? language.t("settings.providers.raccoon.waiting") : language.t("settings.providers.raccoon.openBrowser")}
@@ -552,7 +553,7 @@ export function SettingsProviders() {
               <Button
                 onClick={() => {
                   setRaccoonLogoutConfirm(false)
-                  session.logoutRaccoon()
+                  actions.logoutRaccoon()
                 }}
               >
                 {language.t("common.confirm")}

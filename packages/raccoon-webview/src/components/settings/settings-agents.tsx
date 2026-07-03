@@ -14,7 +14,7 @@ import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow, Select, TextInput } from "./settings-common"
 import { PermissionEditor, PermissionRuleset } from "./permission-editor"
 import { mergePermissionPatch, type PermissionPatch } from "./permission-utils"
-import { clampParam, downloadJson, formatModelString, parseModelString, titleCase } from "./utils"
+import { clampParam, downloadJson, formatModelString, NAME_RE, parseModelString, titleCase, uniqueName } from "./utils"
 
 type ModelSelection = { providerID: string; modelID: string }
 type AgentDraft = {
@@ -32,8 +32,6 @@ type AgentDraft = {
   permission: RaccoonPermissionConfig
   hidden: boolean
 }
-
-const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value : ""
@@ -71,22 +69,13 @@ function agentDraft(agent: RaccoonAgent | undefined): AgentDraft {
   }
 }
 
-function uniqueName(base: string, existing: RaccoonAgent[]): string {
-  const names = new Set(existing.map((agent) => agent.name))
-  return (
-    Array.from({ length: 100 }, (_, index) => (index === 0 ? base : `${base}-${index + 1}`)).find(
-      (candidate) => !names.has(candidate),
-    ) ?? base
-  )
-}
-
 function newDraft(existing: RaccoonAgent[]): AgentDraft {
-  const name = uniqueName("custom-agent", existing)
+  const name = uniqueName("custom-agent", existing.map((agent) => agent.name))
   return { ...agentDraft(undefined), originalName: name, name }
 }
 
 function duplicateDraft(agent: RaccoonAgent, existing: RaccoonAgent[]): AgentDraft {
-  const name = uniqueName(`${agent.name}-copy`, existing)
+  const name = uniqueName(`${agent.name}-copy`, existing.map((item) => item.name))
   return { ...agentDraft(agent), originalName: name, name }
 }
 
@@ -428,7 +417,7 @@ export function SettingsAgents(props: {
             />
           </SettingsRow>
           <SettingsRow title={language.t("settings.agents.parameters.title")} description={language.t("settings.agents.parameters.description")}>
-            <div className="grid w-full grid-cols-3 gap-2 max-[520px]:grid-cols-1">
+            <div className="settings-agent-params">
               <label className="flex flex-col gap-1">
                 <span className="text-[11px] text-[var(--color-muted)]">temperature</span>
                 <TextInput value={draft.temperature} onChange={(value) => updateDraft("temperature", value)} placeholder="0 – 2" />

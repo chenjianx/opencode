@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowClockwise, CheckCircle, Circle, PencilSimple, Plug, Plugs, Plus, Trash, Warning, X } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
-import { useSession } from "../../context/session"
+import { useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
 import type { RaccoonInstalledMcp, RaccoonMcpServerConfig, RaccoonMcpStatus } from "../../protocol"
 import { Button } from "../ui"
@@ -10,9 +10,9 @@ import { TextField, TextInput } from "./settings-common"
 
 export function SettingsMcpInstalled() {
   const language = useLanguage()
-  const session = useSession()
+  const config = useSessionConfig()
   const vscode = useVSCode()
-  const installed = session.state.mcpInstalled
+  const installed = config.mcpInstalled
   const servers = installed?.servers ?? []
   const [expanded, setExpanded] = useState<string>()
   const [pendingID, setPendingID] = useState<string>()
@@ -20,10 +20,10 @@ export function SettingsMcpInstalled() {
   const [editing, setEditing] = useState<RaccoonInstalledMcp>()
 
   useEffect(() => {
-    if (!session.state.mcpInstalled) {
+    if (!config.mcpInstalled) {
       vscode.postMessage({ type: "fetchMcpInstalled" })
     }
-  }, [session.state.mcpInstalled, vscode])
+  }, [config.mcpInstalled, vscode])
 
   useEffect(() => {
     return vscode.onMessage((message) => {

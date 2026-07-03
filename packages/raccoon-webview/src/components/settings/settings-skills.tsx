@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowClockwise, CaretDown, CheckCircle, DownloadSimple, FileText, MagnifyingGlass, Trash, Warning } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
-import { useSession } from "../../context/session"
+import { useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
 import type { RaccoonMarketplaceScope, RaccoonSkillMarketplaceItem } from "../../protocol"
 import { Button } from "../ui"
 import { SelectField, TextInput } from "./settings-common"
 import { SettingsDialog } from "./settings-dialog"
+import { avatarHue, avatarStyle, installedIn } from "./utils"
 
 type SkillTab = "marketplace" | "installed"
 type SkillCategory = "all" | "data" | "development" | "observability" | "business" | "creative-media" | "search" | "productivity" | "other"
@@ -58,9 +59,9 @@ export function SettingsSkills() {
 
 function SettingsSkillMarketplace() {
   const language = useLanguage()
-  const session = useSession()
+  const config = useSessionConfig()
   const vscode = useVSCode()
-  const marketplace = session.state.skillMarketplace ?? { sources: [], items: [], installed: { project: {}, user: {} } }
+  const marketplace = config.skillMarketplace ?? { sources: [], items: [], installed: { project: {}, user: {} } }
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<SkillCategory>("all")
   const [selectedID, setSelectedID] = useState<string>()
@@ -70,16 +71,16 @@ function SettingsSkillMarketplace() {
 
   useEffect(() => {
     if (
-      (session.state.skillMarketplace?.items.length ?? 0) === 0 &&
-      !session.state.skillMarketplace?.loading &&
-      !session.state.skillMarketplace?.lastFetchedAt
+      (config.skillMarketplace?.items.length ?? 0) === 0 &&
+      !config.skillMarketplace?.loading &&
+      !config.skillMarketplace?.lastFetchedAt
     ) {
       vscode.postMessage({ type: "fetchSkillMarketplace" })
     }
   }, [
-    session.state.skillMarketplace?.items.length,
-    session.state.skillMarketplace?.lastFetchedAt,
-    session.state.skillMarketplace?.loading,
+    config.skillMarketplace?.items.length,
+    config.skillMarketplace?.lastFetchedAt,
+    config.skillMarketplace?.loading,
     vscode,
   ])
 
@@ -309,18 +310,18 @@ function SettingsSkillMarketplace() {
 
 function SettingsSkillInstalled() {
   const language = useLanguage()
-  const session = useSession()
+  const config = useSessionConfig()
   const vscode = useVSCode()
-  const installed = session.state.skillInstalled ?? { skills: [] }
+  const installed = config.skillInstalled ?? { skills: [] }
   const [pendingID, setPendingID] = useState<string>()
   const [error, setError] = useState<string>()
   const [expandedID, setExpandedID] = useState<string>()
 
   useEffect(() => {
-    if (!session.state.skillInstalled?.loading && session.state.skillInstalled?.skills === undefined) {
+    if (!config.skillInstalled?.loading && config.skillInstalled?.skills === undefined) {
       vscode.postMessage({ type: "fetchSkillInstalled" })
     }
-  }, [session.state.skillInstalled?.loading, session.state.skillInstalled?.skills, vscode])
+  }, [config.skillInstalled?.loading, config.skillInstalled?.skills, vscode])
 
   useEffect(() => {
     return vscode.onMessage((message) => {
@@ -413,15 +414,10 @@ function SettingsSkillInstalled() {
 }
 
 function SkillAvatar(props: { item: RaccoonSkillMarketplaceItem; size?: "sm" | "lg" }) {
-  const hue = avatarHue(props.item.id)
   return (
     <span
       className={`settings-browser-avatar ${props.size === "lg" ? "lg" : ""}`.trim()}
-      style={{
-        background: `hsl(${hue} 60% 50% / 0.18)`,
-        color: `hsl(${hue} 70% 70%)`,
-        borderColor: `hsl(${hue} 60% 50% / 0.35)`,
-      }}
+      style={avatarStyle(avatarHue(props.item.id))}
       aria-hidden="true"
     >
       <FileText size={props.size === "lg" ? 22 : 15} weight="bold" />
@@ -472,24 +468,9 @@ function InstallDialog(props: {
   )
 }
 
-function installedIn(
-  installed: { project: Record<string, unknown>; user: Record<string, unknown> },
-  name: string,
-): RaccoonMarketplaceScope | undefined {
-  if (installed.project[name]) return "project"
-  if (installed.user[name]) return "user"
-  return undefined
-}
-
 function installPath(item: RaccoonSkillMarketplaceItem, scope: RaccoonMarketplaceScope) {
   if (scope === "project") return `.opencode/skills/${item.name}`
   return `~/.config/opencode/skills/${item.name}`
-}
-
-function avatarHue(id: string) {
-  let hash = 0
-  for (let index = 0; index < id.length; index++) hash = (hash * 31 + id.charCodeAt(index)) % 360
-  return hash
 }
 
 function skillCategory(item: RaccoonSkillMarketplaceItem): Exclude<SkillCategory, "all"> {

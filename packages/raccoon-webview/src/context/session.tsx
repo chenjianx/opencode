@@ -131,8 +131,32 @@ type SessionActionsContextValue = {
 
 type SessionContextValue = SessionStateContextValue & SessionActionsContextValue
 
+// Low-frequency configuration slice consumed by the settings UI. Kept separate
+// from SessionStateContext so that high-frequency chat updates (partUpdated,
+// which only touch messages/loading/busy) do not re-render the settings tree.
+type SessionConfigContextValue = {
+  agents: RaccoonState["agents"]
+  models: RaccoonState["models"]
+  providers: RaccoonState["providers"]
+  customProviders: RaccoonState["customProviders"]
+  commands: RaccoonState["commands"]
+  commandConfigs: RaccoonState["commandConfigs"]
+  rules: RaccoonState["rules"]
+  defaultModel: RaccoonState["defaultModel"]
+  modeModels: RaccoonState["modeModels"]
+  mcpMarketplace: RaccoonState["mcpMarketplace"]
+  mcpInstalled: RaccoonState["mcpInstalled"]
+  skillMarketplace: RaccoonState["skillMarketplace"]
+  skillInstalled: RaccoonState["skillInstalled"]
+  providerAuthMethods: RaccoonState["providerAuthMethods"]
+  pluginLanguageMode: RaccoonState["pluginLanguageMode"]
+  autocompleteEnabled: RaccoonState["autocompleteEnabled"]
+  raccoonLoggedIn: RaccoonState["raccoonLoggedIn"]
+}
+
 const SessionStateContext = createContext<SessionStateContextValue | undefined>(undefined)
 const SessionActionsContext = createContext<SessionActionsContextValue | undefined>(undefined)
+const SessionConfigContext = createContext<SessionConfigContextValue | undefined>(undefined)
 
 function normalizeState(state: RaccoonState): RaccoonState {
   return {
@@ -502,6 +526,48 @@ export function SessionProvider(props: { children: ReactNode }) {
     }
   }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, state, settingsInline])
 
+  const sessionConfig = useMemo<SessionConfigContextValue>(() => {
+    return {
+      agents: state.agents,
+      models: state.models,
+      providers: state.providers,
+      customProviders: state.customProviders,
+      commands: state.commands,
+      commandConfigs: state.commandConfigs,
+      rules: state.rules,
+      defaultModel: state.defaultModel,
+      modeModels: state.modeModels,
+      mcpMarketplace: state.mcpMarketplace,
+      mcpInstalled: state.mcpInstalled,
+      skillMarketplace: state.skillMarketplace,
+      skillInstalled: state.skillInstalled,
+      providerAuthMethods: state.providerAuthMethods,
+      pluginLanguageMode: state.pluginLanguageMode,
+      autocompleteEnabled: state.autocompleteEnabled,
+      raccoonLoggedIn: state.raccoonLoggedIn,
+    }
+    // Deliberately depends only on config slices — NOT on `state`, `loading`, or
+    // `busy` — so partUpdated streaming does not re-render config consumers.
+  }, [
+    state.agents,
+    state.models,
+    state.providers,
+    state.customProviders,
+    state.commands,
+    state.commandConfigs,
+    state.rules,
+    state.defaultModel,
+    state.modeModels,
+    state.mcpMarketplace,
+    state.mcpInstalled,
+    state.skillMarketplace,
+    state.skillInstalled,
+    state.providerAuthMethods,
+    state.pluginLanguageMode,
+    state.autocompleteEnabled,
+    state.raccoonLoggedIn,
+  ])
+
   const sessionActions = useMemo<SessionActionsContextValue>(() => {
     return {
       canSend: (text, files = []) => (text.trim().length > 0 || files.length > 0) && !stateRef.current.busy,
@@ -684,7 +750,9 @@ export function SessionProvider(props: { children: ReactNode }) {
 
   return (
     <SessionStateContext.Provider value={sessionState}>
-      <SessionActionsContext.Provider value={sessionActions}>{props.children}</SessionActionsContext.Provider>
+      <SessionConfigContext.Provider value={sessionConfig}>
+        <SessionActionsContext.Provider value={sessionActions}>{props.children}</SessionActionsContext.Provider>
+      </SessionConfigContext.Provider>
     </SessionStateContext.Provider>
   )
 }
@@ -698,6 +766,12 @@ export function useSessionState() {
 export function useSessionActions() {
   const context = useContext(SessionActionsContext)
   if (!context) throw new Error("useSessionActions must be used within a SessionProvider")
+  return context
+}
+
+export function useSessionConfig() {
+  const context = useContext(SessionConfigContext)
+  if (!context) throw new Error("useSessionConfig must be used within a SessionProvider")
   return context
 }
 

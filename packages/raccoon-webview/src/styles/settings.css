@@ -212,7 +212,7 @@
   }
 
   .settings-agent-panel-actions {
-    @apply flex gap-1.5;
+    @apply flex flex-wrap justify-end gap-1.5;
   }
 
   .settings-agent-panel .settings-row {
@@ -227,6 +227,16 @@
 
   .settings-agent-panel .settings-row-control {
     @apply max-w-none justify-start;
+  }
+
+  .settings-agent-params {
+    @apply grid w-full grid-cols-3 gap-2;
+  }
+
+  @container settings-agent-panel (max-width: 380px) {
+    .settings-agent-params {
+      @apply grid-cols-1;
+    }
   }
 
   .settings-agent-section-title {
@@ -550,7 +560,7 @@
   }
 
   .settings-browser-actions {
-    @apply flex shrink-0 gap-2;
+    @apply flex shrink-0 flex-wrap justify-end gap-2;
   }
 
   .settings-browser-description {
@@ -688,7 +698,7 @@
   }
 
   .settings-mcp-header-row .settings-provider-input {
-    @apply flex-1;
+    @apply min-w-0 flex-1;
   }
 
   .settings-mcp-env-row {

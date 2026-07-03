@@ -1,33 +1,21 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowClockwise, CheckCircle, CloudArrowDown, DownloadSimple, MagnifyingGlass, Package, Trash } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
-import { useSession } from "../../context/session"
+import { useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
 import type { RaccoonMarketplaceMcpItem, RaccoonMarketplaceScope } from "../../protocol"
 import { Button } from "../ui"
 import { SelectField, TextField, TextInput } from "./settings-common"
 import { SettingsDialog } from "./settings-dialog"
-
-// Deterministic accent hue per server id, so each MCP gets a stable colored
-// avatar without bundling per-server artwork.
-function avatarHue(id: string) {
-  let hash = 0
-  for (let index = 0; index < id.length; index++) hash = (hash * 31 + id.charCodeAt(index)) % 360
-  return hash
-}
+import { avatarHue, avatarStyle, installedIn } from "./utils"
 
 function McpAvatar(props: { item: RaccoonMarketplaceMcpItem; size?: "sm" | "lg" }) {
   const label = (props.item.title ?? props.item.name).trim()
   const initials = label.slice(0, 2).toUpperCase()
-  const hue = avatarHue(props.item.id)
   return (
     <span
       className={`settings-browser-avatar ${props.size === "lg" ? "lg" : ""}`.trim()}
-      style={{
-        background: `hsl(${hue} 60% 50% / 0.18)`,
-        color: `hsl(${hue} 70% 70%)`,
-        borderColor: `hsl(${hue} 60% 50% / 0.35)`,
-      }}
+      style={avatarStyle(avatarHue(props.item.id))}
       aria-hidden="true"
     >
       {initials}
@@ -87,9 +75,9 @@ type InstallDraft = {
 
 export function SettingsMcpMarketplace() {
   const language = useLanguage()
-  const session = useSession()
+  const config = useSessionConfig()
   const vscode = useVSCode()
-  const marketplace = session.state.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } }
+  const marketplace = config.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } }
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<MarketplaceCategory>("all")
   const [selectedID, setSelectedID] = useState<string>()
@@ -98,10 +86,10 @@ export function SettingsMcpMarketplace() {
   const [resultError, setResultError] = useState<string>()
 
   useEffect(() => {
-    if ((session.state.mcpMarketplace?.items.length ?? 0) === 0 && !session.state.mcpMarketplace?.loading) {
+    if ((config.mcpMarketplace?.items.length ?? 0) === 0 && !config.mcpMarketplace?.loading) {
       vscode.postMessage({ type: "fetchMcpMarketplace" })
     }
-  }, [session.state.mcpMarketplace?.items.length, session.state.mcpMarketplace?.loading, vscode])
+  }, [config.mcpMarketplace?.items.length, config.mcpMarketplace?.loading, vscode])
 
   useEffect(() => {
     return vscode.onMessage((message) => {
@@ -649,15 +637,6 @@ function remoteHeaders(item: RaccoonMarketplaceMcpItem) {
     seen.add(header.name)
     return true
   })
-}
-
-function installedIn(
-  installed: { project: Record<string, { type: "mcp" }>; user: Record<string, { type: "mcp" }> },
-  id: string,
-): RaccoonMarketplaceScope | undefined {
-  if (installed.project[id]) return "project"
-  if (installed.user[id]) return "user"
-  return undefined
 }
 
 function cleanRecord(record: Record<string, string>) {

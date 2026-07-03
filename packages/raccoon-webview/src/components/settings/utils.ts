@@ -1,7 +1,54 @@
 // Shared helpers for the settings UI. Centralizes small transforms that were
 // previously duplicated across several settings components.
 
+import type { RaccoonMarketplaceScope } from "../../protocol"
+
 type ModelSelection = { providerID: string; modelID: string }
+
+/** Validates a config entity name: starts alphanumeric, then word/dash chars. */
+export const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
+
+/**
+ * Returns `base` if unused, otherwise `base-2`, `base-3`, … up to `base-100`,
+ * picking the first candidate not already present in `existing`.
+ */
+export function uniqueName(base: string, existing: Iterable<string>): string {
+  const names = new Set(existing)
+  return (
+    Array.from({ length: 100 }, (_, index) => (index === 0 ? base : `${base}-${index + 1}`)).find(
+      (candidate) => !names.has(candidate),
+    ) ?? base
+  )
+}
+
+/**
+ * Deterministic accent hue (0–359) per id, so each browser item gets a stable
+ * colored avatar without bundling per-item artwork.
+ */
+export function avatarHue(id: string): number {
+  let hash = 0
+  for (let index = 0; index < id.length; index++) hash = (hash * 31 + id.charCodeAt(index)) % 360
+  return hash
+}
+
+/** Inline style for a hue-based avatar chip (shared by MCP and Skill avatars). */
+export function avatarStyle(hue: number) {
+  return {
+    background: `hsl(${hue} 60% 50% / 0.18)`,
+    color: `hsl(${hue} 70% 70%)`,
+    borderColor: `hsl(${hue} 60% 50% / 0.35)`,
+  }
+}
+
+/** Returns the scope a marketplace item is installed in, or undefined if not installed. */
+export function installedIn<T>(
+  installed: { project: Record<string, T>; user: Record<string, T> },
+  key: string,
+): RaccoonMarketplaceScope | undefined {
+  if (installed.project[key]) return "project"
+  if (installed.user[key]) return "user"
+  return undefined
+}
 
 /**
  * Title-cases an identifier for display: replaces dashes/underscores with
@@ -21,7 +68,8 @@ export function formatModelString(model: ModelSelection): string {
 export function parseModelString(value: unknown): ModelSelection | undefined {
   if (typeof value !== "string") return undefined
   const index = value.indexOf("/")
-  if (index <= 0) return undefined
+  // Reject missing providerID (leading slash) and empty modelID (trailing slash).
+  if (index <= 0 || index === value.length - 1) return undefined
   return { providerID: value.slice(0, index), modelID: value.slice(index + 1) }
 }
 

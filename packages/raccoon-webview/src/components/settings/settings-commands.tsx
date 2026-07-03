@@ -13,8 +13,7 @@ import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
 import { ModelPicker } from "../ui/model-picker"
 import { Select } from "./settings-common"
-
-const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
+import { formatModelString, NAME_RE, parseModelString, uniqueName } from "./utils"
 
 type CommandDraft = {
   scope: RaccoonAgentScope
@@ -31,18 +30,6 @@ type CommandListItem =
   | { type: "config"; command: RaccoonManagedCommand }
   | { type: "builtin"; command: RaccoonCommand }
 
-function modelFromString(value: string | undefined) {
-  if (!value) return undefined
-  const index = value.indexOf("/")
-  if (index <= 0 || index === value.length - 1) return undefined
-  return { providerID: value.slice(0, index), modelID: value.slice(index + 1) }
-}
-
-function modelToString(value: CommandDraft["model"]) {
-  if (!value) return undefined
-  return `${value.providerID}/${value.modelID}`
-}
-
 function commandDraft(command: RaccoonManagedCommand | undefined, scope: RaccoonAgentScope, name: string): CommandDraft {
   return {
     scope,
@@ -50,19 +37,10 @@ function commandDraft(command: RaccoonManagedCommand | undefined, scope: Raccoon
     name: command?.name ?? name,
     description: command?.description ?? "",
     agent: command?.agent ?? "",
-    model: modelFromString(command?.model),
+    model: parseModelString(command?.model),
     subtask: command?.subtask ?? false,
     template: command?.template ?? "",
   }
-}
-
-function uniqueName(base: string, existing: RaccoonManagedCommand[]) {
-  const names = new Set(existing.map((command) => command.name))
-  return (
-    Array.from({ length: 100 }, (_, index) => (index === 0 ? base : `${base}-${index + 1}`)).find(
-      (candidate) => !names.has(candidate),
-    ) ?? base
-  )
 }
 
 function commandInput(draft: CommandDraft): RaccoonManagedCommandInput {
@@ -70,7 +48,7 @@ function commandInput(draft: CommandDraft): RaccoonManagedCommandInput {
     name: draft.name.trim(),
     description: draft.description.trim() || undefined,
     agent: draft.agent.trim() || undefined,
-    model: modelToString(draft.model),
+    model: draft.model ? formatModelString(draft.model) : undefined,
     subtask: draft.subtask || undefined,
     template: draft.template,
   }
@@ -125,7 +103,7 @@ export function SettingsCommands(props: {
 
   const createCommand = () => {
     setSelectedBuiltin(undefined)
-    setDraft(commandDraft(undefined, "project", uniqueName("new-command", commands.filter((command) => command.scope === "project"))))
+    setDraft(commandDraft(undefined, "project", uniqueName("new-command", commands.filter((command) => command.scope === "project").map((command) => command.name))))
   }
   const editCommand = (command: RaccoonManagedCommand) => {
     setSelectedBuiltin(undefined)
@@ -267,7 +245,7 @@ export function SettingsCommands(props: {
                             return {
                               ...current,
                               scope: nextScope,
-                              name: uniqueName(current.name, commands.filter((command) => command.scope === nextScope)),
+                              name: uniqueName(current.name, commands.filter((command) => command.scope === nextScope).map((command) => command.name)),
                             }
                           })
                         }}

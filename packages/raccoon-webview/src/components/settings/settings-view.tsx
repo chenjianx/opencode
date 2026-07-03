@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import { Cloud, FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, TerminalWindow, Translate } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
-import { useSession } from "../../context/session"
+import { useSessionActions, useSessionConfig } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
 import { SettingsAgents } from "./settings-agents"
 import { SettingsAutocomplete } from "./settings-autocomplete"
@@ -19,47 +19,48 @@ function sameModel(a: ModelSelection | undefined, b: ModelSelection | undefined)
   return a?.providerID === b?.providerID && a?.modelID === b?.modelID
 }
 
-export function SettingsView(props: { onClose?: () => void }) {
+export const SettingsView = memo(function SettingsView(props: { onClose?: () => void }) {
   const language = useLanguage()
-  const session = useSession()
+  const config = useSessionConfig()
+  const actions = useSessionActions()
   const [tab, setTab] = useState<"models" | "agents" | "commands" | "rules" | "providers" | "mcp" | "skills" | "language" | "autocomplete">("providers")
-  const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(session.state.pluginLanguageMode ?? "auto")
-  const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(session.state.defaultModel)
-  const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(session.state.modeModels ?? {})
+  const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(config.pluginLanguageMode ?? "auto")
+  const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(config.defaultModel)
+  const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(config.modeModels ?? {})
   const [agentDirty, setAgentDirty] = useState(false)
   const [agentSave, setAgentSave] = useState<(() => void) | undefined>()
   const [agentResetToken, setAgentResetToken] = useState(0)
   const handleAgentSave = useCallback((next: (() => void) | undefined) => setAgentSave(() => next), [])
 
   useEffect(() => {
-    setDraftSelectedModel(session.state.defaultModel)
-    setDraftModeModels(session.state.modeModels ?? {})
-    setDraftPluginLanguageMode(session.state.pluginLanguageMode ?? "auto")
-  }, [session.state.defaultModel, session.state.modeModels, session.state.pluginLanguageMode])
+    setDraftSelectedModel(config.defaultModel)
+    setDraftModeModels(config.modeModels ?? {})
+    setDraftPluginLanguageMode(config.pluginLanguageMode ?? "auto")
+  }, [config.defaultModel, config.modeModels, config.pluginLanguageMode])
 
-  const connectedModels = session.state.models.filter((model) => model.connected)
-  const modeAgents = session.state.agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
+  const connectedModels = config.models.filter((model) => model.connected)
+  const modeAgents = config.agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
   const modes = modeAgents.map((agent) => agent.name)
   const dirty =
-    !sameModel(draftSelectedModel, session.state.defaultModel) ||
-    modes.some((mode) => !sameModel(draftModeModels[mode], session.state.modeModels?.[mode])) ||
-    draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto") ||
+    !sameModel(draftSelectedModel, config.defaultModel) ||
+    modes.some((mode) => !sameModel(draftModeModels[mode], config.modeModels?.[mode])) ||
+    draftPluginLanguageMode !== (config.pluginLanguageMode ?? "auto") ||
     agentDirty
 
   const discard = () => {
-    setDraftSelectedModel(session.state.defaultModel)
-    setDraftModeModels(session.state.modeModels ?? {})
-    setDraftPluginLanguageMode(session.state.pluginLanguageMode ?? "auto")
+    setDraftSelectedModel(config.defaultModel)
+    setDraftModeModels(config.modeModels ?? {})
+    setDraftPluginLanguageMode(config.pluginLanguageMode ?? "auto")
     setAgentDirty(false)
     setAgentResetToken((token) => token + 1)
   }
 
   const save = () => {
-    if (draftSelectedModel && !sameModel(draftSelectedModel, session.state.defaultModel)) session.setModel(draftSelectedModel)
+    if (draftSelectedModel && !sameModel(draftSelectedModel, config.defaultModel)) actions.setModel(draftSelectedModel)
     modes
-      .filter((mode) => !sameModel(draftModeModels[mode], session.state.modeModels?.[mode]))
-      .forEach((mode) => session.setModeModel(mode, draftModeModels[mode]))
-    if (draftPluginLanguageMode !== (session.state.pluginLanguageMode ?? "auto")) session.setPluginLanguage(draftPluginLanguageMode)
+      .filter((mode) => !sameModel(draftModeModels[mode], config.modeModels?.[mode]))
+      .forEach((mode) => actions.setModeModel(mode, draftModeModels[mode]))
+    if (draftPluginLanguageMode !== (config.pluginLanguageMode ?? "auto")) actions.setPluginLanguage(draftPluginLanguageMode)
     if (agentDirty) agentSave?.()
   }
 
@@ -153,36 +154,36 @@ export function SettingsView(props: { onClose?: () => void }) {
             />
           ) : tab === "agents" ? (
             <SettingsAgents
-              agents={session.state.agents}
+              agents={config.agents}
               connectedModels={connectedModels}
               resetToken={agentResetToken}
               onDirtyChange={setAgentDirty}
               onSave={handleAgentSave}
-              onConfigureAgent={session.configureAgent}
-              onDeleteAgent={session.deleteAgent}
+              onConfigureAgent={actions.configureAgent}
+              onDeleteAgent={actions.deleteAgent}
             />
           ) : tab === "commands" ? (
             <SettingsCommands
-              commandConfigs={session.state.commandConfigs ?? []}
-              availableCommands={session.state.commands ?? []}
-              agents={session.state.agents}
+              commandConfigs={config.commandConfigs ?? []}
+              availableCommands={config.commands ?? []}
+              agents={config.agents}
               connectedModels={connectedModels}
-              onSaveCommand={session.saveCommand}
-              onDeleteCommand={session.deleteCommand}
+              onSaveCommand={actions.saveCommand}
+              onDeleteCommand={actions.deleteCommand}
             />
           ) : tab === "language" ? (
             <SettingsLanguage pluginLanguageMode={draftPluginLanguageMode} onPluginLanguageChange={setDraftPluginLanguageMode} />
           ) : tab === "autocomplete" ? (
             <SettingsAutocomplete
-              enabled={session.state.autocompleteEnabled ?? true}
-              onEnabledChange={session.setAutocompleteEnabled}
+              enabled={config.autocompleteEnabled ?? true}
+              onEnabledChange={actions.setAutocompleteEnabled}
             />
           ) : tab === "rules" ? (
             <SettingsRules
-              rules={session.state.rules ?? []}
-              onSaveRule={session.saveRule}
-              onToggleRule={session.toggleRule}
-              onDeleteRule={session.deleteRule}
+              rules={config.rules ?? []}
+              onSaveRule={actions.saveRule}
+              onToggleRule={actions.toggleRule}
+              onDeleteRule={actions.deleteRule}
             />
           ) : tab === "mcp" ? (
             <SettingsMcp />
@@ -197,4 +198,4 @@ export function SettingsView(props: { onClose?: () => void }) {
       <SettingsActions dirty={dirty} onDiscard={discard} onSave={save} />
     </section>
   )
-}
+})
