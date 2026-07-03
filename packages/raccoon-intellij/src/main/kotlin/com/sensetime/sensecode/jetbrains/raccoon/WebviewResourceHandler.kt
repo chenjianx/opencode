@@ -25,9 +25,52 @@ object WebviewResourceHandler {
     const val HOST = "raccoon.localhost"
     const val ORIGIN = "$SCHEME://$HOST"
 
+    /**
+     * Synchronous, classic (non-deferred) shim injected into the served index.html `<head>` before
+     * the React module script. It defines `acquireVsCodeApi` up front so the app never falls back to
+     * the mock when the host's [RaccoonWebview.injectBridge] `executeJavaScript` (queued async on the
+     * JCEF renderer thread from `onLoadStart`) loses the race against the deferred module script.
+     *
+     * Outgoing messages are buffered in `__raccoonOutbox` until the real bridge installs
+     * `__raccoonPost` (backed by a JBCefJSQuery) and flushes them. Without this, an early
+     * `webviewReady` was silently dropped and the provider never hydrated state -> stuck on Loading.
+     */
+    private val BOOTSTRAP_SCRIPT = """
+        <script>
+        (function () {
+          if (window.__raccoonBootstrap) return;
+          window.__raccoonBootstrap = true;
+          var outbox = (window.__raccoonOutbox = window.__raccoonOutbox || []);
+          var vsState;
+          window.acquireVsCodeApi = function () {
+            return {
+              postMessage: function (message) {
+                var payload = JSON.stringify(message);
+                if (window.__raccoonPost) window.__raccoonPost(payload);
+                else outbox.push(payload);
+              },
+              getState: function () { return vsState; },
+              setState: function (s) { vsState = s; },
+            };
+          };
+        })();
+        </script>
+    """.trimIndent()
+
     fun register(browser: JBCefBrowser) {
         browser.jbCefClient.cefClient.let { /* ensure client realized */ }
         org.cef.CefApp.getInstance().registerSchemeHandlerFactory(SCHEME, HOST, Factory())
+    }
+
+    /** Injects [BOOTSTRAP_SCRIPT] right after the opening `<head>` so it runs before any script. */
+    internal fun injectBootstrap(html: String): String {
+        val marker = "<head>"
+        val idx = html.indexOf(marker)
+        return if (idx >= 0) {
+            html.substring(0, idx + marker.length) + "\n" + BOOTSTRAP_SCRIPT + html.substring(idx + marker.length)
+        } else {
+            BOOTSTRAP_SCRIPT + html
+        }
     }
 
     private class Factory : CefSchemeHandlerFactory {
@@ -56,6 +99,12 @@ object WebviewResourceHandler {
                 status = 404
                 stream = "Not found: $path".byteInputStream()
                 mimeType = "text/plain"
+            } else if (path == "/index.html") {
+                // Rewrite index.html to inject the acquireVsCodeApi bootstrap ahead of the React
+                // module script (see BOOTSTRAP_SCRIPT). Read fully; the doc is tiny.
+                val html = resource.use { it.readBytes().toString(Charsets.UTF_8) }
+                stream = injectBootstrap(html).byteInputStream()
+                mimeType = "text/html"
             } else {
                 stream = resource
                 mimeType = mimeFor(path)

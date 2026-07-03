@@ -41,12 +41,17 @@
     @apply flex min-h-0 flex-1 overflow-hidden;
   }
 
+  .settings-shell {
+    container-type: inline-size;
+    container-name: settings-shell;
+  }
+
   .settings-view {
     @apply h-full flex-col bg-[var(--color-background)] px-[5px];
   }
 
   .settings-header {
-    @apply flex shrink-0 items-center justify-between gap-3 border-b border-[var(--color-border)] px-[5px] pb-[10px] pt-3;
+    @apply flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-[5px] pb-[10px] pt-3;
   }
 
   .settings-title {
@@ -63,6 +68,26 @@
 
   .settings-nav-item {
     @apply flex min-h-[30px] w-full items-center gap-2 rounded-[5px] border border-transparent bg-transparent px-2 text-left text-[var(--color-foreground)] hover:bg-[var(--color-hover)];
+  }
+
+  .settings-nav-label {
+    @apply min-w-0 truncate;
+  }
+
+  /* Collapse the nav to icon-only when the settings pane gets too narrow so the
+     content area is never squeezed out of shape. */
+  @container settings-shell (max-width: 480px) {
+    .settings-nav {
+      @apply w-auto;
+    }
+
+    .settings-nav-item {
+      @apply justify-center px-1.5;
+    }
+
+    .settings-nav-label {
+      @apply hidden;
+    }
   }
 
   .settings-nav-item.active {

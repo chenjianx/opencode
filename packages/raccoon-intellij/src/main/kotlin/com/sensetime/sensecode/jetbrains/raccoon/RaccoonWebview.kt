@@ -19,10 +19,12 @@ import javax.swing.JComponent
  * Hosts the raccoon-webview React UI in a JCEF browser and wires the `acquireVsCodeApi` bridge.
  *
  * The webview's built assets are served from the plugin classpath under a virtual origin
- * (`http://raccoon.localhost/`) by [WebviewResourceHandler]. Once the page loads we inject the
- * shim that backs `acquireVsCodeApi().postMessage` with a [JBCefJSQuery], and expose
- * `window.__raccoonReceive(json)` so the host can push messages in by dispatching a
- * `message` event (matching `window.addEventListener("message")` in vscode.tsx).
+ * (`http://raccoon.localhost/`) by [WebviewResourceHandler], which also injects a synchronous
+ * `acquireVsCodeApi` bootstrap into index.html so the API exists before the React module runs.
+ * Once the page loads we install the real transport (`__raccoonPost` backed by a [JBCefJSQuery],
+ * flushing any buffered outgoing messages) and expose `window.__raccoonReceive(json)` so the host
+ * can push messages in by dispatching a `message` event (matching `window.addEventListener("message")`
+ * in vscode.tsx).
  */
 class RaccoonWebview(
     /** Which webview surface this instance backs ("chat" or "settings"); tags outgoing messages. */
@@ -58,8 +60,9 @@ class RaccoonWebview(
 
         browser.jbCefClient.addLoadHandler(object : CefLoadHandlerAdapter() {
             override fun onLoadStart(cefBrowser: CefBrowser, frame: CefFrame, transitionType: CefRequest.TransitionType?) {
-                // Deferred module scripts (the React app) run after parsing, so injecting here
-                // guarantees acquireVsCodeApi + theme vars exist before the app mounts.
+                // The acquireVsCodeApi shim is defined synchronously by the injected index.html
+                // bootstrap; here we wire the real host transport and theme vars. Buffered outgoing
+                // messages (posted before this ran) are flushed inside injectBridge.
                 if (frame.isMain) {
                     injectBridge()
                     injectThemeSnapshot()
@@ -126,27 +129,26 @@ class RaccoonWebview(
     }
 
     private fun injectBridge() {
-        // postMessage(msg) -> JBCefJSQuery -> host; window.__raccoonReceive(json) -> message event.
+        // The served index.html already defines acquireVsCodeApi synchronously (see
+        // WebviewResourceHandler.BOOTSTRAP_SCRIPT), buffering outgoing messages in __raccoonOutbox.
+        // Here we install the real transport: __raccoonPost -> JBCefJSQuery -> host, drain any
+        // messages the app already queued (e.g. webviewReady posted before this ran), and expose
+        // __raccoonReceive so the host can push messages in as `message` events.
         val inject = jsQuery.inject("payload")
         val script = """
             (function () {
               if (window.__raccoonBridgeReady) return;
               window.__raccoonBridgeReady = true;
-              const state = {};
-              window.acquireVsCodeApi = function () {
-                return {
-                  postMessage: function (message) {
-                    const payload = JSON.stringify(message);
-                    $inject
-                  },
-                  getState: function () { return window.__raccoonState; },
-                  setState: function (s) { window.__raccoonState = s; },
-                };
+              window.__raccoonPost = function (payload) {
+                $inject
               };
               window.__raccoonReceive = function (json) {
                 const data = JSON.parse(json);
                 window.dispatchEvent(new MessageEvent('message', { data: data }));
               };
+              const outbox = window.__raccoonOutbox || [];
+              window.__raccoonOutbox = [];
+              while (outbox.length > 0) window.__raccoonPost(outbox.shift());
             })();
         """.trimIndent()
         browser.cefBrowser.executeJavaScript(script, browser.cefBrowser.url, 0)

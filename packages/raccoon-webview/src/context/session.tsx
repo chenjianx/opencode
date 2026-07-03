@@ -63,6 +63,7 @@ type SessionStateContextValue = {
   permissions: RaccoonPermissionRequest[]
   permissionErrors: Set<string>
   autoApprovePermissions: boolean
+  settingsInline: boolean
 }
 
 type SessionActionsContextValue = {
@@ -160,14 +161,22 @@ export function SessionProvider(props: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<RaccoonPermissionRequest[]>([])
   const [permissionErrors, setPermissionErrors] = useState<Set<string>>(() => new Set())
   const [autoApproveSessions, setAutoApproveSessions] = useState<Set<string>>(() => new Set())
+  // Client-only flag: settings is being shown inline in the chat surface (JetBrains) rather than
+  // in a dedicated settings webview (VSCode). Drives the Back button and survives state refreshes.
+  const [settingsInline, setSettingsInline] = useState(false)
   const stateRef = useRef(state)
   const questionsRef = useRef(questions)
   const permissionsRef = useRef(permissions)
   const autoApproveRef = useRef(autoApproveSessions)
+  const settingsInlineRef = useRef(settingsInline)
 
   useEffect(() => {
     stateRef.current = state
   }, [state])
+
+  useEffect(() => {
+    settingsInlineRef.current = settingsInline
+  }, [settingsInline])
 
   useEffect(() => {
     questionsRef.current = questions
@@ -188,10 +197,14 @@ export function SessionProvider(props: { children: ReactNode }) {
         setState((current) => {
           // postState() always forces view: "chat". Stay in the sub-agent view if the
           // user opened one — it is driven by dedicated showSubAgent/closeSubAgent messages.
+          // Likewise stay in inline settings (JetBrains) across refreshes; it is driven by
+          // dedicated showSettings/showChat messages, not by state frames.
           const next =
             current.view === "subagent"
               ? { ...incoming, view: "subagent" as const, subAgentView: current.subAgentView }
-              : incoming
+              : settingsInlineRef.current && current.view === "settings"
+                ? { ...incoming, view: "settings" as const }
+                : incoming
           vscode.setState(next)
           return next
         })
@@ -368,8 +381,27 @@ export function SessionProvider(props: { children: ReactNode }) {
         return
       }
       if (message.type === "showHistory") {
+        setSettingsInline(false)
         setState((current) => {
           const next = { ...current, view: "history" as const }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "showSettings") {
+        setSettingsInline(true)
+        setState((current) => {
+          const next = { ...current, view: "settings" as const }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "showChat") {
+        setSettingsInline(false)
+        setState((current) => {
+          const next = { ...current, view: "chat" as const }
           vscode.setState(next)
           return next
         })
@@ -466,13 +498,15 @@ export function SessionProvider(props: { children: ReactNode }) {
       permissions,
       permissionErrors,
       autoApprovePermissions: !!state.activeSessionID && autoApproveSessions.has(state.activeSessionID),
+      settingsInline,
     }
-  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, state])
+  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, state, settingsInline])
 
   const sessionActions = useMemo<SessionActionsContextValue>(() => {
     return {
       canSend: (text, files = []) => (text.trim().length > 0 || files.length > 0) && !stateRef.current.busy,
       showChat: () => {
+        setSettingsInline(false)
         setState((current) => {
           const next = { ...current, view: "chat" as const }
           vscode.setState(next)

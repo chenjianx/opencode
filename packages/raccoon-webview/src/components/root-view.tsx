@@ -33,7 +33,8 @@ export function RootView() {
     return <LoginView expired={wasLoggedIn.current} />
   }
 
-  if (session.state.view === "settings") return <SettingsView />
+  if (session.state.view === "settings")
+    return <SettingsView onClose={session.settingsInline ? () => session.showChat() : undefined} />
   if (session.state.view === "history") return <HistoryView onClose={() => session.showChat()} />
   if (session.state.view === "subagent") return <SubAgentView />
   // First entry: the extension posts an intermediate `loading: true` state (with the auth

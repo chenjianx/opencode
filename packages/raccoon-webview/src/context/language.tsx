@@ -22,10 +22,10 @@ const LanguageContext = createContext<LanguageContextValue | undefined>(undefine
 
 function normalizeLocale(value: string | undefined): Locale {
   const normalized = value?.toLowerCase()
-  if (!normalized) return "en"
+  if (!normalized) return "zh-Hans"
   if (normalized.startsWith("zh-tw") || normalized.startsWith("zh-hk") || normalized.startsWith("zh-mo")) return "zh-Hant"
   if (normalized.startsWith("zh")) return "zh-Hans"
-  return "en"
+  return "zh-Hans"
 }
 
 function resolveLocale(mode: RaccoonPluginLanguageMode | undefined, fallback: string | undefined) {

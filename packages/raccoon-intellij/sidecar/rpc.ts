@@ -19,8 +19,6 @@ export type HostToSidecar =
 // post to a webview surface, plus out-of-band signals the Kotlin host needs.
 export type SidecarToHost =
   | { type: "post"; source: RaccoonWebviewSource; message: ExtensionToWebview }
-  | { type: "openSettings" }
-  | { type: "closeSettings" }
   | { type: "serverPort"; port: number | null }
   | { type: "log"; message: string }
   | { type: "ready" }

@@ -196,7 +196,7 @@ export const dict = {
   "settings.language.title": "语言",
   "settings.language.plugin.title": "插件语言",
   "settings.language.plugin.description": "控制 Raccoon 插件使用的语言。",
-  "settings.language.plugin.auto": "自动（跟随 VS Code 语言）",
+  "settings.language.plugin.auto": "自动",
   "settings.autocomplete.title": "自动补全",
   "settings.autocomplete.enable.title": "行内自动补全",
   "settings.autocomplete.enable.description": "输入时显示行内（灰字）补全建议。",

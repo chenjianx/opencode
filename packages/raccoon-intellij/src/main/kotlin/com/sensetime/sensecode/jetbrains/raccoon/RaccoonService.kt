@@ -8,20 +8,16 @@ import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
-import com.intellij.ui.content.Content
 import com.intellij.ui.content.ContentFactory
-import com.intellij.ui.content.ContentManagerEvent
-import com.intellij.ui.content.ContentManagerListener
 import java.io.File
 
 /**
- * Project-scoped owner of the Raccoon sidecar + webview surfaces. Spawns the Node sidecar, builds
- * the JCEF webview(s), and routes messages between them following the stdio RPC protocol in rpc.ts.
+ * Project-scoped owner of the Raccoon sidecar + webview surface. Spawns the Node sidecar, builds
+ * the JCEF webview, and routes messages between them following the stdio RPC protocol in rpc.ts.
  *
- * Two webview surfaces mirror the VSCode host: the always-present "chat" surface and a lazily
- * created "settings" surface (a second tool-window tab, opened on the sidecar's `openSettings`
- * signal). Each surface tags its outgoing messages with its own `source`; the sidecar's provider
- * owns readiness + state hydration per surface.
+ * There is a single "chat" webview surface. Unlike the VSCode host (which opens settings in a
+ * separate editor panel), settings and history both render inline in this one webview, driven by
+ * `showSettings`/`showHistory`/`showChat` messages from the sidecar's provider.
  *
  * Created lazily by [RaccoonToolWindowFactory]; disposed with the project.
  */
@@ -29,12 +25,10 @@ import java.io.File
 class RaccoonService(private val project: Project) : Disposable {
     private val log = logger<RaccoonService>()
     private var chatWebview: RaccoonWebview? = null
-    private var settingsWebview: RaccoonWebview? = null
     private var sidecar: SidecarProcess? = null
     private var serverPort: Int? = null
 
     private var toolWindow: ToolWindow? = null
-    private var settingsContent: Content? = null
 
     /** Last chat-mode seen in a state frame; used when creating a session (parity with the webview). */
     @Volatile
@@ -88,7 +82,7 @@ class RaccoonService(private val project: Project) : Disposable {
         sendChatMessage("""{"type":"openHistory"}""")
     }
 
-    /** Ask the provider to open settings; the sidecar replies with `openSettings`, which opens the tab. */
+    /** Switch the chat surface to settings (rendered inline via `showSettings`, like history). */
     fun openSettings() {
         sendChatMessage("""{"type":"openSettings"}""")
     }
@@ -102,19 +96,15 @@ class RaccoonService(private val project: Project) : Disposable {
         sidecar?.send("""{"type":"webviewMessage","source":"$source","message":$json}""")
     }
 
-    /** sidecar -> host: handle lifecycle frames; relay `post` payloads into the matching surface. */
+    /** sidecar -> host: handle lifecycle frames; relay `post` payloads into the chat surface. */
     private fun onSidecarMessage(json: String) {
         val obj = runCatching { JsonParser.parseString(json).asJsonObject }.getOrNull() ?: return
         when (obj.get("type")?.asString) {
             "post" -> {
                 val message = obj.get("message") ?: return
-                val source = obj.get("source")?.takeIf { !it.isJsonNull }?.asString ?: "chat"
                 trackMode(message)
                 ApplicationManager.getApplication().invokeLater {
-                    when (source) {
-                        "settings" -> settingsWebview?.postToWebview(message.toString())
-                        else -> chatWebview?.postToWebview(message.toString())
-                    }
+                    chatWebview?.postToWebview(message.toString())
                 }
             }
             "serverPort" -> {
@@ -123,8 +113,6 @@ class RaccoonService(private val project: Project) : Disposable {
             }
             "log" -> log.info("[sidecar] ${obj.get("message")?.asString}")
             "ready" -> log.info("Raccoon sidecar ready")
-            "openSettings" -> ApplicationManager.getApplication().invokeLater { openSettingsTab() }
-            "closeSettings" -> ApplicationManager.getApplication().invokeLater { closeSettingsTab() }
         }
     }
 
@@ -135,52 +123,10 @@ class RaccoonService(private val project: Project) : Disposable {
         obj.getAsJsonObject("state")?.get("mode")?.takeIf { !it.isJsonNull }?.asString?.let { currentMode = it }
     }
 
-    /** Open (or reveal) the settings surface as a second tool-window tab. Must run on the EDT. */
-    private fun openSettingsTab() {
-        val toolWindow = toolWindow ?: return
-        settingsContent?.let {
-            toolWindow.contentManager.setSelectedContent(it)
-            return
-        }
-        val view = RaccoonWebview(source = "settings", onWebviewMessage = { onWebviewMessage("settings", it) })
-        Disposer.register(this, view)
-        settingsWebview = view
-
-        val content = ContentFactory.getInstance().createContent(view.component, "Settings", false).apply {
-            isCloseable = true
-        }
-        settingsContent = content
-        toolWindow.contentManager.addContent(content)
-        toolWindow.contentManager.setSelectedContent(content)
-        toolWindow.contentManager.addContentManagerListener(object : ContentManagerListener {
-            override fun contentRemoved(event: ContentManagerEvent) {
-                if (event.content !== content) return
-                toolWindow.contentManager.removeContentManagerListener(this)
-                // User closed the tab: mirror to the provider so its settings surface state resets.
-                if (settingsContent === content) {
-                    settingsContent = null
-                    settingsWebview?.let { Disposer.dispose(it) }
-                    settingsWebview = null
-                    sidecar?.send("""{"type":"webviewMessage","source":"settings","message":{"type":"closeSettings"}}""")
-                }
-            }
-        })
-    }
-
-    /** Close the settings tab in response to the sidecar's `closeSettings` (e.g. logout). EDT only. */
-    private fun closeSettingsTab() {
-        val content = settingsContent ?: return
-        settingsContent = null
-        settingsWebview = null
-        toolWindow?.contentManager?.removeContent(content, true)
-    }
-
     override fun dispose() {
         sidecar?.dispose()
         sidecar = null
         chatWebview = null
-        settingsWebview = null
-        settingsContent = null
         toolWindow = null
     }
 }

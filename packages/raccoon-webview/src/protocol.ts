@@ -612,6 +612,8 @@ export type ExtensionToWebview =
   | ({ type: "partUpdated" } & RaccoonPartUpdate)
   | { type: "partsUpdated"; updates: RaccoonPartUpdate[] }
   | { type: "showHistory" }
+  | { type: "showSettings" }
+  | { type: "showChat" }
   | { type: "showSubAgent"; view: RaccoonSubAgentView }
   | { type: "closeSubAgent" }
   | {
