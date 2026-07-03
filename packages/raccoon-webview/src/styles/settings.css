@@ -104,6 +104,11 @@
 
   .settings-content {
     @apply min-w-0 flex-1 overflow-auto px-3 pb-[18px] pt-3;
+    /* Drive the inner grid breakpoints off the actual content width (which is
+       the pane width minus the nav) rather than the whole webview viewport, so
+       the two-column layouts fold on real available space and never deform. */
+    container-type: inline-size;
+    container-name: settings-content;
   }
 
   .settings-content h3 {
@@ -139,7 +144,13 @@
   }
 
   .settings-agent-shell {
-    @apply grid min-h-0 grid-cols-[minmax(190px,250px)_minmax(0,1fr)] gap-3 max-[760px]:grid-cols-1;
+    @apply grid min-h-0 grid-cols-[minmax(190px,250px)_minmax(0,1fr)] gap-3;
+  }
+
+  @container settings-content (max-width: 500px) {
+    .settings-agent-shell {
+      @apply grid-cols-1;
+    }
   }
 
   .settings-agent-list {
@@ -180,6 +191,8 @@
 
   .settings-agent-panel {
     @apply overflow-visible;
+    container-type: inline-size;
+    container-name: settings-agent-panel;
   }
 
   .settings-agent-panel-header {
@@ -203,7 +216,13 @@
   }
 
   .settings-agent-panel .settings-row {
-    @apply grid grid-cols-[minmax(150px,210px)_minmax(0,1fr)] items-start gap-4 max-[620px]:grid-cols-1;
+    @apply grid grid-cols-[minmax(150px,210px)_minmax(0,1fr)] items-start gap-4;
+  }
+
+  @container settings-agent-panel (max-width: 460px) {
+    .settings-agent-panel .settings-row {
+      @apply grid-cols-1;
+    }
   }
 
   .settings-agent-panel .settings-row-control {
@@ -380,11 +399,21 @@
   }
 
   .settings-browser-layout {
-    @apply grid min-h-[420px] grid-cols-[minmax(220px,320px)_minmax(0,1fr)] overflow-hidden rounded-[6px] border border-[var(--color-border)] max-[760px]:grid-cols-1;
+    @apply grid min-h-[420px] grid-cols-[minmax(220px,320px)_minmax(0,1fr)] overflow-hidden rounded-[6px] border border-[var(--color-border)];
   }
 
   .settings-browser-list {
-    @apply min-h-0 overflow-auto border-r border-[var(--color-border)] max-[760px]:max-h-[320px] max-[760px]:border-b max-[760px]:border-r-0;
+    @apply min-h-0 overflow-auto border-r border-[var(--color-border)];
+  }
+
+  @container settings-content (max-width: 560px) {
+    .settings-browser-layout {
+      @apply grid-cols-1;
+    }
+
+    .settings-browser-list {
+      @apply max-h-[320px] border-b border-r-0;
+    }
   }
 
   .settings-browser-item {
@@ -696,11 +725,21 @@
   }
 
   .settings-rules-shell {
-    @apply flex min-h-0 flex-1 gap-3 max-[760px]:flex-col;
+    @apply flex min-h-0 flex-1 gap-3;
   }
 
   .settings-rules-pane {
-    @apply min-h-0 w-[180px] shrink-0 overflow-auto rounded-[8px] p-1 max-[760px]:max-h-[40vh] max-[760px]:w-full;
+    @apply min-h-0 w-[180px] shrink-0 overflow-auto rounded-[8px] p-1;
+  }
+
+  @container settings-content (max-width: 560px) {
+    .settings-rules-shell {
+      @apply flex-col;
+    }
+
+    .settings-rules-pane {
+      @apply max-h-[40vh] w-full;
+    }
   }
 
   .settings-rules-tree {
@@ -769,7 +808,13 @@
   }
 
   .settings-rules-editor {
-    @apply flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] max-[760px]:min-h-[320px];
+    @apply flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)];
+  }
+
+  @container settings-content (max-width: 560px) {
+    .settings-rules-editor {
+      @apply min-h-[320px];
+    }
   }
 
   .settings-rules-editor-header {
@@ -849,7 +894,13 @@
   }
 
   .settings-commands-pane {
-    @apply w-[260px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-1.5 max-[760px]:w-full;
+    @apply w-[260px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-1.5;
+  }
+
+  @container settings-content (max-width: 560px) {
+    .settings-commands-pane {
+      @apply w-full;
+    }
   }
 
   .settings-commands-node {
@@ -904,6 +955,8 @@
 
   .settings-commands-editor {
     @apply min-w-0 rounded-[8px];
+    container-type: inline-size;
+    container-name: settings-commands-editor;
   }
 
   .settings-commands-editor-header {
@@ -915,7 +968,13 @@
   }
 
   .settings-commands-editor-body {
-    @apply grid auto-rows-min grid-cols-2 gap-x-4 gap-y-3 overflow-y-auto bg-[var(--color-background)] p-4 max-[920px]:grid-cols-1;
+    @apply grid auto-rows-min grid-cols-2 gap-x-4 gap-y-3 overflow-y-auto bg-[var(--color-background)] p-4;
+  }
+
+  @container settings-commands-editor (max-width: 520px) {
+    .settings-commands-editor-body {
+      @apply grid-cols-1;
+    }
   }
 
   .settings-commands-field {
