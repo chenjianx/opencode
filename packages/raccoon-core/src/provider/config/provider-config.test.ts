@@ -224,7 +224,7 @@ describe("RaccoonProviderConfig", () => {
     }
   })
 
-  test("project-scope agent config is written to the loaded opencode.json", async () => {
+  test("project-scope agent config defaults to raccoon.json in an empty project", async () => {
     const dir = await mkdtemp(join(tmpdir(), "raccoon-agent-"))
     try {
       let disposed = false
@@ -250,7 +250,7 @@ describe("RaccoonProviderConfig", () => {
         agent: { name: "reviewer", description: "review code", mode: "subagent" },
       } as never)
 
-      const written = JSON.parse(await readFile(join(dir, "opencode.json"), "utf8"))
+      const written = JSON.parse(await readFile(join(dir, "raccoon.json"), "utf8"))
       expect(written.agent?.reviewer).toMatchObject({ description: "review code", mode: "subagent" })
       // The change must flush the instance cache and refresh the webview state.
       expect(disposed).toBe(true)
@@ -491,7 +491,8 @@ describe("RaccoonProviderConfig", () => {
         agent: { name: "helper", mode: "subagent", description: "global helper" },
       } as never)
 
-      const written = JSON.parse(await readFile(join(globalDir, "opencode.json"), "utf8"))
+      // Empty global dir → defaults to the raccoon-branded config file.
+      const written = JSON.parse(await readFile(join(globalDir, "raccoon.json"), "utf8"))
       expect(written.agent?.helper).toMatchObject({ mode: "subagent", description: "global helper" })
       expect(globalDisposed).toBe(true)
     } finally {

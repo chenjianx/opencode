@@ -2,6 +2,7 @@ import { access, cp, lstat, mkdir, readdir, rm } from "node:fs/promises"
 import { homedir, tmpdir } from "node:os"
 import { dirname, join, resolve, sep } from "node:path"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import { pickProjectConfigDirName } from "../../provider/config/config-paths.js"
 import { assertGitAvailable, looksLikeAuthError, runGit } from "./git.js"
 import { parseSkillRepoSource } from "./source.js"
 import type {
@@ -19,7 +20,7 @@ const SKILL_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/
 export class SkillMarketplaceInstaller {
   async detect(client: OpencodeClient, directory: string): Promise<SkillMarketplaceInstalledMetadata> {
     const [project, user] = await Promise.all([
-      listSkillNames(projectSkillRoot(directory)),
+      projectSkillRoot(directory).then(listSkillNames),
       this.userSkillRoot(client, directory).then(listSkillNames),
     ])
     return {
@@ -34,7 +35,7 @@ export class SkillMarketplaceInstaller {
     // on-disk scan of .opencode/skills + <config>/skills alone misses all of those.
     const [response, projectRoot, userRoot] = await Promise.all([
       client.app.skills({ directory }, { throwOnError: true }),
-      Promise.resolve(projectSkillRoot(directory)),
+      projectSkillRoot(directory),
       this.userSkillRoot(client, directory),
     ])
     const skills = response.data ?? []
@@ -121,17 +122,17 @@ export class SkillMarketplaceInstaller {
   }
 
   private async targetDir(client: OpencodeClient, directory: string, name: string, scope: SkillMarketplaceScope) {
-    return join(scope === "project" ? projectSkillRoot(directory) : await this.userSkillRoot(client, directory), name)
+    return join(scope === "project" ? await projectSkillRoot(directory) : await this.userSkillRoot(client, directory), name)
   }
 
   private async userSkillRoot(client: OpencodeClient, directory: string) {
     const response = await client.path.get({ directory }, { throwOnError: true })
-    return join(response.data?.config ?? join(homedir(), ".config", "opencode"), "skills")
+    return join(response.data?.config ?? join(homedir(), ".config", "raccoon"), "skills")
   }
 }
 
-function projectSkillRoot(directory: string) {
-  return join(directory, ".opencode", "skills")
+async function projectSkillRoot(directory: string) {
+  return join(directory, await pickProjectConfigDirName(directory), "skills")
 }
 
 async function reloadSkills(client: OpencodeClient, directory: string, scope: SkillMarketplaceScope) {

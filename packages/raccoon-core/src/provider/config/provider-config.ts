@@ -24,6 +24,7 @@ import { collectRules } from "./rules-config.js"
 import { collectCommands } from "./commands-config.js"
 import { isRaccoonLoggedIn, isRaccoonLoginExpired } from "../session/raccoon-auth-state.js"
 import type { KeyValueStore, RaccoonWebviewSource, WebviewTransport } from "../platform.js"
+import { GLOBAL_CONFIG_FILES, PROJECT_CONFIG_FILES, pickConfigFile } from "./config-paths.js"
 
 type ProviderConfigDeps = {
   client: () => Promise<OpencodeClient>
@@ -303,10 +304,12 @@ export class RaccoonProviderConfig {
     // which opencode never loads as project config (it only reads
     // `opencode.json`/`opencode.jsonc`). Write directly to the loaded file so
     // the change actually takes effect.
-    const file = await pickConfigFile(this.deps.directory(), PROJECT_CONFIG_FILES, "opencode.json")
+    const file = await pickConfigFile(this.deps.directory(), PROJECT_CONFIG_FILES)
     const wrote = await writeAgentToFile(file, name, value)
     const deletedMarkdown =
-      value === undefined ? await deleteAgentMarkdownFiles(nodePath.join(this.deps.directory(), ".opencode"), name) : false
+      value === undefined
+        ? await deleteProjectAgentMarkdownFiles(this.deps.directory(), name)
+        : false
     return wrote || deletedMarkdown
   }
 
@@ -315,7 +318,7 @@ export class RaccoonProviderConfig {
     const pathInfo = await client.path.get({ directory: this.deps.directory() }, { throwOnError: true })
     const configDir = pathInfo.data?.config
     if (!configDir) return
-    const file = await pickConfigFile(configDir, GLOBAL_CONFIG_FILES, "opencode.json")
+    const file = await pickConfigFile(configDir, GLOBAL_CONFIG_FILES)
 
     await client.global.config.update(
       {
@@ -570,7 +573,7 @@ export class RaccoonProviderConfig {
     const pathInfo = await client.path.get({ directory: this.deps.directory() }, { throwOnError: true })
     const configDir = pathInfo.data?.config
     if (!configDir) throw new Error("Unable to resolve the global opencode config directory")
-    return pickConfigFile(configDir, GLOBAL_CONFIG_FILES, "opencode.json")
+    return pickConfigFile(configDir, GLOBAL_CONFIG_FILES)
   }
 
   async configureCustomProvider(message: Extract<WebviewToExtension, { type: "configureCustomProvider" }>) {
@@ -748,22 +751,6 @@ function collectAgentOverrides(
   return overrides
 }
 
-const PROJECT_CONFIG_FILES = ["opencode.jsonc", "opencode.json"]
-const GLOBAL_CONFIG_FILES = ["opencode.jsonc", "opencode.json", "config.json"]
-
-async function pickConfigFile(dir: string, candidates: string[], fallback: string): Promise<string> {
-  for (const candidate of candidates) {
-    const candidatePath = nodePath.join(dir, candidate)
-    try {
-      await fs.access(candidatePath)
-      return candidatePath
-    } catch {
-      // not present, try the next candidate
-    }
-  }
-  return nodePath.join(dir, fallback)
-}
-
 // Set, replace, or (when value is undefined) delete `agent[name]` in a JSON
 // config file. We read/modify/write the JSON ourselves (rather than via the
 // merge-only SDK) so we can clear stale keys and actually remove an agent.
@@ -848,6 +835,15 @@ async function deleteAgentMarkdownFiles(dir: string, name: string) {
   return deleted.some(Boolean)
 }
 
+// Project agent markdown may live under either the raccoon or the legacy opencode
+// config dir; delete from both so a removed agent leaves nothing behind.
+async function deleteProjectAgentMarkdownFiles(directory: string, name: string) {
+  const results = await Promise.all(
+    [".raccoon", ".opencode"].map((dir) => deleteAgentMarkdownFiles(nodePath.join(directory, dir), name)),
+  )
+  return results.some(Boolean)
+}
+
 function parseConfig(raw: string, file: string) {
   const errors: ParseError[] = []
   const parsed = parseJsonc(raw, errors, { allowTrailingComma: true })
@@ -862,12 +858,14 @@ function parseConfig(raw: string, file: string) {
 
 async function collectProjectAgentNames(directory: string) {
   const names = new Set<string>()
-  for (const dir of [directory, nodePath.join(directory, ".opencode")]) {
-    const file = await pickConfigFile(dir, PROJECT_CONFIG_FILES, "opencode.json")
+  for (const dir of [directory, nodePath.join(directory, ".raccoon"), nodePath.join(directory, ".opencode")]) {
+    const file = await pickConfigFile(dir, PROJECT_CONFIG_FILES)
     const config = await readConfigFile(file)
     for (const name of Object.keys(config.agent ?? {})) names.add(name)
   }
-  for (const name of await collectAgentMarkdownNames(nodePath.join(directory, ".opencode"))) names.add(name)
+  for (const dir of [".raccoon", ".opencode"]) {
+    for (const name of await collectAgentMarkdownNames(nodePath.join(directory, dir))) names.add(name)
+  }
   return names
 }
 

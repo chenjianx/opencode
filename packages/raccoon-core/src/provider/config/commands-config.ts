@@ -2,6 +2,7 @@ import * as fs from "node:fs/promises"
 import * as nodePath from "node:path"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import type { RaccoonAgentScope, RaccoonManagedCommand, RaccoonManagedCommandInput, WebviewToExtension } from "@opencode-ai/raccoon-webview"
+import { pickProjectConfigDirName } from "./config-paths.js"
 
 const COMMAND_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
 
@@ -27,7 +28,7 @@ export async function commandsContext(
     if (!configDir) return undefined
     return { scope, dir: nodePath.join(configDir, "commands") }
   }
-  return { scope, dir: nodePath.join(directory, ".opencode", "commands") }
+  return { scope, dir: nodePath.join(directory, await pickProjectConfigDirName(directory), "commands") }
 }
 
 export async function collectCommands(

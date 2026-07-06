@@ -1,7 +1,8 @@
 import { applyEdits, modify, parse, type ParseError } from "jsonc-parser/lib/esm/main.js"
-import { access, mkdir, readFile, writeFile } from "node:fs/promises"
-import { dirname, join } from "node:path"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { dirname } from "node:path"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import { GLOBAL_CONFIG_FILES, PROJECT_CONFIG_FILES, pickConfigFile } from "../../provider/config/config-paths.js"
 import type {
   MarketplaceInstalledMetadata,
   MarketplaceInstalledServer,
@@ -14,15 +15,12 @@ import type {
   McpServerConfig,
 } from "./types.js"
 
-const PROJECT_CONFIG_FILES = ["opencode.jsonc", "opencode.json"]
-const GLOBAL_CONFIG_FILES = ["opencode.jsonc", "opencode.json", "config.json"]
-
 type McpConfig = McpServerConfig
 
 export class MarketplaceInstaller {
   async detect(client: OpencodeClient, directory: string): Promise<MarketplaceInstalledMetadata> {
     const [project, user] = await Promise.all([
-      readMcpIDs(await pickConfigFile(directory, PROJECT_CONFIG_FILES, "opencode.json")),
+      readMcpIDs(await pickConfigFile(directory, PROJECT_CONFIG_FILES)),
       this.globalConfigFile(client, directory).then(readMcpIDs),
     ])
     return {
@@ -33,7 +31,7 @@ export class MarketplaceInstaller {
 
   async listInstalled(client: OpencodeClient, directory: string): Promise<MarketplaceInstalledServer[]> {
     const [project, user] = await Promise.all([
-      readMcpEntries(await pickConfigFile(directory, PROJECT_CONFIG_FILES, "opencode.json")),
+      readMcpEntries(await pickConfigFile(directory, PROJECT_CONFIG_FILES)),
       this.globalConfigFile(client, directory).then(readMcpEntries),
     ])
     return [
@@ -153,28 +151,15 @@ export class MarketplaceInstaller {
   }
 
   private async configFile(client: OpencodeClient, directory: string, scope: MarketplaceScope) {
-    if (scope === "project") return await pickConfigFile(directory, PROJECT_CONFIG_FILES, "opencode.json")
+    if (scope === "project") return await pickConfigFile(directory, PROJECT_CONFIG_FILES)
     return await this.globalConfigFile(client, directory)
   }
 
   private async globalConfigFile(client: OpencodeClient, directory: string) {
     const response = await client.path.get({ directory }, { throwOnError: true })
     if (!response.data?.config) throw new Error("Unable to resolve Raccoon config directory")
-    return await pickConfigFile(response.data.config, GLOBAL_CONFIG_FILES, "opencode.json")
+    return await pickConfigFile(response.data.config, GLOBAL_CONFIG_FILES)
   }
-}
-
-async function pickConfigFile(dir: string, candidates: string[], fallback: string) {
-  for (const candidate of candidates) {
-    const file = join(dir, candidate)
-    try {
-      await access(file)
-      return file
-    } catch {
-      // Try the next candidate.
-    }
-  }
-  return join(dir, fallback)
 }
 
 async function writeMcpToFile(

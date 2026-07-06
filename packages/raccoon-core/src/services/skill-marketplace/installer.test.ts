@@ -100,4 +100,26 @@ describe("SkillMarketplaceInstaller", () => {
       await rm(configDir, { recursive: true, force: true })
     }
   })
+
+  test("prefers the .raccoon project skills dir when it exists", async () => {
+    const workspace = await mkdtemp(join(tmpdir(), "raccoon-skill-workspace-"))
+    const configDir = await mkdtemp(join(tmpdir(), "raccoon-skill-config-"))
+    try {
+      await writeSkill(join(workspace, ".raccoon", "skills"), "raccoon-skill", "Raccoon skill")
+
+      const installer = new SkillMarketplaceInstaller()
+      const installed = await installer.detect(client(configDir), workspace)
+      expect(installed.project["raccoon-skill"]).toEqual({ type: "skill" })
+
+      // A skill located under .raccoon/skills is classified as a removable project skill.
+      const apiSkills = [
+        { name: "raccoon-skill", description: "Raccoon skill", location: join(workspace, ".raccoon", "skills", "raccoon-skill", "SKILL.md") },
+      ]
+      const list = await installer.listInstalled(client(configDir, undefined, apiSkills), workspace)
+      expect(list.find((skill) => skill.id === "raccoon-skill")).toMatchObject({ scope: "project", removable: true })
+    } finally {
+      await rm(workspace, { recursive: true, force: true })
+      await rm(configDir, { recursive: true, force: true })
+    }
+  })
 })

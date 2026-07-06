@@ -4,9 +4,8 @@ import * as nodePath from "node:path"
 import { applyEdits, modify, parse as parseJsonc, type ParseError } from "jsonc-parser/lib/esm/main.js"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import type { RaccoonAgentScope, RaccoonRule, WebviewToExtension } from "@opencode-ai/raccoon-webview"
+import { GLOBAL_CONFIG_FILES, PROJECT_CONFIG_FILES, pickConfigFile, pickProjectConfigDirName } from "./config-paths.js"
 
-const PROJECT_CONFIG_FILES = ["opencode.jsonc", "opencode.json"]
-const GLOBAL_CONFIG_FILES = ["opencode.jsonc", "opencode.json", "config.json"]
 const RULE_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/
 
 // A rule lives as a markdown file under `<scope>/rules/`. Whether it is
@@ -26,19 +25,6 @@ function requireRuleName(name: string): string {
   const trimmed = (name ?? "").trim()
   if (!RULE_NAME_RE.test(trimmed)) throw new Error(`Invalid rule name: ${name}`)
   return trimmed
-}
-
-async function pickConfigFile(dir: string, candidates: string[], fallback: string): Promise<string> {
-  for (const candidate of candidates) {
-    const candidatePath = nodePath.join(dir, candidate)
-    try {
-      await fs.access(candidatePath)
-      return candidatePath
-    } catch {
-      // not present, try the next candidate
-    }
-  }
-  return nodePath.join(dir, fallback)
 }
 
 function parseConfig(raw: string, file: string): Record<string, unknown> {
@@ -90,18 +76,19 @@ export async function rulesContext(
     return {
       scope,
       dir,
-      configFile: await pickConfigFile(configDir, GLOBAL_CONFIG_FILES, "opencode.json"),
+      configFile: await pickConfigFile(configDir, GLOBAL_CONFIG_FILES),
       entryFor: (name) => `${base}/${name}.md`,
       globEntries: [`${base}/*.md`, `${base}/**/*.md`],
     }
   }
-  const dir = nodePath.join(directory, ".opencode", "rules")
+  const dirName = await pickProjectConfigDirName(directory)
+  const dir = nodePath.join(directory, dirName, "rules")
   return {
     scope,
     dir,
-    configFile: await pickConfigFile(directory, PROJECT_CONFIG_FILES, "opencode.json"),
-    entryFor: (name) => `.opencode/rules/${name}.md`,
-    globEntries: [".opencode/rules/*.md", ".opencode/rules/**/*.md"],
+    configFile: await pickConfigFile(directory, PROJECT_CONFIG_FILES),
+    entryFor: (name) => `${dirName}/rules/${name}.md`,
+    globEntries: [`${dirName}/rules/*.md`, `${dirName}/rules/**/*.md`],
   }
 }
 
