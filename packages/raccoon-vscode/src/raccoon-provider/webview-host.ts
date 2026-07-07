@@ -39,6 +39,7 @@ export class RaccoonWebviewHost {
       localResourceRoots: [this.extensionUri],
     })
     this.settingsPanel = panel
+    panel.iconPath = vscode.Uri.joinPath(this.extensionUri, "images", "raccoon.svg")
     this.settingsReady = false
     panel.webview.html = this.html(panel.webview)
     panel.webview.onDidReceiveMessage((message: WebviewToExtension) => this.onMessage(message, "settings"))

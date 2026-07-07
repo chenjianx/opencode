@@ -26,7 +26,6 @@ export const dict = {
   "history.export": "Export",
   "history.menu": "Session menu",
   "settings.title": "Settings",
-  "settings.subtitle": "Models and prompt behavior",
   "settings.nav.label": "Settings sections",
   "settings.nav.models": "Models",
   "settings.nav.agents": "Agents",

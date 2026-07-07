@@ -29,7 +29,6 @@ export const dict = {
   "history.export": "匯出",
   "history.menu": "工作階段選單",
   "settings.title": "設定",
-  "settings.subtitle": "模型和提示行為",
   "settings.nav.label": "設定分區",
   "settings.nav.models": "模型",
   "settings.nav.agents": "智能體",

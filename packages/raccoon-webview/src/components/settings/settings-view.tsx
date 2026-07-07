@@ -69,7 +69,6 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
       <div className="settings-header">
         <div>
           <div className="settings-title">{language.t("settings.title")}</div>
-          <div className="settings-subtitle">{language.t("settings.subtitle")}</div>
         </div>
         {props.onClose ? (
           <button
