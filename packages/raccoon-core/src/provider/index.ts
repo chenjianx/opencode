@@ -367,18 +367,28 @@ export class RaccoonProvider {
     this.sessions.openSettings()
   }
 
-  async appendEditorContext(type: "ADD_TO_CONTEXT") {
+  async appendEditorContext() {
     const context = this.platform.editor.getActiveContext()
     if (!context) return
+    await this.appendContext(context)
+  }
+
+  async appendDocumentRangeContext(ref: DocumentRangeRef) {
+    const context = await this.platform.editor.getRangeContext(ref)
+    if (!context) return
+    await this.appendContext(context)
+  }
+
+  private async appendContext(context: EditorContext) {
     await this.platform.ui.revealChat()
     this.webviewHost.post("chat", {
       type: "appendPrompt",
-      text: createPrompt(type, context, this.state.pluginLanguage),
-      replace: type !== "ADD_TO_CONTEXT",
+      text: createPrompt("ADD_TO_CONTEXT", context, this.state.pluginLanguage),
+      replace: false,
     })
   }
 
-  async sendEditorContext(type: "EXPLAIN" | "FIX" | "IMPROVE") {
+  async sendEditorContext(type: EditorContextAction) {
     const context = this.platform.editor.getActiveContext()
     if (!context) return
     await this.sendContextPrompt(type, context)

@@ -1,36 +1,42 @@
 import type { RaccoonPluginLanguage } from "@opencode-ai/raccoon-webview"
+import type { EditorActionId } from "./actions.js"
 
-const messages = {
+// Runtime labels for the function-CodeLens QuickPick. The editor context submenu reads its
+// labels from package.nls*.json instead; keep the wording here word-for-word identical to
+// those nls entries so both entry points present the exact same verb table.
+
+type ActionMessages = Record<EditorActionId, string> & { placeholder: string }
+
+const messages: Record<RaccoonPluginLanguage, ActionMessages> = {
   en: {
-    "raccoon.commands.askFunction.title": "Ask",
-    "raccoon.commands.optimizeFunction.title": "Optimize",
-    "raccoon.commands.refactorFunction.title": "Refactor",
-    "raccoon.commands.commentFunction.title": "Comment",
-    "raccoon.functionActions.placeholder": "Choose a Raccoon action",
+    explainCode: "Explain",
+    fixCode: "Fix",
+    improveCode: "Improve",
+    refactorCode: "Refactor",
+    commentCode: "Comment",
+    addToContext: "Add to Context",
+    placeholder: "Choose a Raccoon action",
   },
   "zh-Hans": {
-    "raccoon.commands.askFunction.title": "问答",
-    "raccoon.commands.optimizeFunction.title": "优化",
-    "raccoon.commands.refactorFunction.title": "重构",
-    "raccoon.commands.commentFunction.title": "注释",
-    "raccoon.functionActions.placeholder": "选择 Raccoon 操作",
+    explainCode: "解释",
+    fixCode: "修复",
+    improveCode: "优化",
+    refactorCode: "重构",
+    commentCode: "注释",
+    addToContext: "添加到上下文",
+    placeholder: "选择 Raccoon 操作",
   },
   "zh-Hant": {
-    "raccoon.commands.askFunction.title": "問答",
-    "raccoon.commands.optimizeFunction.title": "最佳化",
-    "raccoon.commands.refactorFunction.title": "重構",
-    "raccoon.commands.commentFunction.title": "註解",
-    "raccoon.functionActions.placeholder": "選擇 Raccoon 操作",
+    explainCode: "解釋",
+    fixCode: "修復",
+    improveCode: "最佳化",
+    refactorCode: "重構",
+    commentCode: "註解",
+    addToContext: "加入到內容",
+    placeholder: "選擇 Raccoon 操作",
   },
-} as const
+}
 
-export function functionActionLabels(language: RaccoonPluginLanguage) {
-  const labels = messages[language]
-  return {
-    ask: labels["raccoon.commands.askFunction.title"],
-    optimize: labels["raccoon.commands.optimizeFunction.title"],
-    refactor: labels["raccoon.commands.refactorFunction.title"],
-    comment: labels["raccoon.commands.commentFunction.title"],
-    placeholder: labels["raccoon.functionActions.placeholder"],
-  }
+export function actionLabels(language: RaccoonPluginLanguage) {
+  return messages[language]
 }

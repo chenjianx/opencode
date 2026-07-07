@@ -33,6 +33,10 @@
         "title": "%raccoon.commands.openChat.title%"
       },
       {
+        "command": "raccoon.focusChat",
+        "title": "%raccoon.commands.focusChat.title%"
+      },
+      {
         "command": "raccoon.newSession",
         "title": "%raccoon.commands.newSession.title%",
         "icon": "$(add)"
@@ -63,6 +67,16 @@
         "category": "%raccoon.commands.category%"
       },
       {
+        "command": "raccoon.refactorCode",
+        "title": "%raccoon.commands.refactorCode.title%",
+        "category": "%raccoon.commands.category%"
+      },
+      {
+        "command": "raccoon.commentCode",
+        "title": "%raccoon.commands.commentCode.title%",
+        "category": "%raccoon.commands.category%"
+      },
+      {
         "command": "raccoon.addToContext",
         "title": "%raccoon.commands.addToContext.title%",
         "category": "%raccoon.commands.category%"
@@ -70,26 +84,6 @@
       {
         "command": "raccoon.openFunctionActions",
         "title": "%raccoon.commands.openFunctionActions.title%",
-        "category": "%raccoon.commands.category%"
-      },
-      {
-        "command": "raccoon.askFunction",
-        "title": "%raccoon.commands.askFunction.title%",
-        "category": "%raccoon.commands.category%"
-      },
-      {
-        "command": "raccoon.optimizeFunction",
-        "title": "%raccoon.commands.optimizeFunction.title%",
-        "category": "%raccoon.commands.category%"
-      },
-      {
-        "command": "raccoon.refactorFunction",
-        "title": "%raccoon.commands.refactorFunction.title%",
-        "category": "%raccoon.commands.category%"
-      },
-      {
-        "command": "raccoon.commentFunction",
-        "title": "%raccoon.commands.commentFunction.title%",
         "category": "%raccoon.commands.category%"
       },
       {
@@ -214,9 +208,15 @@
     },
     "keybindings": [
       {
-        "command": "raccoon.autocomplete.generateSuggestions",
+        "command": "raccoon.focusChat",
         "key": "ctrl+l",
         "mac": "cmd+l",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "raccoon.autocomplete.generateSuggestions",
+        "key": "alt+\\",
+        "mac": "alt+\\",
         "when": "editorTextFocus && !editorHasSelection"
       },
       {

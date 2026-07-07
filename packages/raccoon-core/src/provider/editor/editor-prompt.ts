@@ -23,14 +23,6 @@ Focus on:
 
 Keep the explanation concise and practical. Do not rewrite the code unless a tiny snippet is needed to clarify a point.`
   }
-  if (type === "ASK") {
-    return `Explain this function or method from ${location}.
-${replyLanguage}
-
-${selectedCode}
-
-Focus on what it does, how it fits the surrounding project, and any important side effects or edge cases. Keep the answer concise and practical.`
-  }
   if (type === "FIX") {
     return `Fix this selected code from ${location}.
 ${replyLanguage}
@@ -60,16 +52,8 @@ Please improve it where there is a clear benefit:
 
 Avoid speculative rewrites, broad refactors, or changing behavior without calling it out. Provide the improved code and a short rationale.`
   }
-  if (type === "OPTIMIZE") {
-    return `Optimize this function or method from ${location}.
-${replyLanguage}
-
-${selectedCode}
-
-Please improve readability, control flow, and robustness where there is a clear benefit. Preserve behavior unless you explicitly call out a necessary behavior change. Provide the improved code and a short rationale.`
-  }
   if (type === "REFACTOR") {
-    return `Refactor this function or method from ${location}.
+    return `Refactor this selected code from ${location}.
 ${replyLanguage}
 
 ${selectedCode}
@@ -77,7 +61,7 @@ ${selectedCode}
 Please keep behavior unchanged, fit the surrounding code style, and avoid broad speculative rewrites. Provide the refactored code and explain the main changes briefly.`
   }
   if (type === "COMMENT") {
-    return `Add useful comments to this function or method from ${location}.
+    return `Add useful comments to this selected code from ${location}.
 ${replyLanguage}
 
 ${selectedCode}

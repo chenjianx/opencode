@@ -1,8 +1,9 @@
 import * as vscode from "vscode"
-import { functionActionLabels } from "./i18n.js"
+import { actionLabels } from "./i18n.js"
+import { EDITOR_ACTIONS } from "./actions.js"
 import { RaccoonCodeLensProvider } from "./code-lens/index.js"
 import { RaccoonProvider } from "@opencode-ai/raccoon-core"
-import type { DocumentRangeRef, EditorContextAction } from "@opencode-ai/raccoon-core"
+import type { DocumentRangeRef } from "@opencode-ai/raccoon-core"
 import { VscodeHostPlatform } from "./provider/vscode-platform.js"
 import { RaccoonWebviewHost } from "./provider/webview-host.js"
 import { RaccoonConnectionService } from "./services/cli-backend/index.js"
@@ -39,6 +40,15 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("raccoon.openChat", async () => {
       await vscode.commands.executeCommand("workbench.view.extension.raccoon")
     }),
+    vscode.commands.registerCommand("raccoon.focusChat", async () => {
+      // Cmd/Ctrl+L: send the current selection to chat if there is one, otherwise just open chat.
+      const editor = vscode.window.activeTextEditor
+      if (editor && !editor.selection.isEmpty) {
+        await provider.appendEditorContext()
+      } else {
+        await vscode.commands.executeCommand("workbench.view.extension.raccoon")
+      }
+    }),
     vscode.commands.registerCommand("raccoon.newSession", async () => {
       await vscode.commands.executeCommand("workbench.view.extension.raccoon")
       await provider.createSession()
@@ -50,36 +60,27 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("raccoon.openSettings", async () => {
       await provider.openSettings()
     }),
-    vscode.commands.registerCommand("raccoon.explainCode", async () => provider.sendEditorContext("EXPLAIN")),
-    vscode.commands.registerCommand("raccoon.fixCode", async () => provider.sendEditorContext("FIX")),
-    vscode.commands.registerCommand("raccoon.improveCode", async () => provider.sendEditorContext("IMPROVE")),
-    vscode.commands.registerCommand("raccoon.addToContext", async () => provider.appendEditorContext("ADD_TO_CONTEXT")),
+    // Unified editor action vocabulary (see actions.ts). Each command is entry-agnostic:
+    // invoked with (uri, range) from the function CodeLens it targets that range; invoked
+    // with no args from the context submenu it targets the active selection.
+    ...EDITOR_ACTIONS.map((action) =>
+      vscode.commands.registerCommand(action.command, async (uri?: vscode.Uri, range?: vscode.Range) => {
+        const ref = uri && range ? rangeRef(uri, range) : undefined
+        if (action.mode === "append") {
+          return ref ? provider.appendDocumentRangeContext(ref) : provider.appendEditorContext()
+        }
+        return ref ? provider.sendDocumentRangeContext(action.type, ref) : provider.sendEditorContext(action.type)
+      }),
+    ),
     vscode.commands.registerCommand("raccoon.openFunctionActions", async (uri: vscode.Uri, range: vscode.Range) => {
-      const labels = functionActionLabels(provider.getState().pluginLanguage ?? "en")
-      const action = await vscode.window.showQuickPick(
-        [
-          { label: labels.ask, type: "ASK" as const },
-          { label: labels.optimize, type: "OPTIMIZE" as const },
-          { label: labels.refactor, type: "REFACTOR" as const },
-          { label: labels.comment, type: "COMMENT" as const },
-        ],
+      const labels = actionLabels(provider.getState().pluginLanguage ?? "en")
+      const picked = await vscode.window.showQuickPick(
+        EDITOR_ACTIONS.filter((action) => action.lens).map((action) => ({ label: labels[action.id], command: action.command })),
         { placeHolder: labels.placeholder },
       )
-      if (!action) return
-      await provider.sendDocumentRangeContext(action.type, rangeRef(uri, range))
+      if (!picked) return
+      await vscode.commands.executeCommand(picked.command, uri, range)
     }),
-    vscode.commands.registerCommand("raccoon.askFunction", async (uri: vscode.Uri, range: vscode.Range, type: EditorContextAction = "ASK") =>
-      provider.sendDocumentRangeContext(type, rangeRef(uri, range)),
-    ),
-    vscode.commands.registerCommand("raccoon.optimizeFunction", async (uri: vscode.Uri, range: vscode.Range, type: EditorContextAction = "OPTIMIZE") =>
-      provider.sendDocumentRangeContext(type, rangeRef(uri, range)),
-    ),
-    vscode.commands.registerCommand("raccoon.refactorFunction", async (uri: vscode.Uri, range: vscode.Range, type: EditorContextAction = "REFACTOR") =>
-      provider.sendDocumentRangeContext(type, rangeRef(uri, range)),
-    ),
-    vscode.commands.registerCommand("raccoon.commentFunction", async (uri: vscode.Uri, range: vscode.Range, type: EditorContextAction = "COMMENT") =>
-      provider.sendDocumentRangeContext(type, rangeRef(uri, range)),
-    ),
     vscode.languages.registerCodeLensProvider({ scheme: "file" }, new RaccoonCodeLensProvider(provider, output)),
   )
 

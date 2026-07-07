@@ -62,7 +62,7 @@ export interface WebviewTransport {
   postCustomProviderSaved(providerID: string): void
 }
 
-export type EditorContextAction = "EXPLAIN" | "FIX" | "IMPROVE" | "ADD_TO_CONTEXT" | "ASK" | "OPTIMIZE" | "REFACTOR" | "COMMENT"
+export type EditorContextAction = "EXPLAIN" | "FIX" | "IMPROVE" | "REFACTOR" | "COMMENT" | "ADD_TO_CONTEXT"
 
 export type EditorDiagnostic = {
   source?: string
