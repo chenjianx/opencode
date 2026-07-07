@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react"
 import { ChatView } from "./chat/chat-view"
 import { SubAgentView } from "./chat/subagent-view"
 import { HistoryView } from "./history/history-view"
@@ -17,10 +16,6 @@ export function RootView() {
   // Until the extension has sent state at least once we don't know the auth status; avoid
   // flashing the login screen before that first state arrives.
   const stateLoaded = session.state.raccoonLoggedIn !== undefined || !session.state.loading
-  const wasLoggedIn = useRef(false)
-  useEffect(() => {
-    if (loggedIn) wasLoggedIn.current = true
-  }, [loggedIn])
 
   if (!loggedIn) {
     if (!stateLoaded) {
@@ -30,7 +25,7 @@ export function RootView() {
         </div>
       )
     }
-    return <LoginView expired={wasLoggedIn.current} />
+    return <LoginView />
   }
 
   if (session.state.view === "settings")

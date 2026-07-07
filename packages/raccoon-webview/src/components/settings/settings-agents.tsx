@@ -385,10 +385,10 @@ export function SettingsAgents(props: {
           </SettingsRow>
           <div className="settings-agent-section-title">{language.t("settings.agents.behavior")}</div>
           <SettingsRow title={language.t("settings.agents.description.title")} description={language.t("settings.agents.description.description")}>
-            <TextInput
-              className="settings-provider-input w-full"
+            <textarea
+              className="settings-agent-description"
               value={draft.description}
-              onChange={(value) => updateDraft("description", value)}
+              onChange={(event) => updateDraft("description", event.currentTarget.value)}
               placeholder={language.t("settings.agents.description.placeholder")}
             />
           </SettingsRow>
@@ -418,16 +418,16 @@ export function SettingsAgents(props: {
           </SettingsRow>
           <SettingsRow title={language.t("settings.agents.parameters.title")} description={language.t("settings.agents.parameters.description")}>
             <div className="settings-agent-params">
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] text-[var(--color-muted)]">temperature</span>
+              <label>
+                <span>temperature</span>
                 <TextInput value={draft.temperature} onChange={(value) => updateDraft("temperature", value)} placeholder="0 – 2" />
               </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] text-[var(--color-muted)]">top_p</span>
+              <label>
+                <span>top_p</span>
                 <TextInput value={draft.topP} onChange={(value) => updateDraft("topP", value)} placeholder="0 – 1" />
               </label>
-              <label className="flex flex-col gap-1">
-                <span className="text-[11px] text-[var(--color-muted)]">steps</span>
+              <label>
+                <span>steps</span>
                 <TextInput value={draft.steps} onChange={(value) => updateDraft("steps", value)} placeholder="1 – 100" />
               </label>
             </div>
@@ -444,7 +444,7 @@ export function SettingsAgents(props: {
           <div className="settings-agent-section-title">{language.t("settings.agents.instructions")}</div>
           <SettingsRow title={language.t("settings.agents.prompt.title")} description={language.t("settings.agents.prompt.description")}>
             <textarea
-              className="min-h-[160px] w-full rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 text-[12px] leading-4 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)]"
+              className="settings-agent-prompt"
               value={draft.prompt}
               onChange={(event) => updateDraft("prompt", event.currentTarget.value)}
               placeholder={language.t("settings.agents.prompt.placeholder")}

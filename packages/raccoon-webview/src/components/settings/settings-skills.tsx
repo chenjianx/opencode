@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowClockwise, CaretDown, CheckCircle, DownloadSimple, FileText, MagnifyingGlass, Trash, Warning } from "@phosphor-icons/react"
+import { ArrowClockwise, CaretDown, CheckCircle, DownloadSimple, FileText, MagnifyingGlass, Trash } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
@@ -64,7 +64,6 @@ function SettingsSkillMarketplace() {
   const marketplace = config.skillMarketplace ?? { sources: [], items: [], installed: { project: {}, user: {} } }
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<SkillCategory>("all")
-  const [selectedID, setSelectedID] = useState<string>()
   const [draft, setDraft] = useState<InstallDraft>()
   const [pendingID, setPendingID] = useState<string>()
   const [resultError, setResultError] = useState<string>()
@@ -118,9 +117,6 @@ function SettingsSkillMarketplace() {
       return counts
     }, initial)
   }, [marketplace.items])
-
-  const selected = filtered.find((item) => item.id === selectedID) ?? filtered[0]
-  const installedScope = selected ? installedIn(marketplace.installed, selected.name) : undefined
 
   const refresh = () => {
     setResultError(undefined)
@@ -188,64 +184,42 @@ function SettingsSkillMarketplace() {
           : language.t("settings.skillsMarketplace.resultCount", { count: filtered.length, total: marketplace.items.length })}
       </div>
 
-      <div className="settings-browser-layout">
-        <div className="settings-browser-list">
-          {marketplace.loading && marketplace.items.length === 0 ? (
-            <div className="settings-empty">{language.t("settings.skillsMarketplace.loadingResults")}</div>
-          ) : filtered.length === 0 ? (
-            <div className="settings-empty">{language.t("settings.skillsMarketplace.empty")}</div>
-          ) : (
-            filtered.map((item) => {
-              const scope = installedIn(marketplace.installed, item.name)
-              return (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={`settings-browser-item ${selected?.id === item.id ? "active" : ""}`.trim()}
-                  onClick={() => setSelectedID(item.id)}
-                >
+      <div className="settings-browser-grid">
+        {marketplace.loading && marketplace.items.length === 0 ? (
+          <div className="settings-empty">{language.t("settings.skillsMarketplace.loadingResults")}</div>
+        ) : filtered.length === 0 ? (
+          <div className="settings-empty">{language.t("settings.skillsMarketplace.empty")}</div>
+        ) : (
+          filtered.map((item) => {
+            const scope = installedIn(marketplace.installed, item.name)
+            return (
+              <div key={item.id} className="settings-browser-card">
+                <div className="settings-browser-card-head">
                   <SkillAvatar item={item} />
-                  <span className="settings-browser-item-main">
-                    <span className="settings-browser-item-titlerow">
-                      <span className="settings-browser-item-title">{item.title ?? item.name}</span>
-                      {scope ? (
-                        <span className="settings-browser-installed">
-                          <CheckCircle size={12} weight="fill" /> {language.t(`settings.mcpMarketplace.scope.${scope}`)}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="settings-browser-item-description">{item.description ?? item.name}</span>
-                    <span className="settings-browser-item-meta">
-                      <span className="settings-browser-chip">{language.t(`settings.skillsMarketplace.category.${skillCategory(item)}`)}</span>
-                      {!item.installable ? <span className="settings-browser-chip">{language.t("settings.skillsMarketplace.notInstallable")}</span> : null}
-                    </span>
-                  </span>
-                </button>
-              )
-            })
-          )}
-        </div>
-
-        <div className="settings-browser-detail">
-          {selected ? (
-            <>
-              <div className="settings-browser-detail-header">
-                <div className="settings-browser-detail-heading">
-                  <SkillAvatar item={selected} size="lg" />
-                  <div className="settings-browser-detail-heading-text">
-                    <h4>{selected.title ?? selected.name}</h4>
-                    <p>{selected.skillDir}</p>
+                  <div className="settings-browser-card-heading">
+                    <span className="settings-browser-card-title">{item.title ?? item.name}</span>
+                    <span className="settings-browser-card-name">{item.name}</span>
                   </div>
+                  {scope ? (
+                    <span className="settings-browser-installed">
+                      <CheckCircle size={12} weight="fill" /> {language.t(`settings.mcpMarketplace.scope.${scope}`)}
+                    </span>
+                  ) : null}
                 </div>
-                <div className="settings-browser-actions">
-                  {installedScope ? (
-                    <Button disabled={pendingID === selected.id} onClick={() => remove(selected, installedScope)} icon={<Trash size={14} weight="bold" />}>
+                <p className="settings-browser-card-description">{item.description ?? item.name}</p>
+                <div className="settings-browser-card-meta">
+                  <span className="settings-browser-chip">{language.t(`settings.skillsMarketplace.category.${skillCategory(item)}`)}</span>
+                  {!item.installable ? <span className="settings-browser-chip">{language.t("settings.skillsMarketplace.notInstallable")}</span> : null}
+                </div>
+                <div className="settings-browser-card-actions">
+                  {scope ? (
+                    <Button disabled={pendingID === item.id} onClick={() => remove(item, scope)} icon={<Trash size={14} weight="bold" />}>
                       {language.t("settings.skillsMarketplace.remove")}
                     </Button>
                   ) : (
                     <Button
-                      disabled={!selected.installable || pendingID === selected.id}
-                      onClick={() => setDraft({ item: selected, scope: "project" })}
+                      disabled={!item.installable || pendingID === item.id}
+                      onClick={() => setDraft({ item, scope: "project" })}
                       icon={<DownloadSimple size={14} weight="bold" />}
                     >
                       {language.t("settings.skillsMarketplace.install")}
@@ -253,45 +227,9 @@ function SettingsSkillMarketplace() {
                   )}
                 </div>
               </div>
-              <p className="settings-browser-description">{selected.description ?? language.t("settings.skillsMarketplace.noDescription")}</p>
-              <div className="settings-browser-tags">
-                <span>{language.t(`settings.skillsMarketplace.category.${skillCategory(selected)}`)}</span>
-                <span>{selected.name}</span>
-                <span>{selected.installable ? language.t("settings.skillsMarketplace.installable") : language.t("settings.skillsMarketplace.notInstallable")}</span>
-              </div>
-              {selected.repositoryUrl ? (
-                <div className="settings-browser-links">
-                  <a href={selected.repositoryUrl}>{language.t("settings.skillsMarketplace.repository")}</a>
-                </div>
-              ) : null}
-              <div className="settings-browser-transport">
-                <div>
-                  <div className="settings-browser-transport-title">{language.t("settings.skillsMarketplace.installPreview")}</div>
-                  <div className="settings-skill-path-grid">
-                    <span>{language.t("settings.mcpMarketplace.scope.project")}</span>
-                    <code>{installPath(selected, "project")}</code>
-                    <span>{language.t("settings.mcpMarketplace.scope.user")}</span>
-                    <code>{installPath(selected, "user")}</code>
-                  </div>
-                </div>
-              </div>
-              {selected.warnings?.length ? (
-                <div className="settings-browser-transport settings-browser-warning-block">
-                  <div>
-                    <div className="settings-browser-transport-title">
-                      <Warning size={13} weight="fill" /> {language.t("settings.skillsMarketplace.warnings")}
-                    </div>
-                    {selected.warnings.map((warning) => (
-                      <p key={warning}>{warning}</p>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div className="settings-empty">{language.t("settings.skillsMarketplace.empty")}</div>
-          )}
-        </div>
+            )
+          })
+        )}
       </div>
 
       {draft ? (
@@ -461,16 +399,11 @@ function InstallDialog(props: {
       />
       <div className="settings-browser-preview">
         <div className="settings-dialog-section-title">{language.t("settings.skillsMarketplace.installPreview")}</div>
-        <pre>{props.draft.scope === "project" ? `.opencode/skills/${props.draft.item.name}` : `~/.config/opencode/skills/${props.draft.item.name}`}</pre>
+        <pre>{props.draft.scope === "project" ? `.raccoon/skills/${props.draft.item.name}` : `~/.config/raccoon/skills/${props.draft.item.name}`}</pre>
       </div>
       {props.error ? <div className="settings-dialog-error">{props.error}</div> : null}
     </SettingsDialog>
   )
-}
-
-function installPath(item: RaccoonSkillMarketplaceItem, scope: RaccoonMarketplaceScope) {
-  if (scope === "project") return `.opencode/skills/${item.name}`
-  return `~/.config/opencode/skills/${item.name}`
 }
 
 function skillCategory(item: RaccoonSkillMarketplaceItem): Exclude<SkillCategory, "all"> {

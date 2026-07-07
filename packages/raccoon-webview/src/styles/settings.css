@@ -144,12 +144,18 @@
   }
 
   .settings-agent-shell {
-    @apply grid min-h-0 grid-cols-[minmax(190px,250px)_minmax(0,1fr)] gap-3;
+    @apply grid min-h-0 grid-cols-[minmax(190px,250px)_minmax(0,1fr)] items-start gap-3;
   }
 
   @container settings-content (max-width: 500px) {
     .settings-agent-shell {
       @apply grid-cols-1;
+    }
+
+    /* Stacked above the panel: cap the list so the config panel stays reachable
+       without a long scroll past every agent. */
+    .settings-agent-list {
+      @apply max-h-[240px];
     }
   }
 
@@ -158,12 +164,16 @@
   }
 
   .settings-agent-list-item {
-    @apply grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left last:border-b-0 hover:bg-[var(--color-hover)];
+    @apply grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-[var(--color-hover)];
   }
 
   .settings-agent-list-item.active {
     @apply bg-[var(--color-selection)] text-[var(--color-selection-foreground)];
     box-shadow: inset 3px 0 0 var(--color-focus);
+  }
+
+  .settings-agent-list-item.active .settings-agent-list-name {
+    @apply text-[var(--color-selection-foreground)];
   }
 
   .settings-agent-list-main {
@@ -186,7 +196,7 @@
   }
 
   .settings-agent-list-tags span {
-    @apply max-w-full truncate rounded-[999px] bg-[var(--color-background)] px-1.5 py-0.5 text-[10px] text-[var(--color-muted)];
+    @apply max-w-full truncate rounded-[999px] border border-[var(--color-border)] bg-[var(--color-button)] px-1.5 py-0.5 text-[10px] uppercase leading-none tracking-[0.04em] text-[var(--color-muted)];
   }
 
   .settings-agent-panel {
@@ -200,7 +210,7 @@
   }
 
   .settings-agent-panel-title {
-    @apply min-w-0;
+    @apply min-w-0 flex-[1_1_160px];
   }
 
   .settings-agent-panel-name {
@@ -208,7 +218,7 @@
   }
 
   .settings-agent-panel-subtitle {
-    @apply mt-0.5 text-[11px] text-[var(--color-muted)];
+    @apply mt-0.5 text-[11px] leading-4 text-[var(--color-muted)];
   }
 
   .settings-agent-panel-actions {
@@ -230,17 +240,39 @@
   }
 
   .settings-agent-params {
-    @apply grid w-full grid-cols-3 gap-2;
+    @apply grid w-full grid-cols-3 gap-2.5;
+  }
+
+  .settings-agent-params label {
+    @apply flex flex-col gap-1;
+  }
+
+  .settings-agent-params label > span {
+    @apply text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--color-muted)];
+  }
+
+  /* Let the inputs shrink with their grid track instead of holding the 92px
+     min-width floor, which overflows the 3-column layout on narrow panels. */
+  .settings-agent-params label > input {
+    @apply w-full min-w-0;
   }
 
   @container settings-agent-panel (max-width: 380px) {
     .settings-agent-params {
-      @apply grid-cols-1;
+      @apply grid-cols-1 gap-2;
     }
   }
 
   .settings-agent-section-title {
-    @apply border-b border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)];
+    @apply border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_92%,var(--color-hover))] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)];
+  }
+
+  .settings-agent-prompt {
+    @apply min-h-[160px] w-full resize-y rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 text-[12px] leading-5 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
+  }
+
+  .settings-agent-description {
+    @apply min-h-[56px] w-full resize-y rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 text-[12px] leading-5 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
   }
 
   .settings-provider-feature {
@@ -433,6 +465,55 @@
   .settings-browser-item.active {
     @apply bg-[var(--color-button)];
     box-shadow: inset 3px 0 0 var(--color-focus);
+  }
+
+  .settings-browser-grid {
+    @apply grid grid-cols-2 gap-3;
+  }
+
+  @container settings-content (max-width: 560px) {
+    .settings-browser-grid {
+      @apply grid-cols-1;
+    }
+  }
+
+  .settings-browser-grid .settings-empty {
+    @apply col-span-full;
+  }
+
+  .settings-browser-card {
+    @apply flex min-w-0 flex-col gap-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3 transition-colors hover:border-[var(--color-focus)];
+  }
+
+  .settings-browser-card-head {
+    @apply flex items-start gap-2.5;
+  }
+
+  .settings-browser-card-heading {
+    @apply flex min-w-0 flex-1 flex-col gap-0.5;
+  }
+
+  .settings-browser-card-title {
+    @apply min-w-0 truncate text-[13px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-browser-card-name {
+    @apply min-w-0 truncate font-mono text-[10px] text-[var(--color-muted)];
+  }
+
+  .settings-browser-card-description {
+    @apply m-0 min-h-8 overflow-hidden text-[11px] leading-4 text-[var(--color-muted)];
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .settings-browser-card-meta {
+    @apply flex flex-wrap gap-1;
+  }
+
+  .settings-browser-card-actions {
+    @apply mt-1 flex justify-end;
   }
 
   .settings-browser-avatar {

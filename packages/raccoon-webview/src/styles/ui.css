@@ -3,7 +3,7 @@
   /* Base copied from the previous `.settings-header button, …` rule so the
      neutral/secondary button looks identical to before. */
   .ui-button {
-    @apply inline-flex min-h-[28px] cursor-pointer items-center justify-center rounded-[6px] border border-transparent bg-[var(--color-button)] px-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-55;
+    @apply inline-flex min-h-[28px] cursor-pointer items-center justify-center gap-1.5 rounded-[6px] border border-transparent bg-[var(--color-button)] px-[10px] text-[var(--color-foreground)] hover:bg-[var(--color-hover)] disabled:cursor-default disabled:opacity-55;
   }
 
   /* Small button: copied from the previous `.settings-small-button`. */

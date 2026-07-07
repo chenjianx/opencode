@@ -80,7 +80,6 @@ export function SettingsMcpMarketplace() {
   const marketplace = config.mcpMarketplace ?? { items: [], installed: { project: {}, user: {} } }
   const [query, setQuery] = useState("")
   const [category, setCategory] = useState<MarketplaceCategory>("all")
-  const [selectedID, setSelectedID] = useState<string>()
   const [draft, setDraft] = useState<InstallDraft>()
   const [pendingID, setPendingID] = useState<string>()
   const [resultError, setResultError] = useState<string>()
@@ -128,9 +127,6 @@ export function SettingsMcpMarketplace() {
       { all: marketplace.items.length, code: 0, data: 0, cloud: 0, web: 0, communication: 0, productivity: 0, other: 0 },
     )
   }, [marketplace.items])
-
-  const selected = filtered.find((item) => item.id === selectedID) ?? filtered[0]
-  const installedScope = selected ? installedIn(marketplace.installed, selected.id) : undefined
 
   const refresh = () => {
     setResultError(undefined)
@@ -220,77 +216,56 @@ export function SettingsMcpMarketplace() {
           : language.t("settings.mcpMarketplace.resultCount", { count: filtered.length, total: marketplace.items.length })}
       </div>
 
-      <div className="settings-browser-layout">
-        <div className="settings-browser-list">
-          {marketplace.loading && marketplace.items.length === 0 ? (
-            <div className="settings-empty">{language.t("settings.mcpMarketplace.loadingResults")}</div>
-          ) : filtered.length === 0 ? (
-            <div className="settings-empty">{language.t("settings.mcpMarketplace.empty")}</div>
-          ) : (
-            filtered.map((item) => {
-              const scope = installedIn(marketplace.installed, item.id)
-              return (
-                <button
-                  type="button"
-                  key={item.id}
-                  className={`settings-browser-item ${selected?.id === item.id ? "active" : ""}`.trim()}
-                  onClick={() => setSelectedID(item.id)}
-                >
+      <div className="settings-browser-grid">
+        {marketplace.loading && marketplace.items.length === 0 ? (
+          <div className="settings-empty">{language.t("settings.mcpMarketplace.loadingResults")}</div>
+        ) : filtered.length === 0 ? (
+          <div className="settings-empty">{language.t("settings.mcpMarketplace.empty")}</div>
+        ) : (
+          filtered.map((item) => {
+            const scope = installedIn(marketplace.installed, item.id)
+            return (
+              <div key={item.id} className="settings-browser-card">
+                <div className="settings-browser-card-head">
                   <McpAvatar item={item} />
-                  <span className="settings-browser-item-main">
-                    <span className="settings-browser-item-titlerow">
-                      <span className="settings-browser-item-title">{item.title ?? item.name}</span>
-                      {scope ? (
-                        <span className="settings-browser-installed">
-                          <CheckCircle size={12} weight="fill" /> {language.t(`settings.mcpMarketplace.scope.${scope}`)}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="settings-browser-item-description">{item.description}</span>
-                    <span className="settings-browser-item-meta">
-                      {item.packages.length > 0 ? (
-                        <span className="settings-browser-chip">
-                          <Package size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.package")}
-                        </span>
-                      ) : null}
-                      {item.remotes.length > 0 ? (
-                        <span className="settings-browser-chip">
-                          <CloudArrowDown size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.remote")}
-                        </span>
-                      ) : null}
-                      <span className="settings-browser-chip">{language.t(`settings.mcpMarketplace.category.${marketplaceCategory(item)}`)}</span>
-                    </span>
-                  </span>
-                </button>
-              )
-            })
-          )}
-        </div>
-
-        <div className="settings-browser-detail">
-          {selected ? (
-            <>
-              <div className="settings-browser-detail-header">
-                <div className="settings-browser-detail-heading">
-                  <McpAvatar item={selected} size="lg" />
-                  <div className="settings-browser-detail-heading-text">
-                    <h4>{selected.title ?? selected.name}</h4>
-                    <p>{selected.name}</p>
+                  <div className="settings-browser-card-heading">
+                    <span className="settings-browser-card-title">{item.title ?? item.name}</span>
+                    <span className="settings-browser-card-name">{item.name}</span>
                   </div>
+                  {scope ? (
+                    <span className="settings-browser-installed">
+                      <CheckCircle size={12} weight="fill" /> {language.t(`settings.mcpMarketplace.scope.${scope}`)}
+                    </span>
+                  ) : null}
                 </div>
-                <div className="settings-browser-actions">
-                  {installedScope ? (
+                <p className="settings-browser-card-description">{item.description}</p>
+                <div className="settings-browser-card-meta">
+                  {item.packages.length > 0 ? (
+                    <span className="settings-browser-chip">
+                      <Package size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.package")}
+                    </span>
+                  ) : null}
+                  {item.remotes.length > 0 ? (
+                    <span className="settings-browser-chip">
+                      <CloudArrowDown size={11} weight="bold" /> {language.t("settings.mcpMarketplace.transport.remote")}
+                    </span>
+                  ) : null}
+                  <span className="settings-browser-chip">{language.t(`settings.mcpMarketplace.category.${marketplaceCategory(item)}`)}</span>
+                  {item.version ? <span className="settings-browser-chip">v{item.version}</span> : null}
+                </div>
+                <div className="settings-browser-card-actions">
+                  {scope ? (
                     <Button
-                      disabled={pendingID === selected.id}
-                      onClick={() => remove(selected, installedScope)}
+                      disabled={pendingID === item.id}
+                      onClick={() => remove(item, scope)}
                       icon={<Trash size={14} weight="bold" />}
                     >
                       {language.t("settings.mcpMarketplace.remove")}
                     </Button>
                   ) : (
                     <Button
-                      disabled={!canInstallItem(selected) || pendingID === selected.id}
-                      onClick={() => openInstall(selected)}
+                      disabled={!canInstallItem(item) || pendingID === item.id}
+                      onClick={() => openInstall(item)}
                       icon={<DownloadSimple size={14} weight="bold" />}
                     >
                       {language.t("settings.mcpMarketplace.install")}
@@ -298,23 +273,9 @@ export function SettingsMcpMarketplace() {
                   )}
                 </div>
               </div>
-              <p className="settings-browser-description">{selected.description}</p>
-              <div className="settings-browser-tags">
-                <span>{language.t(`settings.mcpMarketplace.category.${marketplaceCategory(selected)}`)}</span>
-                {selected.packages.length > 0 ? <span><Package size={12} /> package</span> : null}
-                {selected.version ? <span>v{selected.version}</span> : null}
-                {selected.updatedAt ? <span>{language.t("settings.mcpMarketplace.updatedAt", { date: selected.updatedAt })}</span> : null}
-              </div>
-              <DetailLinks item={selected} />
-              <DetailPackages item={selected} />
-              <DetailRemotes item={selected} />
-              <DetailEnvironment item={selected} />
-              <DetailVariables item={selected} />
-            </>
-          ) : (
-            <div className="settings-empty">{language.t("settings.mcpMarketplace.empty")}</div>
-          )}
-        </div>
+            )
+          })
+        )}
       </div>
 
       {draft ? (
@@ -328,104 +289,6 @@ export function SettingsMcpMarketplace() {
         />
       ) : null}
     </section>
-  )
-}
-
-function DetailLinks(props: { item: RaccoonMarketplaceMcpItem }) {
-  const links = [
-    props.item.websiteUrl ? { label: "Website", url: props.item.websiteUrl } : undefined,
-    props.item.repositoryUrl ? { label: "Repository", url: props.item.repositoryUrl } : undefined,
-  ].filter((link): link is { label: string; url: string } => !!link)
-  if (links.length === 0) return null
-  return (
-    <div className="settings-browser-links">
-      {links.map((link) => (
-        <a href={link.url} key={link.url}>
-          {link.label}
-        </a>
-      ))}
-    </div>
-  )
-}
-
-function DetailPackages(props: { item: RaccoonMarketplaceMcpItem }) {
-  const language = useLanguage()
-  if (props.item.packages.length === 0) return null
-  return (
-    <div className="settings-browser-transport">
-      <div>
-        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.packages")}</div>
-        {props.item.packages.map((pkg) => (
-          <code key={`${pkg.registryType}:${pkg.identifier}:${pkg.version ?? ""}`}>
-            {pkg.registryType}: {pkg.identifier}
-            {pkg.version ? `@${pkg.version}` : ""}
-          </code>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DetailRemotes(props: { item: RaccoonMarketplaceMcpItem }) {
-  const language = useLanguage()
-  if (props.item.remotes.length === 0) return null
-  return (
-    <div className="settings-browser-transport">
-      <div>
-        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.remotes")}</div>
-        {props.item.remotes.map((remote) => (
-          <code key={`${remote.type}:${remote.url}`}>
-            {remote.type}: {remote.url}
-          </code>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DetailEnvironment(props: { item: RaccoonMarketplaceMcpItem }) {
-  const language = useLanguage()
-  const env = props.item.environmentVariables.filter((entry) => entry.name)
-  if (env.length === 0) return null
-  return (
-    <div className="settings-browser-transport">
-      <div>
-        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.environment")}</div>
-        {env.map((entry) => (
-          <div className="settings-mcp-env-row" key={entry.name}>
-            <code>{entry.name}</code>
-            <span className="settings-mcp-env-tags">
-              <span>{entry.isRequired ? language.t("settings.mcpMarketplace.required") : language.t("settings.mcpMarketplace.optional")}</span>
-              {entry.isSecret ? <span>{language.t("settings.mcpMarketplace.secret")}</span> : null}
-            </span>
-            {entry.description ? <small>{entry.description}</small> : null}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function DetailVariables(props: { item: RaccoonMarketplaceMcpItem }) {
-  const language = useLanguage()
-  const variables = itemVariables(props.item)
-  if (variables.length === 0) return null
-  return (
-    <div className="settings-browser-transport">
-      <div>
-        <div className="settings-browser-transport-title">{language.t("settings.mcpMarketplace.variables")}</div>
-        {variables.map((entry) => (
-          <div className="settings-mcp-env-row" key={entry.name}>
-            <code>{entry.name}</code>
-            <span className="settings-mcp-env-tags">
-              <span>{entry.isRequired ? language.t("settings.mcpMarketplace.required") : language.t("settings.mcpMarketplace.optional")}</span>
-              {entry.isSecret ? <span>{language.t("settings.mcpMarketplace.secret")}</span> : null}
-            </span>
-            {entry.description ? <small>{entry.description}</small> : null}
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }
 

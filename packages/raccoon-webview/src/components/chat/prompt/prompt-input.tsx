@@ -18,8 +18,6 @@ import { modeLabel, requestContext, slashQuery } from "./prompt-input-utils"
 import { usePromptAttachments } from "./use-prompt-attachments"
 import { PromptCommandList, PromptMentionList, PromptModePicker } from "./prompt-popovers"
 
-type ModelSelection = { providerID: string; modelID: string }
-
 function PromptDragOverlay(props: { active: boolean }) {
   if (!props.active) return null
   return (
@@ -76,7 +74,6 @@ export function PromptInput() {
   const [modeOpen, setModeOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const [commandSelected, setCommandSelected] = useState(0)
-  const [sessionModels, setSessionModels] = useState<Record<string, ModelSelection>>({})
   const { attachments, dragging, handlePaste, dragHandlers, removeAttachment, openAttachment, clear: clearAttachments } =
     usePromptAttachments((attachment) =>
       session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime }),
@@ -95,8 +92,7 @@ export function PromptInput() {
     label: modeLabel(session.state.mode),
   }
   const activeSessionID = session.state.activeSessionID
-  const conversationModel = activeSessionID ? sessionModels[activeSessionID] : undefined
-  const selectedModel = conversationModel ?? session.selectedModel
+  const selectedModel = session.conversationModel
   const canSend = session.canSend(draft, attachments)
   const busy = session.state.busy ?? false
   const commandQuery = slashQuery(draft, textareaRef.current?.selectionStart ?? draft.length)
@@ -389,7 +385,7 @@ export function PromptInput() {
               models={session.models}
               onChange={(model) => {
                 if (!activeSessionID) return
-                setSessionModels((current) => ({ ...current, [activeSessionID]: model }))
+                session.setConversationModel(activeSessionID, model)
               }}
               ariaLabel={t("prompt.model")}
               placeholder="No model"

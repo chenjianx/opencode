@@ -470,12 +470,8 @@ export class RaccoonSessionController {
       await this.createSession()
       return
     }
-    if (command.name === "models" || command.name === "connect" || command.name === "settings") {
+    if (command.name === "settings") {
       await this.openSettings()
-      return
-    }
-    if (command.name === "status") {
-      await this.refresh()
       return
     }
     if (command.name === "compact") {

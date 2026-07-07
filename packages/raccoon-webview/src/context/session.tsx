@@ -53,6 +53,7 @@ type SessionStateContextValue = {
   commandConfigs: RaccoonManagedCommand[]
   slashCommands: RaccoonSlashCommand[]
   selectedModel?: RaccoonModel
+  conversationModel?: RaccoonModel
   activeSession?: RaccoonSession
   latestUserMessage?: RaccoonMessage
   latestAssistantMessage?: RaccoonMessage
@@ -85,6 +86,7 @@ type SessionActionsContextValue = {
   setPluginLanguage: (language: RaccoonPluginLanguageMode) => void
   setAutocompleteEnabled: (enabled: boolean) => void
   setModel: (model: { providerID: string; modelID: string }) => void
+  setConversationModel: (sessionID: string, model: { providerID: string; modelID: string }) => void
   setModeModel: (mode: ChatMode, model?: { providerID: string; modelID: string }) => void
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
   setProviderEnabled: (providerID: string, enabled: boolean) => void
@@ -185,6 +187,9 @@ export function SessionProvider(props: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<RaccoonPermissionRequest[]>([])
   const [permissionErrors, setPermissionErrors] = useState<Set<string>>(() => new Set())
   const [autoApproveSessions, setAutoApproveSessions] = useState<Set<string>>(() => new Set())
+  // Client-only per-conversation model override. Switching the model while a session is active
+  // affects only that session's next messages, without changing the global default model.
+  const [sessionModels, setSessionModels] = useState<Record<string, { providerID: string; modelID: string }>>({})
   // Client-only flag: settings is being shown inline in the chat surface (JetBrains) rather than
   // in a dedicated settings webview (VSCode). Drives the Back button and survives state refreshes.
   const [settingsInline, setSettingsInline] = useState(false)
@@ -488,6 +493,13 @@ export function SessionProvider(props: { children: ReactNode }) {
     const selectedModel = models.find(
       (model) => model.providerID === state.selectedModel?.providerID && model.modelID === state.selectedModel?.modelID,
     )
+    const conversationSelection = state.activeSessionID ? sessionModels[state.activeSessionID] : undefined
+    const conversationModel = conversationSelection
+      ? models.find(
+          (model) =>
+            model.providerID === conversationSelection.providerID && model.modelID === conversationSelection.modelID,
+        ) ?? selectedModel
+      : selectedModel
     const activeSession = state.activeSession ?? sessions.find((session) => session.id === state.activeSessionID)
     const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")
     const latestAssistantMessage = [...messages].reverse().find((message) => message.role === "assistant")
@@ -512,6 +524,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       commandConfigs,
       slashCommands,
       selectedModel,
+      conversationModel,
       activeSession,
       latestUserMessage,
       latestAssistantMessage,
@@ -524,7 +537,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       autoApprovePermissions: !!state.activeSessionID && autoApproveSessions.has(state.activeSessionID),
       settingsInline,
     }
-  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, state, settingsInline])
+  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, sessionModels, state, settingsInline])
 
   const sessionConfig = useMemo<SessionConfigContextValue>(() => {
     return {
@@ -627,6 +640,10 @@ export function SessionProvider(props: { children: ReactNode }) {
       setModel: (model) => {
         setState((current) => ({ ...current, selectedModel: model, defaultModel: model }))
         vscode.postMessage({ type: "setModel", model })
+      },
+      setConversationModel: (sessionID, model) => {
+        if (!sessionID) return
+        setSessionModels((current) => ({ ...current, [sessionID]: model }))
       },
       setModeModel: (mode, model) => {
         setState((current) => {

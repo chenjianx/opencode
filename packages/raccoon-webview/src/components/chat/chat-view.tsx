@@ -18,7 +18,7 @@ export function ChatView() {
   const usage = sessionUsage(session.visibleMessages)
   const breakdown = contextBreakdown(session.visibleMessages)
 
-  const contextLimit = session.selectedModel?.contextLimit ?? 0
+  const contextLimit = session.conversationModel?.contextLimit ?? 0
   const contextUsed = contextTokens(session.visibleMessages)
   const contextPct = contextLimit > 0 ? Math.min(100, Math.round((contextUsed / contextLimit) * 100)) : 0
   const showContext = contextLimit > 0 && contextUsed > 0
