@@ -252,7 +252,7 @@ export const ReadTool = Tool.define<
             Effect.catch(() => Effect.succeed(new Uint8Array())),
           )
           if (isBinaryFile(child, sample)) return
-          const file = yield* Effect.promise(() => lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 })).pipe(
+          const file = yield* lines(child, { limit: DEFAULT_READ_LIMIT, offset: 1 }).pipe(
             Effect.catch(() => Effect.void),
           )
           if (!file) return

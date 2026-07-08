@@ -1,6 +1,6 @@
 import type { LanguageModelV3 } from "@ai-sdk/provider"
 import { type FetchFunction, withoutTrailingSlash } from "@ai-sdk/provider-utils"
-import { OpenAICompatibleChatLanguageModel } from "../copilot/chat/openai-compatible-chat-language-model"
+import { OpenAICompatibleChatLanguageModel } from "@ai-sdk/openai-compatible"
 
 type RaccoonProviderSettings = {
   apiKey?: string
