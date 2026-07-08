@@ -27,9 +27,12 @@ export class ServerStartupError extends Error {
   }
 }
 
+const SERVER_STOP_TIMEOUT = 6_000
+
 export class RaccoonServerManager implements vscode.Disposable {
   private instance?: ServerInstance
   private startup?: Promise<ServerInstance>
+  private stopping?: Promise<void>
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -55,8 +58,34 @@ export class RaccoonServerManager implements vscode.Disposable {
   }
 
   dispose() {
-    this.instance?.process?.kill()
+    void this.stop()
+  }
+
+  // Graceful stop: ask the server to exit, then force-kill if it does not
+  // exit within SERVER_STOP_TIMEOUT. Idempotent while a stop is in flight.
+  async stop(): Promise<void> {
+    const child = this.instance?.process
     this.instance = undefined
+    if (!child) return
+    if (this.stopping) return this.stopping
+
+    let exited = false
+    const done = new Promise<void>((resolve) =>
+      child.once("exit", () => {
+        exited = true
+        resolve()
+      }),
+    )
+    child.kill("SIGTERM")
+    this.stopping = Promise.race([
+      done,
+      delay(SERVER_STOP_TIMEOUT).then(() => {
+        if (!exited) child.kill("SIGKILL")
+      }),
+    ]).then(() => {
+      this.stopping = undefined
+    })
+    return this.stopping
   }
 
   private async startServer(): Promise<ServerInstance> {
@@ -76,7 +105,7 @@ export class RaccoonServerManager implements vscode.Disposable {
     this.output.appendLine(`starting Raccoon server: ${command} ${args.join(" ")}`)
     const child = this.deps.spawn(command, args, {
       cwd: this.deps.workspaceDirectory(),
-      env: { ...process.env, OPENCODE_CALLER: "vscode", OPENCODE_SERVER_PASSWORD: password },
+      env: sidecarEnv(password),
       stdio: ["ignore", "pipe", "pipe"],
     })
 
@@ -138,7 +167,10 @@ export class RaccoonServerManager implements vscode.Disposable {
     for (let attempt = 0; attempt < 150; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 200))
       try {
-        const response = await this.deps.fetch(`${url}/global/health`, { headers })
+        const response = await this.deps.fetch(`${url}/global/health`, {
+          headers,
+          signal: AbortSignal.timeout(3000),
+        })
         if (response.ok) return
       } catch {
         continue
@@ -151,6 +183,21 @@ export class RaccoonServerManager implements vscode.Disposable {
     const binName = process.platform === "win32" ? "raccoon.exe" : "raccoon"
     return join(this.context.extensionPath, "bin", binName)
   }
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
+// Build the server env, stripping vars that can interfere with the spawned
+// binary before injecting the caller identity and auth password.
+function sidecarEnv(password: string): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  delete env.DEBUG
+  if (process.platform === "linux") delete env.LD_PRELOAD
+  env.OPENCODE_CALLER = "vscode"
+  env.OPENCODE_SERVER_PASSWORD = password
+  return env
 }
 
 function recentOutput() {
