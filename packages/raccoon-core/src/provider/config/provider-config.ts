@@ -135,14 +135,18 @@ export class RaccoonProviderConfig {
     ])
     this.providerAuthMethods = authResponse.data ?? {}
     const connected = new Set(providerResponse.data.connected)
-    const models = providerResponse.data.all.flatMap((provider) => mapProviderModels(provider, connected.has(provider.id), this.disabledModels))
-    const providers = mapProviders(providerResponse.data.all, connected, models)
-    const customProviders = providerResponse.data.all
+    // 暂时隐藏「免费模型」：opencode provider 提供的免费模型不再进入模型列表，
+    // 因此对话/设置的模型选择器和默认模型解析都不会再出现它们。恢复时删除此过滤即可。
+    const visibleProviders = providerResponse.data.all.filter((provider) => provider.id !== "opencode")
+    const models = visibleProviders.flatMap((provider) => mapProviderModels(provider, connected.has(provider.id), this.disabledModels))
+    const providers = mapProviders(visibleProviders, connected, models)
+    const customProviders = visibleProviders
       .filter((provider) => provider.source === "config" && provider.models && Object.keys(provider.models).length > 0)
       .map((provider) => ({
         providerID: provider.id,
         name: provider.name,
         baseURL: typeof provider.options?.baseURL === "string" ? provider.options.baseURL : "",
+        headers: customProviderHeaders(provider.options?.headers),
         models: Object.values(provider.models).map((model) => ({
           id: model.id,
           name: model.name,
@@ -580,6 +584,7 @@ export class RaccoonProviderConfig {
     const providerID = message.providerID.trim()
     const name = message.name.trim()
     const baseURL = message.baseURL.trim()
+    const headers = cleanHeaders(message.headers)
     const models = message.models
       .map((model) => ({ id: model.id.trim(), name: model.name.trim(), supportsImage: model.supportsImage ?? false }))
       .filter((model) => model.id && model.name)
@@ -600,7 +605,10 @@ export class RaccoonProviderConfig {
       api: baseURL,
       npm: "@ai-sdk/openai-compatible",
       name,
-      options: { baseURL },
+      options: {
+        baseURL,
+        ...(headers ? { headers } : {}),
+      },
       models: Object.fromEntries(
         models.map((model) => [
           model.id,
@@ -736,6 +744,21 @@ export class RaccoonProviderConfig {
 function normalizePluginLanguageMode(value: string | undefined): RaccoonPluginLanguageMode {
   if (value === "auto" || value === "en" || value === "zh-Hans" || value === "zh-Hant") return value
   return "auto"
+}
+
+function customProviderHeaders(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
+  return cleanHeaders(value as Record<string, unknown>)
+}
+
+function cleanHeaders(value: Record<string, unknown> | undefined) {
+  const headers = Object.fromEntries(
+    Object.entries(value ?? {})
+      .map(([key, headerValue]) => [key.trim(), typeof headerValue === "string" ? headerValue.trim() : ""] as const)
+      .filter(([key, headerValue]) => key && headerValue),
+  )
+  if (Object.keys(headers).length === 0) return undefined
+  return headers
 }
 
 function collectAgentOverrides(

@@ -1287,6 +1287,10 @@
     @apply grid grid-cols-[1fr_1fr_auto_28px] items-center gap-2;
   }
 
+  .settings-dialog-header-row {
+    @apply grid grid-cols-[1fr_1fr_28px] items-center gap-2;
+  }
+
   .settings-dialog-model-capability {
     @apply flex items-center gap-1 whitespace-nowrap text-[12px] text-[var(--color-muted)];
   }

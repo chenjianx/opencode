@@ -112,6 +112,7 @@ export type RaccoonCustomProvider = {
   providerID: string
   name: string
   baseURL: string
+  headers?: Record<string, string>
   models: Array<{ id: string; name: string; supportsImage?: boolean }>
 }
 
@@ -549,7 +550,7 @@ export type WebviewToExtension =
     }
   | { type: "cancelProviderConnect"; providerID?: string }
   | { type: "disconnectProvider"; providerID: string }
-  | { type: "fetchCustomProviderModels"; requestID: string; baseURL: string; apiKey?: string }
+  | { type: "fetchCustomProviderModels"; requestID: string; baseURL: string; apiKey?: string; headers?: Record<string, string> }
   | { type: "fetchMcpMarketplace"; force?: boolean }
   | { type: "fetchSkillMarketplace"; force?: boolean }
   | {
@@ -594,6 +595,7 @@ export type WebviewToExtension =
       name: string
       baseURL: string
       apiKey: string
+      headers?: Record<string, string>
       models: Array<{ id: string; name: string; supportsImage?: boolean }>
     }
   | { type: "deleteCustomProvider"; providerID: string }

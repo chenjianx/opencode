@@ -118,6 +118,7 @@ type SessionActionsContextValue = {
     name: string
     baseURL: string
     apiKey: string
+    headers?: Record<string, string>
     models: Array<{ id: string; name: string }>
     editing?: boolean
   }) => void

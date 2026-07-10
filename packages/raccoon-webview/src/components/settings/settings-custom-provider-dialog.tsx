@@ -9,6 +9,7 @@ type CustomProviderDraft = {
   name: string
   baseURL: string
   apiKey: string
+  headers: Array<{ key: string; value: string }>
   models: Array<{ id: string; name: string; supportsImage?: boolean }>
 }
 
@@ -79,6 +80,59 @@ export function SettingsCustomProviderDialog(props: {
             placeholder={language.t("settings.customProvider.apiKey.placeholder")}
             onChange={(value) => props.onCustomChange((current) => ({ ...current, apiKey: value }))}
           />
+          <div className="settings-dialog-models">
+            <div className="settings-dialog-section">
+              <div>
+                <div className="settings-dialog-section-title">{language.t("settings.customProvider.headers")}</div>
+                <div className="settings-dialog-section-description">{language.t("settings.customProvider.headers.help")}</div>
+              </div>
+            </div>
+            {props.custom.headers.map((header, index) => (
+              <div className="settings-dialog-header-row" key={index}>
+                <TextInput
+                  value={header.key}
+                  placeholder={language.t("settings.customProvider.headerKey.placeholder")}
+                  onChange={(value) =>
+                    props.onCustomChange((current) => ({
+                      ...current,
+                      headers: current.headers.map((item, itemIndex) => (itemIndex === index ? { ...item, key: value } : item)),
+                    }))
+                  }
+                />
+                <TextInput
+                  value={header.value}
+                  placeholder={language.t("settings.customProvider.headerValue.placeholder")}
+                  onChange={(value) =>
+                    props.onCustomChange((current) => ({
+                      ...current,
+                      headers: current.headers.map((item, itemIndex) => (itemIndex === index ? { ...item, value } : item)),
+                    }))
+                  }
+                />
+                <Button
+                  variant="icon"
+                  className="settings-dialog-icon-button"
+                  disabled={props.custom.headers.length <= 1}
+                  onClick={() =>
+                    props.onCustomChange((current) => ({
+                      ...current,
+                      headers: current.headers.filter((_, itemIndex) => itemIndex !== index),
+                    }))
+                  }
+                  aria-label={language.t("settings.customProvider.removeHeader")}
+                >
+                  <X size={12} weight="bold" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              onClick={() =>
+                props.onCustomChange((current) => ({ ...current, headers: [...current.headers, { key: "", value: "" }] }))
+              }
+            >
+              {language.t("settings.customProvider.addHeader")}
+            </Button>
+          </div>
 
           <div className="settings-dialog-models">
             <div className="settings-dialog-section">

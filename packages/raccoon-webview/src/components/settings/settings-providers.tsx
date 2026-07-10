@@ -19,11 +19,16 @@ const popularProviders = [
   { id: "copilot", name: "GitHub Copilot", noteKey: "settings.providers.copilot.note" },
 ] as const
 
+// 暂时隐藏国外供应商的「热门供应商」发现入口，只保留自定义添加入口。
+// 恢复时将此开关改回 false 即可重新展示上面的 popularProviders 列表。
+const HIDE_FOREIGN_PROVIDERS = true
+
 // raccoon (login) and opencode (free models) get their own pinned cards at the
 // top, so they are excluded from the dynamic connected/popular sections.
 const builtinProviderIDs = new Set(["raccoon", "opencode"])
 
 const emptyCustomModel = () => ({ id: "", name: "", supportsImage: false })
+const emptyCustomHeader = () => ({ key: "", value: "" })
 
 type ProviderDraft = {
   methodIndex: number
@@ -37,6 +42,15 @@ type CustomModelDraft = {
   supportsImage?: boolean
 }
 
+type CustomHeaderDraft = {
+  key: string
+  value: string
+}
+
+type CustomHeadersResult =
+  | { ok: true; headers?: Record<string, string> }
+  | { ok: false; key: string }
+
 type Prompt = NonNullable<RaccoonProviderAuthMethod["prompts"]>[number]
 
 function visiblePrompt(prompt: Prompt, values: Record<string, string>) {
@@ -44,6 +58,23 @@ function visiblePrompt(prompt: Prompt, values: Record<string, string>) {
   const value = values[prompt.when.key] ?? ""
   if (prompt.when.op === "eq") return value === prompt.when.value
   return value !== prompt.when.value
+}
+
+function customHeaders(headers: CustomHeaderDraft[]): CustomHeadersResult {
+  const entries = headers
+    .map((header) => ({ key: header.key.trim(), value: header.value.trim() }))
+    .filter((header) => header.key || header.value)
+  const invalid = entries.find((header) => !header.key || !header.value)
+  if (invalid) return { ok: false, key: invalid.key || invalid.value }
+  const result = Object.fromEntries(entries.map((header) => [header.key, header.value]))
+  if (Object.keys(result).length === 0) return { ok: true }
+  return { ok: true, headers: result }
+}
+
+function customHeaderDrafts(headers: Record<string, string> | undefined) {
+  const entries = Object.entries(headers ?? {})
+  if (entries.length === 0) return [emptyCustomHeader()]
+  return entries.map(([key, value]) => ({ key, value }))
 }
 
 export function SettingsProviders() {
@@ -68,12 +99,14 @@ export function SettingsProviders() {
     name: string
     baseURL: string
     apiKey: string
+    headers: CustomHeaderDraft[]
     models: CustomModelDraft[]
   }>({
     providerID: "",
     name: "",
     baseURL: "",
     apiKey: "",
+    headers: [emptyCustomHeader()],
     models: [emptyCustomModel()],
   })
   const [editingProviderID, setEditingProviderID] = useState<string>()
@@ -156,7 +189,7 @@ export function SettingsProviders() {
     [config.providers],
   )
   const connectedIDs = useMemo(() => new Set(connectedProviders.map((item) => item.id)), [connectedProviders])
-  const unconnectedPopular = popularProviders.filter((item) => !connectedIDs.has(item.id))
+  const unconnectedPopular = HIDE_FOREIGN_PROVIDERS ? [] : popularProviders.filter((item) => !connectedIDs.has(item.id))
   const filteredFetchedModels = useMemo(() => {
     const text = fetchedQuery.trim().toLowerCase()
     if (!text) return fetchedModels ?? []
@@ -168,6 +201,11 @@ export function SettingsProviders() {
       setFetchError(language.t("settings.providers.error.baseUrl"))
       return
     }
+    const headersResult = customHeaders(custom.headers)
+    if (!headersResult.ok) {
+      setFetchError(language.t("settings.providers.error.headers", { key: headersResult.key }))
+      return
+    }
     setFetchingModels(true)
     setFetchError(undefined)
     setFetchStatus(undefined)
@@ -177,6 +215,7 @@ export function SettingsProviders() {
       requestID: crypto.randomUUID(),
       baseURL: custom.baseURL.trim(),
       apiKey: custom.apiKey.trim() || undefined,
+      headers: headersResult.headers,
     })
   }
 
@@ -208,8 +247,13 @@ export function SettingsProviders() {
       setSaveError(language.t("settings.providers.error.baseUrl"))
       return
     }
+    const headersResult = customHeaders(custom.headers)
+    if (!headersResult.ok) {
+      setSaveError(language.t("settings.providers.error.headers", { key: headersResult.key }))
+      return
+    }
     setSavingCustom(true)
-    actions.configureCustomProvider({ ...custom, providerID, name, baseURL, models, editing: !!editingProviderID })
+    actions.configureCustomProvider({ ...custom, providerID, name, baseURL, headers: headersResult.headers, models, editing: !!editingProviderID })
   }
 
   const deleteCustomProvider = (providerID: string) => {
@@ -241,6 +285,7 @@ export function SettingsProviders() {
       name: provider.name,
       baseURL: provider.baseURL,
       apiKey: "",
+      headers: customHeaderDrafts(provider.headers),
       models: provider.models.length > 0 ? provider.models : [emptyCustomModel()],
     })
     setCustomOpen(true)
@@ -257,6 +302,7 @@ export function SettingsProviders() {
       name: "",
       baseURL: "",
       apiKey: "",
+      headers: [emptyCustomHeader()],
       models: [emptyCustomModel()],
     })
     setFetchError(undefined)
@@ -409,7 +455,7 @@ export function SettingsProviders() {
         )}
       </div>
 
-      <h4>{language.t("settings.providers.section.popular")}</h4>
+      <h4>{language.t(HIDE_FOREIGN_PROVIDERS ? "settings.providers.custom.title" : "settings.providers.section.popular")}</h4>
       <div className="settings-card">
         {unconnectedPopular.map((item) => (
           <div className="settings-provider-block" key={item.id}>

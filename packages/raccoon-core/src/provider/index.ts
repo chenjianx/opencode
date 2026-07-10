@@ -616,7 +616,11 @@ export class RaccoonProvider {
     source: RaccoonWebviewSource,
   ) {
     try {
-      const models = await fetchOpenAIModels({ baseURL: message.baseURL.trim(), apiKey: message.apiKey?.trim() || undefined })
+      const models = await fetchOpenAIModels({
+        baseURL: message.baseURL.trim(),
+        apiKey: message.apiKey?.trim() || undefined,
+        headers: message.headers,
+      })
       this.webviewHost.post(source, {
         type: "customProviderModelsFetched",
         requestID: message.requestID,

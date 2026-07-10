@@ -12,11 +12,12 @@ export class FetchModelsError extends Error {
   }
 }
 
-export async function fetchOpenAIModels(input: { baseURL: string; apiKey?: string }) {
+export async function fetchOpenAIModels(input: { baseURL: string; apiKey?: string; headers?: Record<string, string> }) {
   const response = await fetch(`${input.baseURL.replace(/\/+$/, "")}/models`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      ...(input.headers ?? {}),
       ...(input.apiKey ? { Authorization: `Bearer ${input.apiKey}` } : {}),
     },
     signal: AbortSignal.timeout(15_000),
