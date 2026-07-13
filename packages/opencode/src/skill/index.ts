@@ -30,10 +30,17 @@ const SKILL_PATTERN = "**/SKILL.md"
 // invalid config, so users hit cryptic startup errors. Loading this skill
 // when the model is asked to touch opencode's own config files gives it the
 // actual schemas instead of guesses.
-const CUSTOMIZE_OPENCODE_SKILL_NAME = "customize-opencode"
-const CUSTOMIZE_OPENCODE_SKILL_DESCRIPTION =
-  "Use ONLY when the user is editing or creating opencode's own configuration: opencode.json, opencode.jsonc, files under .opencode/, or files under ~/.config/opencode/. Also use when creating or fixing opencode agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring opencode itself."
-const CUSTOMIZE_OPENCODE_SKILL_BODY = SkillPlugin.CustomizeOpencodeContent
+// raccoon_change - built-in customize-opencode skill disabled (see registration below)
+// const CUSTOMIZE_OPENCODE_SKILL_NAME = "customize-opencode"
+// const CUSTOMIZE_OPENCODE_SKILL_DESCRIPTION =
+//   "Use ONLY when the user is editing or creating opencode's own configuration: opencode.json, opencode.jsonc, files under .opencode/, or files under ~/.config/opencode/. Also use when creating or fixing opencode agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring opencode itself."
+// const CUSTOMIZE_OPENCODE_SKILL_BODY = SkillPlugin.CustomizeOpencodeContent
+
+// raccoon_change - built-in skill: install MCP servers / skills from the Raccoon marketplace by name
+const RACCOON_CONFIG_SKILL_NAME = "raccoon-config"
+const RACCOON_CONFIG_SKILL_DESCRIPTION =
+  "Use when the user wants to install, add, or set up (安装 / 新增) an MCP server or a skill by name from the Raccoon marketplace — e.g. \"装个 playwright mcp\", \"add the github mcp\", \"安装 pdf skill\". Fetches the marketplace catalog, writes the MCP config, or clones the skill directory. Do not use for general opencode config editing or for the user's own application code."
+const RACCOON_CONFIG_SKILL_BODY = SkillPlugin.RaccoonConfigContent
 
 export const Info = Schema.Struct({
   name: Schema.String,
@@ -276,13 +283,21 @@ const layer = Layer.effect(
         const s: State = { skills: {}, dirs: new Set() }
         // Register the built-in skill BEFORE disk discovery so a user-disk
         // skill with the same name can override it.
-        s.skills[CUSTOMIZE_OPENCODE_SKILL_NAME] = {
-          name: CUSTOMIZE_OPENCODE_SKILL_NAME,
-          description: CUSTOMIZE_OPENCODE_SKILL_DESCRIPTION,
-          location: "<built-in>",
-          content: CUSTOMIZE_OPENCODE_SKILL_BODY,
-        }
+        // raccoon_change - disable built-in customize-opencode skill
+        // s.skills[CUSTOMIZE_OPENCODE_SKILL_NAME] = {
+        //   name: CUSTOMIZE_OPENCODE_SKILL_NAME,
+        //   description: CUSTOMIZE_OPENCODE_SKILL_DESCRIPTION,
+        //   location: "<built-in>",
+        //   content: CUSTOMIZE_OPENCODE_SKILL_BODY,
+        // }
         s.skills[RaccoonKnowledgeSkill.name] = yield* RaccoonKnowledgeSkill.legacyInfo() // raccoon_change - include bundled Raccoon knowledge skill
+        // raccoon_change - built-in Raccoon marketplace config skill
+        s.skills[RACCOON_CONFIG_SKILL_NAME] = {
+          name: RACCOON_CONFIG_SKILL_NAME,
+          description: RACCOON_CONFIG_SKILL_DESCRIPTION,
+          location: "<built-in>",
+          content: RACCOON_CONFIG_SKILL_BODY,
+        }
         yield* loadSkills(s, yield* InstanceState.get(discovered), events)
         return s
       }),
