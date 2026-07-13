@@ -5,6 +5,11 @@ import type { RaccoonWebviewSource } from "../platform.js"
 
 type MessageRouterDeps = {
   markReady: (source: RaccoonWebviewSource) => void
+  // Push the orchestrator's current state to ready webviews without reloading data.
+  // Used when the settings panel mounts: a full refresh() would fan a loading→idle
+  // cycle and reloaded messages into the chat webview (postState reaches both
+  // surfaces), making the chat flash. The settings panel renders from current state.
+  postState: () => void
   createSession: (mode: ChatMode) => Promise<void>
   refresh: () => Promise<void>
   openHistory: () => Promise<void>
@@ -80,6 +85,10 @@ export class RaccoonMessageRouter {
   async handle(message: WebviewToExtension, source: RaccoonWebviewSource) {
     if (message.type === "webviewReady" || message.type === "ready") {
       this.deps.markReady(source)
+      if (source === "settings") {
+        this.deps.postState()
+        return
+      }
       await this.deps.refresh()
       return
     }

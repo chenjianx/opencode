@@ -229,6 +229,7 @@ export class RaccoonProvider {
     )
     this.messageRouter = new RaccoonMessageRouter({
       markReady: (source) => this.webviewHost.markReady(source),
+      postState: () => this.post(),
       createSession: (mode) => this.createSession(mode),
       refresh: () => this.refresh(),
       openHistory: () => this.openHistory(),
@@ -363,7 +364,10 @@ export class RaccoonProvider {
   }
 
   async openSettings() {
-    await this.refresh()
+    // Opening settings must not refresh(): refresh() runs loadMessages through
+    // withLoading (loading:true→false) and fans postState to the chat webview,
+    // making the chat surface flash. The settings panel fetches its own data on
+    // webviewReady (postState, not refresh).
     this.sessions.openSettings()
   }
 

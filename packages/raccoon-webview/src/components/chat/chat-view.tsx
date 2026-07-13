@@ -13,8 +13,10 @@ export function ChatView() {
   const [usageOpen, setUsageOpen] = useState(false)
 
   const activeSession = session.state.sessions.find((item) => item.id === session.state.activeSessionID) ?? session.activeSession
-  const hasRealTitle = !!activeSession?.title && activeSession.title !== "New session"
-  const title = hasRealTitle ? activeSession!.title : session.latestUserMessage?.text || language.t("chat.newSession")
+  const isDefaultTitle = (value?: string) =>
+    !value || value === "New session" || /^New session - \d{4}-\d{2}-\d{2}T/.test(value)
+  const hasRealTitle = !isDefaultTitle(activeSession?.title)
+  const title = hasRealTitle ? activeSession!.title : session.latestUserMessage?.text || ""
   const usage = sessionUsage(session.visibleMessages)
   const breakdown = contextBreakdown(session.visibleMessages)
 
