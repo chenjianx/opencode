@@ -31,14 +31,17 @@ It uses the `raccoon` entry from that file:
 - `access` as the bearer token
 - `enterpriseUrl` as the base URL
 
-Organization scope is only used when `RACCOON_ORG_CODE` is explicitly set.
-Without `RACCOON_ORG_CODE`, requests use the personal account endpoint.
+Organization scope is resolved automatically. The skill reads `orgCode` from the login
+auth store, and if it is missing (older logins), recovers it from the user's first
+organization via the user_info endpoint. When an organization scope is present, requests
+use the organization endpoint with `X-Org-Code`; a personal account with no organization
+falls back to the personal endpoint.
 
 Environment overrides are still supported:
 
 - `RACCOON_BASE_URL`
 - `RACCOON_ACCESS_TOKEN`
-- `RACCOON_ORG_CODE`
+- `RACCOON_ORG_CODE` (takes precedence over the stored `orgCode`)
 
 If the user names a knowledge base but does not provide an `internal_url`, list knowledge bases first and match by name. If no base is specified, list knowledge bases first and use the first returned `internal_url`.
 

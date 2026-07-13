@@ -17,6 +17,7 @@ export class Oauth extends Schema.Class<Oauth>("OAuth")({
   access: Schema.String,
   expires: NonNegativeInt,
   accountId: Schema.optional(Schema.String),
+  orgCode: Schema.optional(Schema.String),
   enterpriseUrl: Schema.optional(Schema.String),
 }) {}
 

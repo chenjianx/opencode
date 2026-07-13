@@ -245,12 +245,20 @@ function accountIdFromUser(user: UserInfoResponse["data"]) {
   return user?.orgs?.[0]?.code ?? user?.orgs?.[0]?.id ?? user?.id
 }
 
+// The organization scope id used for the `X-Org-Code` header. Only orgs[0].code is a
+// valid org code; unlike accountIdFromUser we never fall back to an org id or the user id
+// (a personal account without an org must stay unscoped, not send a bogus org code).
+function orgCodeFromUser(user: UserInfoResponse["data"]) {
+  return user?.orgs?.[0]?.code
+}
+
 type Creds = {
   access: string
   refresh: string
   expires: number
   enterpriseUrl: string
   accountId?: string
+  orgCode?: string
 }
 
 // Refresh-token expiry skew: treat a token as expired slightly early so we never send a
@@ -264,8 +272,8 @@ const credsCache = new Map<string, Creds>()
 // Single-flight refresh: concurrent requests that share the same refresh token collapse
 // into one network refresh, so a rotating refresh token is only spent once.
 const refreshInflight = new Map<string, Promise<LoginResult>>()
-// Base URLs we have already attempted account-id recovery for, to avoid a user_info call
-// on every request when the account has no org.
+// Base URLs we have already attempted identity (account id / org code) recovery for, to
+// avoid a user_info call on every request when the account has no org.
 const accountIdChecked = new Set<string>()
 
 function tokenExpired(expires: number | undefined) {
@@ -283,12 +291,11 @@ function refreshAccessTokenOnce(baseUrl: string, refreshToken: string) {
   return promise
 }
 
-async function recoverAccountId(baseUrl: string, access: string) {
-  return accountIdFromUser(
-    await fetchUserInfo(baseUrl, access).catch(() => {
-      return undefined
-    }),
-  )
+async function recoverIdentity(baseUrl: string, access: string) {
+  const user = await fetchUserInfo(baseUrl, access).catch(() => {
+    return undefined
+  })
+  return { accountId: accountIdFromUser(user), orgCode: orgCodeFromUser(user) }
 }
 
 async function persistCreds(input: PluginInput, creds: Creds) {
@@ -302,6 +309,7 @@ async function persistCreds(input: PluginInput, creds: Creds) {
         expires: creds.expires,
         enterpriseUrl: creds.enterpriseUrl,
         ...(creds.accountId && { accountId: creds.accountId }),
+        ...(creds.orgCode && { orgCode: creds.orgCode }),
       },
     })
     .catch(() => undefined)
@@ -314,6 +322,7 @@ async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUr
   const loginBaseUrl = normalizeUrl(auth.enterpriseUrl ?? baseUrl)
   const cached = credsCache.get(loginBaseUrl)
   const authAccountId = (auth as any).accountId as string | undefined
+  const authOrgCode = (auth as any).orgCode as string | undefined
 
   // Prefer the freshest credentials we have; the in-memory cache wins over a possibly
   // stale auth.json read.
@@ -329,20 +338,24 @@ async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUr
       expires: auth.expires as number,
       enterpriseUrl: loginBaseUrl,
       accountId: authAccountId,
+      orgCode: authOrgCode,
     }
     source = "auth"
   }
 
   if (best) {
     let accountId = best.accountId
-    if (!accountId && !accountIdChecked.has(loginBaseUrl)) {
+    let orgCode = best.orgCode
+    if ((!accountId || !orgCode) && !accountIdChecked.has(loginBaseUrl)) {
       accountIdChecked.add(loginBaseUrl)
-      accountId = await recoverAccountId(loginBaseUrl, best.access)
-      if (accountId) best = { ...best, accountId }
-      if (accountId && !authAccountId) await persistCreds(input, best)
+      const recovered = await recoverIdentity(loginBaseUrl, best.access)
+      accountId = accountId ?? recovered.accountId
+      orgCode = orgCode ?? recovered.orgCode
+      best = { ...best, accountId, orgCode }
+      if ((accountId && !authAccountId) || (orgCode && !authOrgCode)) await persistCreds(input, best)
     }
     credsCache.set(loginBaseUrl, best)
-    return { access: best.access, enterpriseUrl: loginBaseUrl, accountId }
+    return { access: best.access, enterpriseUrl: loginBaseUrl, accountId, orgCode }
   }
 
   // Both the cache and stored credentials are expired: refresh using the freshest refresh
@@ -350,19 +363,25 @@ async function getAccess(getAuth: () => Promise<any>, input: PluginInput, baseUr
   const refreshToken = cached?.refresh ?? (auth.refresh as string)
   const refreshed = await refreshAccessTokenOnce(loginBaseUrl, refreshToken)
   const expires = (parseJwtExp(refreshed.access) ?? Math.floor(Date.now() / 1000) + 3600) * 1000
-  const accountId = authAccountId ?? (await recoverAccountId(loginBaseUrl, refreshed.access))
+  const recovered =
+    authAccountId && authOrgCode
+      ? { accountId: authAccountId, orgCode: authOrgCode }
+      : await recoverIdentity(loginBaseUrl, refreshed.access)
+  const accountId = authAccountId ?? recovered.accountId
+  const orgCode = authOrgCode ?? recovered.orgCode
   const creds: Creds = {
     access: refreshed.access,
     refresh: refreshed.refresh,
     expires,
     enterpriseUrl: loginBaseUrl,
     accountId,
+    orgCode,
   }
   credsCache.set(loginBaseUrl, creds)
   accountIdChecked.add(loginBaseUrl)
   await persistCreds(input, creds)
 
-  return { access: refreshed.access, enterpriseUrl: loginBaseUrl, accountId }
+  return { access: refreshed.access, enterpriseUrl: loginBaseUrl, accountId, orgCode }
 }
 
 function modelTemplate(input: {

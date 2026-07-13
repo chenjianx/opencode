@@ -81,10 +81,36 @@ def refresh_access_token(base_url: str, refresh_token: str) -> str:
     return access_token
 
 
+def fetch_org_code(base_url: str, access_token: str) -> str | None:
+    """Recover the organization scope id from the user_info endpoint.
+
+    Mirrors the TypeScript login plugin's orgCodeFromUser: only orgs[0].code is a valid
+    org code. A personal account without an org stays unscoped (personal endpoint).
+    """
+    request = Request(
+        f"{base_url.rstrip('/')}/api/plugin/auth/v1/user_info",
+        headers={"Authorization": f"Bearer {access_token}"},
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=60) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, json.JSONDecodeError):
+        return None
+    orgs = (payload.get("data") or {}).get("orgs") or []
+    if orgs and isinstance(orgs[0], dict):
+        code = orgs[0].get("code")
+        if code:
+            return str(code)
+    return None
+
+
 def resolve_config() -> tuple[str, str, str | None, str | None, bool]:
     auth = load_opencode_raccoon_auth()
     base_url = env("RACCOON_BASE_URL", required=False)
     access_token = env("RACCOON_ACCESS_TOKEN", required=False)
+    # Organization scope id for the X-Org-Code header. Never derived from accountId, which
+    # degrades to the user id for personal accounts; only orgs[0].code is a valid org code.
     org_code = env("RACCOON_ORG_CODE", required=False)
     refresh_token = None
     expired = False
@@ -92,6 +118,7 @@ def resolve_config() -> tuple[str, str, str | None, str | None, bool]:
     if auth:
         access_token = access_token or auth.get("access")
         base_url = base_url or auth.get("enterpriseUrl")
+        org_code = org_code or auth.get("orgCode")
         refresh_token = auth.get("refresh")
         expires = auth.get("expires")
         expired = isinstance(expires, (int, float)) and expires <= (time.time() * 1000)
@@ -122,6 +149,13 @@ def rpc_call(tool_name: str, arguments: dict[str, Any] | None) -> dict[str, Any]
     base_url, access_token, org_code, refresh_token, expired = resolve_config()
     if expired and refresh_token:
         access_token = refresh_access_token(base_url, refresh_token)
+
+    # Older logins persisted only accountId (no orgCode). Recover the org code from
+    # user_info using the now-valid access token so the request targets the organization
+    # endpoint without a re-login. Done here (not in resolve_config) to reuse the single
+    # refresh above and avoid spending a rotating refresh token twice.
+    if not org_code:
+        org_code = fetch_org_code(base_url, access_token)
 
     first_error: HTTPError | None = None
     first_body = ""

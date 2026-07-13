@@ -8,6 +8,7 @@ import { MessageTurn } from "./message-list-turn"
 import { RevertBar } from "./message-list-user"
 import { QuestionDock } from "./question-dock"
 import { PermissionDock } from "./permission-dock"
+import { WelcomeEmpty } from "./welcome-empty"
 
 export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean; follow?: boolean } = {}) {
   const language = useLanguage()
@@ -63,6 +64,9 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
     <div className="message-list-shell">
       <div className="message-list" ref={rootRef} onScroll={updateScrollButton}>
         {!readonly && session.state.error ? <div className="message-shell error">{session.state.error}</div> : null}
+        {!readonly && messageTurns.length === 0 && !session.state.loading && !session.state.error ? (
+          <WelcomeEmpty />
+        ) : null}
         {messageTurns.map((turn, index) => (
           <MessageTurn
             key={turn.user?.id ?? turn.assistant[0]?.id ?? index}

@@ -23,6 +23,12 @@ Organization requests require:
 X-Org-Code: {orgCode}
 ```
 
+The `orgCode` is the login user's first organization code (`orgs[0].code` from the
+`/api/plugin/auth/v1/user_info` response). The client resolves it from `RACCOON_ORG_CODE`,
+then the stored `orgCode` in the auth store, then falls back to recovering it from
+`user_info`. When no organization code exists (personal account), the personal endpoint is
+used instead.
+
 ## Headers
 
 ```http
