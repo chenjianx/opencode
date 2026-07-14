@@ -8,12 +8,12 @@
   }
 
   .assistant-summary-actions {
-    @apply flex h-6 w-full items-center justify-end gap-1 opacity-0 transition-opacity duration-150;
+    @apply flex w-full items-center justify-end gap-1 pt-1 opacity-0 pointer-events-none transition-opacity duration-150 empty:hidden;
   }
 
   .turn-assistant-group:hover .assistant-summary-actions,
   .turn-assistant-group:focus-within .assistant-summary-actions {
-    @apply opacity-100;
+    @apply opacity-100 pointer-events-auto;
   }
 
   .assistant-summary-copy {
@@ -536,12 +536,12 @@
   }
 
   .user-message-actions {
-    @apply flex h-6 items-center justify-end gap-1 opacity-0 transition-opacity duration-150;
+    @apply flex w-full items-center justify-end gap-1 pt-1 opacity-0 pointer-events-none transition-opacity duration-150 empty:hidden;
   }
 
   .user-message-row:hover .user-message-actions,
   .user-message-row:focus-within .user-message-actions {
-    @apply opacity-100;
+    @apply opacity-100 pointer-events-auto;
   }
 
   .user-message-icon-button {

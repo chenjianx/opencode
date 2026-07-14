@@ -3,6 +3,7 @@ import { ArrowDownIcon } from "@phosphor-icons/react"
 import type { RaccoonMessage } from "../../../protocol"
 import { useLanguage } from "../../../context/language"
 import { useSession } from "../../../context/session"
+import { sessionTreePermissions } from "../../../context/session-requests"
 import { turns } from "./message-list-model"
 import { MessageTurn } from "./message-list-turn"
 import { RevertBar } from "./message-list-user"
@@ -10,7 +11,9 @@ import { QuestionDock } from "./question-dock"
 import { PermissionDock } from "./permission-dock"
 import { WelcomeEmpty } from "./welcome-empty"
 
-export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean; follow?: boolean; busy?: boolean } = {}) {
+export function MessageList(
+  props: { messages?: RaccoonMessage[]; readonly?: boolean; follow?: boolean; busy?: boolean; sessionID?: string } = {},
+) {
   const language = useLanguage()
   const session = useSession()
   const readonly = props.readonly ?? false
@@ -59,7 +62,15 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
   const inlineQuestions = readonly ? [] : session.questions.filter((request) => !!request.tool?.messageID)
   const floatingQuestions = readonly ? [] : session.questions.filter((request) => !request.tool?.messageID)
   // Show permission prompts one at a time — the rest queue behind the active one.
-  const activePermission = readonly ? undefined : session.permissions[0]
+  const sessionID = props.sessionID ?? session.state.activeSessionID
+  const treePermissions = sessionTreePermissions({
+    sessionID,
+    messages: props.messages ?? session.visibleMessages,
+    permissions: session.permissions,
+    sessions: session.sessions,
+    subSessions: session.state.subSessions,
+  })
+  const activePermission = treePermissions[0]
 
   return (
     <div className="message-list-shell">
@@ -88,7 +99,7 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
           <QuestionDock key={request.id} request={request} />
         ))}
         {activePermission ? (
-          <PermissionDock key={activePermission.id} request={activePermission} remaining={session.permissions.length - 1} />
+          <PermissionDock key={activePermission.id} request={activePermission} remaining={treePermissions.length - 1} />
         ) : null}
       </div>
       {showScrollBottom ? (

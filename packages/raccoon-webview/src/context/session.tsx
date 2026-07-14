@@ -407,7 +407,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       }
       if (message.type === "error") {
         setState((current) => {
-          const next = { ...current, error: message.message, loading: false }
+          const next = { ...current, error: message.message, loading: false, busy: false }
           vscode.setState(next)
           return next
         })

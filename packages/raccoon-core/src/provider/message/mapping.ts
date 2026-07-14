@@ -49,6 +49,7 @@ export function mapSession(session: Session): RaccoonSession {
   return {
     id: session.id,
     title: session.title,
+    parentID: session.parentID,
     agent: session.agent,
     updatedAt: session.time.updated,
     revert: session.revert,
@@ -145,9 +146,11 @@ export function mapSubSession(
   for (const message of sorted) {
     for (const part of message.parts) {
       if (part.type !== "tool") continue
+      const sessionID = "metadata" in part.state && typeof part.state.metadata?.sessionId === "string" ? part.state.metadata.sessionId : undefined
       tools.push({
         id: part.id,
         tool: part.tool,
+        sessionID: part.tool === "task" ? sessionID : undefined,
         status: part.state.status,
         title: "title" in part.state && part.state.title ? part.state.title : undefined,
       })

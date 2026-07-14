@@ -10,6 +10,7 @@ export class RaccoonEventStream {
     private readonly client: () => Promise<OpencodeClient>,
     private readonly onEvent: (event: GlobalEvent) => void,
     private readonly log: (message: string) => void,
+    private readonly onReconnect?: () => void,
   ) {}
 
   async ensure(directory: string) {
@@ -58,9 +59,11 @@ export class RaccoonEventStream {
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = undefined
       if (!this.directory) return
-      void this.ensure(this.directory).catch((error) =>
-        this.log(`global event reconnect failed: ${error instanceof Error ? error.message : String(error)}`),
-      )
+      void this.ensure(this.directory)
+        .then(() => this.onReconnect?.())
+        .catch((error) =>
+          this.log(`global event reconnect failed: ${error instanceof Error ? error.message : String(error)}`),
+        )
     }, 250)
   }
 }

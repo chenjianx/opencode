@@ -413,7 +413,7 @@ export class RaccoonSessionController {
         { throwOnError: true },
       )
       this.deps.webviewHost.post("chat", { type: "questionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
-      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
+      const sessionID = this.deps.getState().activeSessionID ?? message.sessionID
       if (sessionID) await this.loadMessages(sessionID)
     } catch (error) {
       this.deps.webviewHost.post("chat", { type: "questionError", requestID: message.requestID } satisfies ExtensionToWebview)
@@ -452,7 +452,7 @@ export class RaccoonSessionController {
         { throwOnError: true },
       )
       this.deps.webviewHost.post("chat", { type: "permissionResolved", requestID: message.requestID } satisfies ExtensionToWebview)
-      const sessionID = message.sessionID ?? this.deps.getState().activeSessionID
+      const sessionID = this.deps.getState().activeSessionID ?? message.sessionID
       if (sessionID) await this.loadMessages(sessionID)
     } catch (error) {
       this.deps.webviewHost.post("chat", { type: "permissionError", requestID: message.requestID } satisfies ExtensionToWebview)

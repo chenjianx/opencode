@@ -67,8 +67,14 @@ export function AssistantCopyButton(props: { text: string }) {
   )
 }
 
-export function AssistantText(props: { id: string; text: string; onOpenFile?: (filePath: string, line?: number, column?: number) => void }) {
+export function AssistantText(props: {
+  id: string
+  text: string
+  onOpenFile?: (filePath: string, line?: number, column?: number) => void
+  copyTarget?: { id: string; text: string }
+}) {
   const blocks = splitThinkBlocks(props.text)
+  const showCopy = props.copyTarget?.id === props.id
 
   return (
     <div className="assistant-message-row">
@@ -84,6 +90,7 @@ export function AssistantText(props: { id: string; text: string; onOpenFile?: (f
           }
           return <MarkdownLite key={`${props.id}-text-${index}`} text={block.text} onOpenFile={props.onOpenFile} />
         })}
+        {showCopy && props.copyTarget ? <AssistantCopyButton text={props.copyTarget.text} /> : null}
       </div>
     </div>
   )

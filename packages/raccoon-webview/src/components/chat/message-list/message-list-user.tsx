@@ -42,6 +42,8 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
 
   if (!text && attachments.length === 0) return null
 
+  const showActions = props.onRevert || text
+
   return (
     <div className="user-message-row">
       <div className="user-message-content">
@@ -96,17 +98,19 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
             })}
           </p>
         ) : null}
-      </div>
-      <div className="user-message-actions">
-        {props.onRevert ? (
-          <button type="button" className="user-message-icon-button" onClick={props.onRevert} disabled={props.disabled} aria-label="Revert message">
-            <ArrowUUpLeftIcon size={14} />
-          </button>
-        ) : null}
-        {text ? (
-          <button type="button" className="user-message-icon-button" onClick={() => void copy()} aria-label={copied ? "Copied" : "Copy message"}>
-            {copied ? <CheckIcon size={14} weight="bold" /> : <CopyIcon size={14} weight="bold" />}
-          </button>
+        {showActions ? (
+          <div className="user-message-actions">
+            {props.onRevert ? (
+              <button type="button" className="user-message-icon-button" onClick={props.onRevert} disabled={props.disabled} aria-label="Revert message">
+                <ArrowUUpLeftIcon size={14} />
+              </button>
+            ) : null}
+            {text ? (
+              <button type="button" className="user-message-icon-button" onClick={() => void copy()} aria-label={copied ? "Copied" : "Copy message"}>
+                {copied ? <CheckIcon size={14} weight="bold" /> : <CopyIcon size={14} weight="bold" />}
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

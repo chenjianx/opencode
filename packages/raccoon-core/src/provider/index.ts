@@ -226,8 +226,11 @@ export class RaccoonProvider {
       postMessage: (message) => this.webviewHost.post("chat", message),
       onReauthRequired: () => this.handleReauthRequired(),
     })
-    this.eventStream = new RaccoonEventStream(() => this.client(), (event) => this.eventHandler.handleGlobal(event), (message) =>
-      this.platform.ui.log(message),
+    this.eventStream = new RaccoonEventStream(
+      () => this.client(),
+      (event) => this.eventHandler.handleGlobal(event),
+      (message) => this.platform.ui.log(message),
+      () => this.scheduleEventRefresh(),
     )
     this.messageRouter = new RaccoonMessageRouter({
       markReady: (source) => this.webviewHost.markReady(source),

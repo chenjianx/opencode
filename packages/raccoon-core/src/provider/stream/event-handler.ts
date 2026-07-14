@@ -94,6 +94,45 @@ export class RaccoonEventHandler {
     const sessionID = eventSessionID(event)
     const isChildSession = sessionID && sessionID !== this.deps.getState().activeSessionID
     if (isChildSession) {
+      if (event.type === "question.asked") {
+        this.deps.postMessage({
+          type: "questionRequest",
+          question: {
+            id: event.properties.id,
+            sessionID: event.properties.sessionID,
+            questions: event.properties.questions,
+            tool: event.properties.tool,
+          },
+        })
+        this.setState({ loading: true, busy: true })
+        return
+      }
+      if (event.type === "question.replied" || event.type === "question.rejected") {
+        this.deps.postMessage({ type: "questionResolved", requestID: event.properties.requestID })
+        this.deps.scheduleSubAgentRefresh(sessionID)
+        return
+      }
+      if (event.type === "permission.asked") {
+        this.deps.postMessage({
+          type: "permissionRequest",
+          permission: {
+            id: event.properties.id,
+            sessionID: event.properties.sessionID,
+            permission: event.properties.permission,
+            patterns: event.properties.patterns,
+            metadata: event.properties.metadata,
+            always: event.properties.always,
+            tool: event.properties.tool,
+          },
+        })
+        this.setState({ loading: true, busy: true })
+        return
+      }
+      if (event.type === "permission.replied") {
+        this.deps.postMessage({ type: "permissionResolved", requestID: event.properties.requestID })
+        this.deps.scheduleSubAgentRefresh(sessionID)
+        return
+      }
       if (event.type === "message.updated") {
         this.deps.upsertSubAgentMessage(event.properties.info)
         return
@@ -113,6 +152,11 @@ export class RaccoonEventHandler {
         return
       }
       if (event.type === "session.idle") {
+        this.deps.postMessage({ type: "subAgentBusyChanged", busy: false })
+        this.deps.scheduleSubAgentRefresh(sessionID)
+        return
+      }
+      if (event.type === "session.error") {
         this.deps.postMessage({ type: "subAgentBusyChanged", busy: false })
         this.deps.scheduleSubAgentRefresh(sessionID)
         return
@@ -165,6 +209,12 @@ export class RaccoonEventHandler {
     }
     if (event.type === "session.idle") {
       this.deps.clearPromptRefresh(event.properties.sessionID)
+      this.setBusy(false)
+      this.deps.scheduleEventRefresh()
+      return
+    }
+    if (event.type === "session.error") {
+      if (sessionID) this.deps.clearPromptRefresh(sessionID)
       this.setBusy(false)
       this.deps.scheduleEventRefresh()
       return

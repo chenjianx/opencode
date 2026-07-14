@@ -176,6 +176,7 @@ export type RaccoonFileAttachment = {
 export type RaccoonSession = {
   id: string
   title: string
+  parentID?: string
   agent?: string
   updatedAt: number
   revert?: {
@@ -207,6 +208,7 @@ export type RaccoonMessage = {
 export type RaccoonSubSessionTool = {
   id: string
   tool: string
+  sessionID?: string
   status?: string
   title?: string
 }

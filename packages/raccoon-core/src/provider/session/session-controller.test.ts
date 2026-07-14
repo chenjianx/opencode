@@ -45,6 +45,9 @@ function makeController() {
     question: {
       list: async () => ({ data: [] as unknown[] }),
     },
+    permission: {
+      reply: async () => ({ data: true }),
+    },
   } as unknown as OpencodeClient
 
   let state: RaccoonState = { sessions: [], messages: [] } as unknown as RaccoonState
@@ -107,5 +110,21 @@ describe("RaccoonSessionController loadMessages generation", () => {
     resolveMessages(0, [userMessage("A", "msg-old", "stale")])
     await first
     expect(getState().messages.map((m) => m.id)).toEqual(["msg-new"])
+  })
+
+  test("permission reply for child session refreshes active parent session", async () => {
+    const { controller, resolveMessages, messagesQueue } = makeController()
+
+    const loadRoot = controller.loadMessages("root")
+    await tick()
+    resolveMessages(0, [userMessage("root", "msg-root", "hello root")])
+    await loadRoot
+
+    const reply = controller.permissionReply({ type: "permissionReply", requestID: "perm-child", sessionID: "child", reply: "once" })
+    await tick()
+    expect(messagesQueue[1]?.sessionID).toBe("root")
+
+    resolveMessages(1, [userMessage("root", "msg-root-2", "still root")])
+    await reply
   })
 })

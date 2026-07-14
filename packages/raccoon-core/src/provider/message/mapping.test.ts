@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test"
-import { mapProviderModels, mapSubSession } from "./mapping"
+import type { Session } from "@opencode-ai/sdk/v2/client"
+import { mapProviderModels, mapSession, mapSubSession } from "./mapping"
 
 describe("mapProviderModels", () => {
   test("filters autocomplete-only raccoon models from selectable models", () => {
@@ -41,7 +42,7 @@ describe("mapSubSession", () => {
       info: { id: "msg_2", role: "assistant", time: { created: 1100, completed: 4200 } },
       parts: [
         { id: "prt_2", type: "tool", tool: "grep", state: { status: "completed", title: "search foo" } },
-        { id: "prt_3", type: "tool", tool: "read", state: { status: "running" } },
+        { id: "prt_3", type: "tool", tool: "task", state: { status: "running", metadata: { sessionId: "ses_grand" } } },
         { id: "prt_4", type: "text", text: "done" },
       ],
     },
@@ -52,8 +53,9 @@ describe("mapSubSession", () => {
     expect(sub.sessionID).toBe("ses_child")
     expect(sub.status).toBe("running")
     expect(sub.toolcalls).toBe(2)
-    expect(sub.tools.map((tool) => tool.tool)).toEqual(["grep", "read"])
+    expect(sub.tools.map((tool) => tool.tool)).toEqual(["grep", "task"])
     expect(sub.tools[0]?.title).toBe("search foo")
+    expect(sub.tools[1]?.sessionID).toBe("ses_grand")
     expect(sub.startedAt).toBe(1000)
     expect(sub.completedAt).toBe(4200)
   })
@@ -64,5 +66,19 @@ describe("mapSubSession", () => {
     expect(sub.tools).toEqual([])
     expect(sub.startedAt).toBeUndefined()
     expect(sub.completedAt).toBeUndefined()
+  })
+})
+
+describe("mapSession", () => {
+  test("preserves parentID for child sessions", () => {
+    const mapped = mapSession({
+      id: "child",
+      parentID: "root",
+      title: "Child",
+      agent: "build",
+      time: { created: 1, updated: 2 },
+    } as Session)
+
+    expect(mapped.parentID).toBe("root")
   })
 })
