@@ -49,6 +49,7 @@ export class RaccoonSessionController {
   private subAgentRefreshTimer?: ReturnType<typeof setTimeout>
   private refreshingFromEvent = false
   private refreshingSubAgent = false
+  private subAgentRefreshPending = false
   private openSubAgentSessionID?: string
   private openSubAgentTitle?: string
   private readonly pendingOptimisticMessages = new Set<string>()
@@ -583,8 +584,13 @@ export class RaccoonSessionController {
     }, 120)
   }
 
+  // When refreshSubAgent is called while one is already running, set a pending
+  // flag so the in-flight refresh can re-schedule one more fetch in its finally.
   private async refreshSubAgent(sessionID: string) {
-    if (this.refreshingSubAgent || this.openSubAgentSessionID !== sessionID) return
+    if (this.refreshingSubAgent || this.openSubAgentSessionID !== sessionID) {
+      if (this.refreshingSubAgent && this.openSubAgentSessionID === sessionID) this.subAgentRefreshPending = true
+      return
+    }
     this.refreshingSubAgent = true
     try {
       const messages = await this.fetchSubAgentMessages(sessionID)
@@ -599,6 +605,10 @@ export class RaccoonSessionController {
       this.deps.log(`refresh sub-agent failed (${sessionID}): ${error instanceof Error ? error.message : String(error)}`)
     } finally {
       this.refreshingSubAgent = false
+      if (this.subAgentRefreshPending && this.openSubAgentSessionID === sessionID) {
+        this.subAgentRefreshPending = false
+        this.scheduleSubAgentRefresh(sessionID)
+      }
     }
   }
 
@@ -618,6 +628,7 @@ export class RaccoonSessionController {
   private clearSubAgentRefresh() {
     if (this.subAgentRefreshTimer) clearTimeout(this.subAgentRefreshTimer)
     this.subAgentRefreshTimer = undefined
+    this.subAgentRefreshPending = false
   }
 
   closeSubAgent() {

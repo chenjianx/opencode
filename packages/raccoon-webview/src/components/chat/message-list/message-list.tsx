@@ -10,11 +10,12 @@ import { QuestionDock } from "./question-dock"
 import { PermissionDock } from "./permission-dock"
 import { WelcomeEmpty } from "./welcome-empty"
 
-export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean; follow?: boolean } = {}) {
+export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boolean; follow?: boolean; busy?: boolean } = {}) {
   const language = useLanguage()
   const session = useSession()
   const readonly = props.readonly ?? false
   const follow = props.follow ?? false
+  const busy = props.busy ?? false
   const messageTurns = turns(props.messages ?? session.visibleMessages)
   const rootRef = useRef<HTMLDivElement>(null)
   // Normal chat starts pinned to the bottom (newest message). Read-only views start
@@ -45,7 +46,7 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
     root.scrollTo({ top: root.scrollHeight, behavior: "auto" })
     setShowScrollBottom(false)
     followBottomRef.current = true
-  }, [readonly, follow, props.messages, session.messages, session.state.loading])
+  }, [readonly, follow, props.messages, session.messages, session.state.loading, busy])
 
   const scrollToBottom = () => {
     const root = rootRef.current
@@ -77,7 +78,7 @@ export function MessageList(props: { messages?: RaccoonMessage[]; readonly?: boo
           />
         ))}
         {!readonly && session.revertedMessages.length > 0 ? <RevertBar items={session.revertedMessages} /> : null}
-        {!readonly && session.state.loading ? (
+        {(!readonly && session.state.loading) || busy ? (
           <div className="working-indicator">
             <span className="working-dot" />
             <span>{language.t("message.working")}</span>

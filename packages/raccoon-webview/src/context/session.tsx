@@ -244,6 +244,9 @@ export function SessionProvider(props: { children: ReactNode }) {
         const updates = message.type === "partUpdated" ? [message] : message.updates
         setState((current) => {
           const next = { ...current, messages: applyPartUpdates(current.messages, updates), loading: true, busy: true }
+          if (current.subAgentView) {
+            next.subAgentView = { ...current.subAgentView, messages: applyPartUpdates(current.subAgentView.messages, updates) }
+          }
           vscode.setState(next)
           return next
         })
@@ -439,7 +442,37 @@ export function SessionProvider(props: { children: ReactNode }) {
       }
       if (message.type === "showSubAgent") {
         setState((current) => {
-          const next = { ...current, view: "subagent" as const, subAgentView: message.view }
+          // Preserve busy state across full refreshes — showSubAgent from
+          // refreshSubAgent doesn't carry busy, but the sub-agent may still
+          // be working (e.g., a message.removed triggered the refresh).
+          const next = { ...current, view: "subagent" as const, subAgentView: { ...message.view, busy: current.subAgentView?.busy } }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "subAgentMessageUpdated") {
+        setState((current) => {
+          if (!current.subAgentView) return current
+          const messages = current.subAgentView.messages
+          const existing = messages.find((m) => m.id === message.message.id)
+          // Preserve parts/text from streaming when the message already exists;
+          // message.updated fires at step-finish to update tokens/cost, and the
+          // incoming message has empty parts that would clobber streamed content.
+          const merged = existing ? { ...message.message, parts: existing.parts, text: existing.text } : message.message
+          const updatedMessages = existing
+            ? messages.map((m) => (m.id === message.message.id ? merged : m))
+            : [...messages, message.message]
+          const next = { ...current, subAgentView: { ...current.subAgentView, messages: updatedMessages } }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
+      if (message.type === "subAgentBusyChanged") {
+        setState((current) => {
+          if (!current.subAgentView) return current
+          const next = { ...current, subAgentView: { ...current.subAgentView, busy: message.busy } }
           vscode.setState(next)
           return next
         })

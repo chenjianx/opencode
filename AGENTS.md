@@ -14,7 +14,12 @@
 
 # raccoon_change markers
 
-- Apply these marker rules to edits under `packages/core` and `packages/opencode`.
+- Apply these marker rules **only** to edits under `packages/core` and
+  `packages/opencode` — these are upstream-derived packages where markers help
+  survive merge conflicts.
+- Do **not** add `raccoon_change` markers in `packages/raccoon-core`,
+  `packages/raccoon-webview`, or other `packages/raccoon-*` directories — those
+  are our own packages, not upstream-derived.
 - **Prefer the extraction layer.** Put raccoon-specific logic in `src/raccoon/`
   (mirroring kilocode's `src/kilocode/`). Upstream files should only keep a
   single `import { Raccoon* } from "@/raccoon/..."` plus a one-line seam (a

@@ -29,6 +29,6 @@ export function visibleParts(message: RaccoonMessage) {
       part.type !== "step-start" &&
       part.type !== "step-finish" &&
       !part.synthetic &&
-      (part.type !== "text" || part.text?.trim()),
+      ((part.type !== "text" && part.type !== "reasoning") || part.text?.trim()),
   )
 }

@@ -429,6 +429,7 @@ export type RaccoonSubAgentView = {
   title?: string
   messages: RaccoonMessage[]
   loading?: boolean
+  busy?: boolean
   error?: string
 }
 
@@ -617,6 +618,8 @@ export type ExtensionToWebview =
   | { type: "showSettings" }
   | { type: "showChat" }
   | { type: "showSubAgent"; view: RaccoonSubAgentView }
+  | { type: "subAgentMessageUpdated"; message: RaccoonMessage }
+  | { type: "subAgentBusyChanged"; busy: boolean }
   | { type: "closeSubAgent" }
   | {
       type: "customProviderModelsFetched"

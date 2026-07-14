@@ -43,6 +43,8 @@ type EventHandlerDeps = {
   removePart: (messageID: string, partID: string) => void
   pushPartUpdate: (part: Part) => void
   pushPartDelta: (messageID: string, partID: string, field: string, delta: string) => void
+  pushSubAgentPartDelta: (messageID: string, partID: string, field: string, delta: string) => void
+  upsertSubAgentMessage: (message: Message) => void
   flushStreams: () => void
   stopPromptRefresh: (sessionID: string) => void
   clearPromptRefresh: (sessionID: string) => void
@@ -90,10 +92,34 @@ export class RaccoonEventHandler {
       this.deps.onReauthRequired()
     }
     const sessionID = eventSessionID(event)
-    // The open sub-agent runs in a child session distinct from the active one, so
-    // its events would be dropped by the active-session filter below. Drive an
-    // incremental refresh of the sub-agent view first (no-op unless it matches the
-    // currently open child session).
+    const isChildSession = sessionID && sessionID !== this.deps.getState().activeSessionID
+    if (isChildSession) {
+      if (event.type === "message.updated") {
+        this.deps.upsertSubAgentMessage(event.properties.info)
+        return
+      }
+      if (event.type === "message.part.updated") {
+        this.deps.pushPartUpdate(event.properties.part)
+        return
+      }
+      if (event.type === "message.part.delta") {
+        this.deps.pushSubAgentPartDelta(event.properties.messageID, event.properties.partID, event.properties.field, event.properties.delta)
+        return
+      }
+      // session.status drives the busy indicator without a full refresh —
+      // streaming events handle content, session.idle triggers final reconciliation.
+      if (event.type === "session.status") {
+        this.deps.postMessage({ type: "subAgentBusyChanged", busy: event.properties.status.type !== "idle" })
+        return
+      }
+      if (event.type === "session.idle") {
+        this.deps.postMessage({ type: "subAgentBusyChanged", busy: false })
+        this.deps.scheduleSubAgentRefresh(sessionID)
+        return
+      }
+      this.deps.scheduleSubAgentRefresh(sessionID)
+      return
+    }
     if (sessionID) this.deps.scheduleSubAgentRefresh(sessionID)
     if (sessionID !== this.deps.getState().activeSessionID) return
     if (event.type === "message.updated") {

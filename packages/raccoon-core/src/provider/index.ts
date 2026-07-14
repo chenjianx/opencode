@@ -215,6 +215,8 @@ export class RaccoonProvider {
       removePart: (messageID, partID) => this.removePart(messageID, partID),
       pushPartUpdate: (part) => this.pushPartUpdate(part),
       pushPartDelta: (messageID, partID, field, delta) => this.pushPartDelta(messageID, partID, field, delta),
+      pushSubAgentPartDelta: (messageID, partID, field, delta) => this.pushSubAgentPartDelta(messageID, partID, field, delta),
+      upsertSubAgentMessage: (message) => this.upsertSubAgentMessage(message),
       flushStreams: () => this.streams.flush(),
       stopPromptRefresh: (sessionID) => this.sessions.stopPromptRefresh(sessionID),
       clearPromptRefresh: (sessionID) => this.sessions.clearPromptRefresh(sessionID),
@@ -559,6 +561,31 @@ export class RaccoonProvider {
         textDelta: delta,
       },
     })
+  }
+
+  private pushSubAgentPartDelta(messageID: string, partID: string, field: string, delta: string) {
+    if (field !== "text") return
+    this.streams.push({
+      messageID,
+      part: { id: partID, type: "text", text: "" },
+      delta: {
+        type: "text-delta",
+        textDelta: delta,
+      },
+    })
+  }
+
+  private upsertSubAgentMessage(message: Message) {
+    if (message.role !== "user" && message.role !== "assistant") return
+    const mapped: RaccoonMessage = {
+      id: message.id,
+      role: message.role,
+      text: "",
+      parts: [],
+      createdAt: message.time.created,
+      ...(message.role === "assistant" ? { tokens: message.tokens, cost: message.cost } : {}),
+    }
+    this.webviewHost.post("chat", { type: "subAgentMessageUpdated", message: mapped } satisfies ExtensionToWebview)
   }
 
   private hasMessage(messageID: string) {
