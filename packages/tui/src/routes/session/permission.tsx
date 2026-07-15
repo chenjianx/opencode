@@ -140,12 +140,16 @@ export function PermissionPrompt(props: { request: PermissionRequest; directory?
           title="Always allow"
           body={
             <Switch>
+              {/* raccoon_change start - rebrand permission lifetime copy */}
               <Match when={props.request.always.length === 1 && props.request.always[0] === "*"}>
-                <TextBody title={"This will allow " + props.request.permission + " until OpenCode is restarted."} />
+                <TextBody title={"This will allow " + props.request.permission + " until Raccoon is restarted."} />
               </Match>
+              {/* raccoon_change end */}
               <Match when={true}>
                 <box paddingLeft={1} gap={1}>
-                  <text fg={theme.textMuted}>This will allow the following patterns until OpenCode is restarted</text>
+                  {/* raccoon_change start - rebrand permission lifetime copy */}
+                  <text fg={theme.textMuted}>This will allow the following patterns until Raccoon is restarted</text>
+                  {/* raccoon_change end */}
                   <box>
                     <For each={props.request.always}>
                       {(pattern) => (
@@ -483,7 +487,9 @@ function RejectPrompt(props: { onConfirm: (message: string) => void; onCancel: (
           <text fg={theme.text}>Reject permission</text>
         </box>
         <box paddingLeft={1}>
-          <text fg={theme.textMuted}>Tell OpenCode what to do differently</text>
+          {/* raccoon_change start - rebrand rejection hint */}
+          <text fg={theme.textMuted}>Tell Raccoon what to do differently</text>
+          {/* raccoon_change end */}
         </box>
       </box>
       <box

@@ -1,6 +1,6 @@
 // Entry and exit splash banners for direct interactive mode scrollback.
 //
-// Renders the full opencode entry logo and a compact [O] exit badge, plus
+// Renders the full raccoon entry logo and a compact [O] exit badge, plus // raccoon_change - rebrand splash comment
 // session metadata and the resume command. These are scrollback snapshots, so
 // they become immutable terminal history once committed.
 //
@@ -194,7 +194,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       })
     }
 
-    push(lines, body_left, top, "OpenCode", right, undefined, TextAttributes.BOLD)
+    push(lines, body_left, top, "Raccoon", right, undefined, TextAttributes.BOLD) // raccoon_change - rebrand entry splash title
     if (input.detail) {
       push(
         lines,
@@ -234,7 +234,7 @@ function build(input: SplashWriterInput, kind: "entry" | "exit", ctx: Scrollback
       lines,
       body_left + label.length,
       top + 1,
-      `opencode --mini -s ${meta.session_id}`,
+      `raccoon --mini -s ${meta.session_id}`, // raccoon_change - rebrand resume command
       right,
       undefined,
       TextAttributes.BOLD,

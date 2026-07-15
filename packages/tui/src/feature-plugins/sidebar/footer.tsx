@@ -53,7 +53,9 @@ function View(props: { api: TuiPluginApi; sessionID: string }) {
                 ✕
               </text>
             </box>
-            <text fg={theme().textMuted}>OpenCode includes free models so you can start immediately.</text>
+            {/* raccoon_change start - rebrand getting-started copy */}
+            <text fg={theme().textMuted}>Raccoon includes free models so you can start immediately.</text>
+            {/* raccoon_change end */}
             <text fg={theme().textMuted}>
               Connect from 75+ providers to use other models, including Claude, GPT, Gemini etc
             </text>
@@ -69,11 +71,12 @@ function View(props: { api: TuiPluginApi; sessionID: string }) {
         <span style={{ fg: theme().text }}>{path().name}</span>
       </text>
       <text fg={theme().textMuted}>
-        <span style={{ fg: theme().success }}>•</span> <b>Open</b>
+        {/* raccoon_change start - rebrand sidebar version label */}
+        <span style={{ fg: theme().success }}>•</span> <b>Raccoon</b>{" "}
+        {/* raccoon_change end */}
         <span style={{ fg: theme().text }}>
-          <b>Code</b>
-        </span>{" "}
-        <span>{props.api.app.version}</span>
+          <span>{props.api.app.version}</span>
+        </span>
       </text>
     </box>
   )

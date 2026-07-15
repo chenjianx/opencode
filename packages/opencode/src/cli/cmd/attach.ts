@@ -6,7 +6,7 @@ import { ServerAuth } from "@/server/auth"
 
 export const AttachCommand = cmd({
   command: "attach <url>",
-  describe: "attach to a running opencode server",
+  describe: "attach to a running Raccoon server", // raccoon_change - rebrand command description
   builder: (yargs) =>
     yargs
       .positional("url", {
