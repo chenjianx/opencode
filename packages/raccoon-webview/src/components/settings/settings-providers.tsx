@@ -512,6 +512,7 @@ export function SettingsProviders() {
           fetchError={fetchError}
           fetchStatus={fetchStatus}
           saveError={saveError}
+          editing={!!editingProviderID}
           onClose={() => setCustomOpen(false)}
           onFetchModels={fetchCustomModels}
           onAddFetchedModels={addFetchedModels}

@@ -37,6 +37,20 @@ export function PermissionDock(props: { request: RaccoonPermissionRequest; remai
   const remaining = props.remaining ?? 0
   const metadata = request.metadata ?? {}
   const filepath = asString(metadata.filepath) ?? asString(metadata.filePath) ?? asString(metadata.path)
+  const directories =
+    Array.isArray(metadata.directories)
+      ? metadata.directories.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : []
+  const externalDisplayPath =
+    request.permission === "external_directory"
+      ? asString(metadata.parentDir) ?? filepath ?? directories[0]
+      : undefined
+  const externalDisplayTitle =
+    request.permission === "external_directory"
+      ? directories.length > 0
+        ? directories.join("\n")
+        : (asString(metadata.parentDir) ?? filepath ?? undefined)
+      : undefined
   const diff = asString(metadata.diff)
   const url = asString(metadata.url)
   const errored = session.permissionErrors.has(request.id)
@@ -51,7 +65,7 @@ export function PermissionDock(props: { request: RaccoonPermissionRequest; remai
   }, [diff, filepath])
 
   // bash & generic rules carry no metadata — the actual commands/globs live in patterns.
-  const commands = !diff && !url && !filepath ? request.patterns.filter((item) => item && item !== "*") : []
+  const commands = !diff && !url && !filepath && !externalDisplayPath ? request.patterns.filter((item) => item && item !== "*") : []
 
   const reply = (value: "once" | "always" | "reject") => {
     if (busy) return
@@ -72,7 +86,16 @@ export function PermissionDock(props: { request: RaccoonPermissionRequest; remai
               <span className="permission-dock-queue">{language.t("permission.remaining", { count: remaining })}</span>
             ) : null}
           </div>
-          {filepath ? (
+          {externalDisplayPath ? (
+            <button
+              type="button"
+              className="permission-dock-subtitle"
+              title={externalDisplayTitle ?? externalDisplayPath}
+              onClick={() => session.openFile(externalDisplayPath)}
+            >
+              {externalDisplayPath}
+            </button>
+          ) : filepath ? (
             <button
               type="button"
               className="permission-dock-subtitle"

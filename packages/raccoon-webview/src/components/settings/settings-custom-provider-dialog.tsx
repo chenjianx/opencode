@@ -24,6 +24,7 @@ export function SettingsCustomProviderDialog(props: {
   fetchError?: string
   fetchStatus?: string
   saveError?: string
+  editing?: boolean
   onClose: () => void
   onFetchModels: () => void
   onAddFetchedModels: () => void
@@ -58,6 +59,7 @@ export function SettingsCustomProviderDialog(props: {
               value={props.custom.providerID}
               placeholder={language.t("settings.customProvider.providerID.placeholder")}
               help={language.t("settings.customProvider.providerID.help")}
+              disabled={props.editing}
               onChange={(value) => props.onCustomChange((current) => ({ ...current, providerID: value }))}
             />
             <TextField

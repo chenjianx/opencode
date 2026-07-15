@@ -181,7 +181,7 @@ export class RaccoonEventHandler {
       this.deps.stopPromptRefresh(event.properties.part.sessionID)
       const hasMessage = this.deps.hasMessage(event.properties.part.messageID)
       this.deps.upsertPart(event.properties.part)
-      this.setState({ loading: true, busy: true })
+      this.setBusy(true)
       this.deps.pushPartUpdate(event.properties.part)
       if (!hasMessage) this.deps.scheduleEventRefresh()
       return
@@ -189,7 +189,7 @@ export class RaccoonEventHandler {
     if (event.type === "message.part.delta") {
       this.deps.stopPromptRefresh(event.properties.sessionID)
       this.deps.pushPartDelta(event.properties.messageID, event.properties.partID, event.properties.field, event.properties.delta)
-      this.setState({ loading: true, busy: true })
+      this.setBusy(true)
       return
     }
     if (event.type === "message.part.removed") {
@@ -264,6 +264,13 @@ export class RaccoonEventHandler {
   }
 
   private setBusy(busy: boolean) {
+    // Don't flip an idle session back to busy based on a background event
+    // (e.g. compaction.prune part updates arriving after session.idle);
+    // schedule a refresh to reconcile with the authoritative server status.
+    if (busy && !this.deps.getState().busy) {
+      this.deps.scheduleEventRefresh()
+      return
+    }
     this.setState({ loading: busy, busy })
     this.deps.post()
   }

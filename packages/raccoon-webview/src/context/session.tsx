@@ -243,7 +243,13 @@ export function SessionProvider(props: { children: ReactNode }) {
       if (message.type === "partUpdated" || message.type === "partsUpdated") {
         const updates = message.type === "partUpdated" ? [message] : message.updates
         setState((current) => {
-          const next = { ...current, messages: applyPartUpdates(current.messages, updates), loading: true, busy: true }
+          const next = { ...current, messages: applyPartUpdates(current.messages, updates) }
+          // Don't flip an idle session back to busy — background part updates
+          // (e.g. compaction.prune) arrive after session.idle.
+          if (current.busy) {
+            next.loading = true
+            next.busy = true
+          }
           if (current.subAgentView) {
             next.subAgentView = { ...current.subAgentView, messages: applyPartUpdates(current.subAgentView.messages, updates) }
           }
