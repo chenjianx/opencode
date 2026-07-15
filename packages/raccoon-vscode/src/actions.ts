@@ -8,7 +8,7 @@ import type { EditorContextAction } from "@opencode-ai/raccoon-core"
 
 export type EditorActionId = "explainCode" | "fixCode" | "improveCode" | "refactorCode" | "commentCode" | "addToContext"
 
-export type EditorAction = {
+type EditorAction = {
   id: EditorActionId
   command: string
   type: EditorContextAction

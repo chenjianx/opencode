@@ -13,7 +13,7 @@ type ServerManagerDeps = {
   workspaceDirectory: () => string | undefined
 }
 
-export type ServerInstance = {
+type ServerInstance = {
   headers?: Record<string, string>
   url: string
   port?: number

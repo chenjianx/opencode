@@ -3,15 +3,31 @@
  * (core/autocomplete/filtering/BracketMatchingService.ts).
  */
 
-export const BRACKETS: { [key: string]: string } = {
+const BRACKETS: { [key: string]: string } = {
   "(": ")",
   "{": "}",
   "[": "]",
 }
-export const BRACKETS_REVERSE: { [key: string]: string } = {
+const BRACKETS_REVERSE: { [key: string]: string } = {
   ")": "(",
   "}": "{",
   "]": "[",
+}
+
+/** Scan a text fragment, maintaining a bracket stack. Stops at the first
+ *  unmatched closing bracket (leaving the stack at the point of the break). */
+function scanBracketBalance(text: string, stack: string[] = []): string[] {
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!
+    if (Object.keys(BRACKETS).includes(char)) {
+      stack.push(char)
+    } else if (Object.values(BRACKETS).includes(char)) {
+      if (stack.length === 0 || BRACKETS[stack.pop()!] !== char) {
+        break
+      }
+    }
+  }
+  return stack
 }
 
 export class BracketMatchingService {
@@ -19,21 +35,7 @@ export class BracketMatchingService {
   private lastCompletionFile: string | undefined = undefined
 
   handleAcceptedCompletion(completion: string, filepath: string) {
-    this.openingBracketsFromLastCompletion = []
-    const stack: string[] = []
-
-    for (let i = 0; i < completion.length; i++) {
-      const char = completion[i]!
-      if (Object.keys(BRACKETS).includes(char)) {
-        stack.push(char)
-      } else if (Object.values(BRACKETS).includes(char)) {
-        if (stack.length === 0 || BRACKETS[stack.pop()!] !== char) {
-          break
-        }
-      }
-    }
-
-    this.openingBracketsFromLastCompletion = stack
+    this.openingBracketsFromLastCompletion = scanBracketBalance(completion)
     this.lastCompletionFile = filepath
   }
 
@@ -53,16 +55,7 @@ export class BracketMatchingService {
       }
     } else {
       const currentLine = (prefix.split("\n").pop() ?? "") + (suffix.split("\n")[0] ?? "")
-      for (let i = 0; i < currentLine.length; i++) {
-        const char = currentLine[i]!
-        if (Object.keys(BRACKETS).includes(char)) {
-          stack.push(char)
-        } else if (Object.values(BRACKETS).includes(char)) {
-          if (stack.length === 0 || BRACKETS[stack.pop()!] !== char) {
-            break
-          }
-        }
-      }
+      stack = scanBracketBalance(currentLine)
     }
 
     // Add corresponding open brackets from suffix to stack

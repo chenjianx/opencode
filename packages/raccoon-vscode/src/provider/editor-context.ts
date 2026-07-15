@@ -2,9 +2,7 @@ import * as vscode from "vscode"
 import type { EditorContext } from "@opencode-ai/raccoon-core"
 
 // VSCode-specific capture of the active selection / a document range into the neutral
-// EditorContext consumed by editor-prompt.ts. Re-exported here for existing importers.
-export type { EditorContext, EditorContextAction } from "@opencode-ai/raccoon-core"
-export { createPrompt } from "@opencode-ai/raccoon-core"
+// EditorContext consumed by editor-prompt.ts.
 
 export function getEditorContext() {
   const editor = vscode.window.activeTextEditor

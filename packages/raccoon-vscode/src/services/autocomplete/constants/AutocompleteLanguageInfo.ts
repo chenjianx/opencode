@@ -1,45 +1,41 @@
 /**
  * Language metadata for autocomplete, ported as a subset from continue-rac
  * (core/autocomplete/constants/AutocompleteLanguageInfo.ts). Only the fields the
- * prefix/suffix pipeline consumes are kept: name, singleLineComment, endOfLine,
- * and useMultiline. charFilters/lineFilters are intentionally omitted (no
- * language-specific stream filters in this variant).
+ * prefix/suffix pipeline consumes are kept: singleLineComment and useMultiline.
+ * charFilters/lineFilters are intentionally omitted (no language-specific
+ * stream filters in this variant).
  */
 
 export interface AutocompleteLanguageInfo {
-  name: string
   singleLineComment?: string
-  endOfLine: string[]
   useMultiline?: (args: { prefix: string; suffix: string }) => boolean
 }
 
-const Typescript: AutocompleteLanguageInfo = { name: "TypeScript", singleLineComment: "//", endOfLine: [";"] }
-const Python: AutocompleteLanguageInfo = { name: "Python", singleLineComment: "#", endOfLine: [] }
-const Java: AutocompleteLanguageInfo = { name: "Java", singleLineComment: "//", endOfLine: [";"] }
-const Cpp: AutocompleteLanguageInfo = { name: "C++", singleLineComment: "//", endOfLine: [";"] }
-const CSharp: AutocompleteLanguageInfo = { name: "C#", singleLineComment: "//", endOfLine: [";"] }
-const C: AutocompleteLanguageInfo = { name: "C", singleLineComment: "//", endOfLine: [";"] }
-const Scala: AutocompleteLanguageInfo = { name: "Scala", singleLineComment: "//", endOfLine: [";"] }
-const Go: AutocompleteLanguageInfo = { name: "Go", singleLineComment: "//", endOfLine: [] }
-const Rust: AutocompleteLanguageInfo = { name: "Rust", singleLineComment: "//", endOfLine: [";"] }
-const Haskell: AutocompleteLanguageInfo = { name: "Haskell", singleLineComment: "--", endOfLine: [] }
-const PHP: AutocompleteLanguageInfo = { name: "PHP", singleLineComment: "//", endOfLine: [";"] }
-const Swift: AutocompleteLanguageInfo = { name: "Swift", singleLineComment: "//", endOfLine: [";"] }
-const Kotlin: AutocompleteLanguageInfo = { name: "Kotlin", singleLineComment: "//", endOfLine: [";"] }
-const Ruby: AutocompleteLanguageInfo = { name: "Ruby", singleLineComment: "#", endOfLine: [] }
-const Clojure: AutocompleteLanguageInfo = { name: "Clojure", singleLineComment: ";", endOfLine: [] }
-const Julia: AutocompleteLanguageInfo = { name: "Julia", singleLineComment: "#", endOfLine: [";"] }
-const FSharp: AutocompleteLanguageInfo = { name: "F#", singleLineComment: "//", endOfLine: [] }
-const R: AutocompleteLanguageInfo = { name: "R", singleLineComment: "#", endOfLine: [] }
-const Dart: AutocompleteLanguageInfo = { name: "Dart", singleLineComment: "//", endOfLine: [";"] }
-const Solidity: AutocompleteLanguageInfo = { name: "Solidity", singleLineComment: "//", endOfLine: [";"] }
-const Lua: AutocompleteLanguageInfo = { name: "Lua", singleLineComment: "--", endOfLine: [] }
-const YAML: AutocompleteLanguageInfo = { name: "YAML", singleLineComment: "#", endOfLine: [] }
-const Json: AutocompleteLanguageInfo = { name: "JSON", singleLineComment: "//", endOfLine: [",", "}", "]"] }
+const Typescript: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Python: AutocompleteLanguageInfo = { singleLineComment: "#" }
+const Java: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Cpp: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const CSharp: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const C: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Scala: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Go: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Rust: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Haskell: AutocompleteLanguageInfo = { singleLineComment: "--" }
+const PHP: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Swift: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Kotlin: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Ruby: AutocompleteLanguageInfo = { singleLineComment: "#" }
+const Clojure: AutocompleteLanguageInfo = { singleLineComment: ";" }
+const Julia: AutocompleteLanguageInfo = { singleLineComment: "#" }
+const FSharp: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const R: AutocompleteLanguageInfo = { singleLineComment: "#" }
+const Dart: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Solidity: AutocompleteLanguageInfo = { singleLineComment: "//" }
+const Lua: AutocompleteLanguageInfo = { singleLineComment: "--" }
+const YAML: AutocompleteLanguageInfo = { singleLineComment: "#" }
+const Json: AutocompleteLanguageInfo = { singleLineComment: "//" }
 const Markdown: AutocompleteLanguageInfo = {
-  name: "Markdown",
   singleLineComment: "",
-  endOfLine: [],
   useMultiline: ({ prefix }) => {
     const singleLineStarters: (string | RegExp)[] = ["- ", "* ", /^\d+\. /, "> ", "```", /^#{1,6} /]
     let currentLine = prefix.split("\n").pop()

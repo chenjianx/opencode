@@ -4,8 +4,6 @@ import type { RaccoonConnectionService } from "../services/cli-backend/index.js"
 import { buildWebviewHtml } from "../webview/html.js"
 import type { RaccoonWebviewSource, WebviewTransport } from "@opencode-ai/raccoon-core"
 
-export type { RaccoonWebviewSource } from "@opencode-ai/raccoon-core"
-
 export class RaccoonWebviewHost implements WebviewTransport {
   private view?: vscode.WebviewView
   private settingsPanel?: vscode.WebviewPanel

@@ -27,10 +27,6 @@ export class RaccoonFimLlm implements ILLM {
     } = {},
   ) {}
 
-  supportsFim(): boolean {
-    return true
-  }
-
   async *streamFim(
     prefix: string,
     suffix: string,

@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 
 export const AUTOCOMPLETE_STATUS_MENU_COMMAND = "raccoon.autocomplete.statusMenu"
 
-export type AutocompleteStatus = "idle" | "generating" | "disabled" | "loggedOut" | "snoozed" | "error"
+type AutocompleteStatus = "idle" | "generating" | "disabled" | "loggedOut" | "error"
 
 /**
  * Status bar item reflecting the inline autocomplete state so users can see at a
@@ -41,11 +41,6 @@ export class AutocompleteStatusBar implements vscode.Disposable {
       case "loggedOut":
         this.item.text = "$(circle-slash) Raccoon"
         this.item.tooltip = "Raccoon autocomplete disabled — sign in to enable."
-        this.item.color = new vscode.ThemeColor("descriptionForeground")
-        break
-      case "snoozed":
-        this.item.text = "$(clock) Raccoon"
-        this.item.tooltip = "Raccoon autocomplete is snoozed. Click to resume."
         this.item.color = new vscode.ThemeColor("descriptionForeground")
         break
       case "error":

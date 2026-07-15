@@ -8,13 +8,13 @@ const opencodeDir = join(dir, "..", "opencode")
 const targetDir = join(dir, "bin")
 
 // Map a VS Code platform target (as accepted by `vsce package --target`) to the
-// upstream `opencode` dist directory name and the binary file name produced
+// upstream `raccoon` dist directory name and the binary file name produced
 // inside it. Keep this in sync with packages/opencode/script/build.ts.
 export const TARGETS: Record<string, { distDir: string; binName: string }> = {
-  "darwin-arm64": { distDir: "opencode-darwin-arm64", binName: "raccoon" },
-  "darwin-x64": { distDir: "opencode-darwin-x64", binName: "raccoon" },
-  "linux-x64": { distDir: "opencode-linux-x64", binName: "raccoon" },
-  "win32-x64": { distDir: "opencode-windows-x64", binName: "raccoon.exe" },
+  "darwin-arm64": { distDir: "raccoon-darwin-arm64", binName: "raccoon" },
+  "darwin-x64": { distDir: "raccoon-darwin-x64", binName: "raccoon" },
+  "linux-x64": { distDir: "raccoon-linux-x64", binName: "raccoon" },
+  "win32-x64": { distDir: "raccoon-windows-x64", binName: "raccoon.exe" },
 }
 
 function currentTarget() {

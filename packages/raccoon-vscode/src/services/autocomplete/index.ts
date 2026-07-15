@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import { AutocompleteServiceManager } from "./AutocompleteServiceManager.js"
+import { AUTOCOMPLETE_STATUS_MENU_COMMAND } from "./StatusBar.js"
 import type { RaccoonConnectionService } from "../cli-backend/index.js"
 import type { RaccoonProvider } from "@opencode-ai/raccoon-core"
 
@@ -33,7 +34,7 @@ export const registerAutocompleteProvider = (
     vscode.commands.registerCommand("raccoon.autocomplete.disable", async () => {
       await manager.disable()
     }),
-    vscode.commands.registerCommand("raccoon.autocomplete.statusMenu", async () => {
+    vscode.commands.registerCommand(AUTOCOMPLETE_STATUS_MENU_COMMAND, async () => {
       await manager.showStatusMenu()
     }),
   )

@@ -11,7 +11,6 @@ function readSettings(): AutocompleteSettings {
   return {
     enableAutoTrigger: config.get<boolean>("enableAutoTrigger") ?? true,
     model: getAutocompleteModel(config.get<string>("model") ?? "").id,
-    snoozeUntil: config.get<number>("snoozeUntil"),
   }
 }
 
@@ -29,7 +28,6 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   public readonly inlineCompletionProvider: AutocompleteInlineCompletionProvider
   private inlineCompletionProviderDisposable: vscode.Disposable | null = null
   private unsubscribeState: (() => void) | null = null
-  private snoozeTimer: NodeJS.Timeout | null = null
   private readonly statusBar: AutocompleteStatusBar
   private generating = false
   private loggedIn = false
@@ -43,7 +41,6 @@ export class AutocompleteServiceManager implements vscode.Disposable {
     this.inlineCompletionProvider = new AutocompleteInlineCompletionProvider(
       DEFAULT_AUTOCOMPLETE_MODEL.id,
       connectionService,
-      () => this.updateCostTracking(),
       () => this.settings,
       workspacePath,
       (status) => this.handleFatalAutocompleteError(status),
@@ -68,13 +65,11 @@ export class AutocompleteServiceManager implements vscode.Disposable {
       this.inlineCompletionProvider.setModel(this.settings.model)
     }
     await this.ensureInlineCompletionProviderRegistration()
-    this.setupSnoozeTimerIfNeeded()
     this.refreshStatus()
   }
 
   private async ensureInlineCompletionProviderRegistration(): Promise<void> {
-    const shouldBeRegistered =
-      this.loggedIn && (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
+    const shouldBeRegistered = this.loggedIn && (this.settings?.enableAutoTrigger ?? false)
     const isRegistered = this.inlineCompletionProviderDisposable !== null
 
     if (shouldBeRegistered === isRegistered) return
@@ -99,43 +94,6 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   public async enable(): Promise<void> {
     await writeSettings({ enableAutoTrigger: true })
     await this.load()
-  }
-
-  public isSnoozed(): boolean {
-    const snoozeUntil = this.settings?.snoozeUntil
-    if (!snoozeUntil) return false
-    return Date.now() < snoozeUntil
-  }
-
-  public async snooze(seconds: number): Promise<void> {
-    if (this.snoozeTimer) {
-      clearTimeout(this.snoozeTimer)
-      this.snoozeTimer = null
-    }
-    const snoozeUntil = Date.now() + seconds * 1000
-    await writeSettings({ snoozeUntil })
-    this.snoozeTimer = setTimeout(() => void this.unsnooze(), seconds * 1000)
-    await this.load()
-  }
-
-  public async unsnooze(): Promise<void> {
-    if (this.snoozeTimer) {
-      clearTimeout(this.snoozeTimer)
-      this.snoozeTimer = null
-    }
-    await writeSettings({ snoozeUntil: undefined })
-    await this.load()
-  }
-
-  private setupSnoozeTimerIfNeeded(): void {
-    if (this.snoozeTimer) {
-      clearTimeout(this.snoozeTimer)
-      this.snoozeTimer = null
-    }
-    const snoozeUntil = this.settings?.snoozeUntil
-    const remainingMs = snoozeUntil ? Math.max(0, snoozeUntil - Date.now()) : 0
-    if (remainingMs <= 0) return
-    this.snoozeTimer = setTimeout(() => void this.unsnooze(), remainingMs)
   }
 
   /** Manually trigger a completion at the current cursor and insert the first result. */
@@ -169,10 +127,6 @@ export class AutocompleteServiceManager implements vscode.Disposable {
     }
   }
 
-  private updateCostTracking(): void {
-    // No-op for now; cost tracking can be added later.
-  }
-
   private handleActivity(active: boolean): void {
     this.generating = active
     this.refreshStatus()
@@ -190,10 +144,6 @@ export class AutocompleteServiceManager implements vscode.Disposable {
     }
     if (this.connectionService.getConnectionState() !== "connected") {
       this.statusBar.setStatus("error")
-      return
-    }
-    if (this.isSnoozed()) {
-      this.statusBar.setStatus("snoozed")
       return
     }
     if (!(this.settings?.enableAutoTrigger ?? false)) {
@@ -214,7 +164,7 @@ export class AutocompleteServiceManager implements vscode.Disposable {
             },
           },
         ]
-      : (this.settings?.enableAutoTrigger ?? false) && !this.isSnoozed()
+      : (this.settings?.enableAutoTrigger ?? false)
         ? [{ label: "$(circle-slash) Disable autocomplete", action: () => this.disable() }]
         : [{ label: "$(check) Enable autocomplete", action: () => this.enable() }]
 
@@ -234,10 +184,6 @@ export class AutocompleteServiceManager implements vscode.Disposable {
   }
 
   public dispose(): void {
-    if (this.snoozeTimer) {
-      clearTimeout(this.snoozeTimer)
-      this.snoozeTimer = null
-    }
     this.unsubscribeState?.()
     this.unsubscribeState = null
     if (this.inlineCompletionProviderDisposable) {

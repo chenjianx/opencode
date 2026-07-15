@@ -4,7 +4,6 @@
 node_modules/**
 src/**
 script/**
-scripts/**
 bin/.gitignore
 esbuild.cjs
 eslint.config.mjs

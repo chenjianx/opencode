@@ -35,7 +35,7 @@ type LanguageConfig = {
   nodeTypes: Set<string>
 }
 
-export type FunctionRange = { range: vscode.Range }
+type FunctionRange = { range: vscode.Range }
 
 const require = createRequire(__filename)
 

@@ -7,9 +7,8 @@
  * - **transient**: abort, unknown — no special handling
  *
  * When a fatal error (like 402 Payment Required) is detected, autocomplete
- * requests are blocked to prevent thousands of wasted API calls. The caller
- * can periodically check `shouldProbe()` to run a lightweight balance check
- * and call `reset()` if the user has added credits.
+ * requests are blocked to prevent thousands of wasted API calls until
+ * explicitly reset (e.g. on reconnect or re-auth).
  */
 
 /** Base backoff delay in ms for retriable errors */
@@ -24,10 +23,7 @@ const CIRCUIT_THRESHOLD = 5
 /** Duration in ms the circuit stays open before allowing a probe (5 minutes) */
 const CIRCUIT_COOLDOWN_MS = 300_000
 
-/** Interval between balance/auth probe checks for fatal errors (5 minutes) */
-const FATAL_PROBE_INTERVAL_MS = 300_000
-
-export type ErrorKind = "fatal" | "retriable" | "transient"
+type ErrorKind = "fatal" | "retriable" | "transient"
 
 /**
  * Extract an HTTP status code from an error message like "SSE failed: 402 Payment Required"
@@ -35,7 +31,7 @@ export type ErrorKind = "fatal" | "retriable" | "transient"
  * Only matches 4xx/5xx after a colon — the two error sources (SDK SSE client and
  * gateway FIM route) both use this format.
  */
-export function extractStatus(error: unknown): number | null {
+function extractStatus(error: unknown): number | null {
   const msg = error instanceof Error ? error.message : String(error)
   const match = msg.match(/:\s*([45]\d{2})\b/)
   return match ? Number(match[1]) : null
@@ -44,7 +40,7 @@ export function extractStatus(error: unknown): number | null {
 /**
  * Classify an error into one of three categories based on its HTTP status code.
  */
-export function classify(error: unknown): ErrorKind {
+function classify(error: unknown): ErrorKind {
   const status = extractStatus(error)
   if (status === null) return "transient"
   if (status === 401 || status === 402 || status === 403) return "fatal"
@@ -57,8 +53,6 @@ export class ErrorBackoff {
   private fatal: ErrorKind | null = null
   /** HTTP status of the fatal error (for notification messages) */
   private fatalStatus: number | null = null
-  /** Timestamp when the fatal error was recorded (for probe interval) */
-  private fatalAt = 0
   /** Timestamp when the circuit was opened (for retriable circuit breaker) */
   private opened = 0
   /** Consecutive retriable failure count */
@@ -72,7 +66,6 @@ export class ErrorBackoff {
   success(): void {
     this.fatal = null
     this.fatalStatus = null
-    this.fatalAt = 0
     this.failures = 0
     this.blockedUntil = 0
     this.opened = 0
@@ -88,7 +81,6 @@ export class ErrorBackoff {
     if (kind === "fatal") {
       this.fatal = kind
       this.fatalStatus = extractStatus(error)
-      this.fatalAt = Date.now()
       return kind
     }
 
@@ -134,31 +126,10 @@ export class ErrorBackoff {
   }
 
   /**
-   * Whether a fatal (non-retriable) error is active — credits depleted, auth invalid, etc.
-   */
-  isFatal(): boolean {
-    return this.fatal !== null
-  }
-
-  /**
    * The HTTP status code of the fatal error, or null.
    */
   getFatalStatus(): number | null {
     return this.fatalStatus
-  }
-
-  /**
-   * Whether it's time for a lightweight probe (e.g. balance check) to see if
-   * the fatal condition has been resolved. Returns true at most once per
-   * FATAL_PROBE_INTERVAL_MS. The caller should check balance/auth and call
-   * reset() if the condition is cleared.
-   */
-  shouldProbe(): boolean {
-    if (!this.fatal) return false
-    const elapsed = Date.now() - this.fatalAt
-    if (elapsed < FATAL_PROBE_INTERVAL_MS) return false
-    this.fatalAt = Date.now()
-    return true
   }
 
   /**

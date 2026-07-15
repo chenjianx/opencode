@@ -5,11 +5,11 @@
  */
 import { lineIsRepeated } from "./textSimilarity.js"
 
-export type LineStream = AsyncGenerator<string>
+type LineStream = AsyncGenerator<string>
 
-export const BRACKET_ENDING_CHARS = [")", "]", "}", ";"]
-export const PREFIXES_TO_SKIP = ["<COMPLETION>"]
-export const LINES_TO_STOP_AT = ["# End of file.", "<STOP EDITING HERE"]
+const BRACKET_ENDING_CHARS = [")", "]", "}", ";"]
+const PREFIXES_TO_SKIP = ["<COMPLETION>"]
+const LINES_TO_STOP_AT = ["# End of file.", "<STOP EDITING HERE"]
 
 function isBracketEnding(line: string): boolean {
   return line

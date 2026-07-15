@@ -8,16 +8,14 @@ import {
   DEFAULT_AUTOCOMPLETE_OPTIONS,
   type AutocompleteInput,
   type AutocompleteOutcome,
-  type CostTrackingCallback,
 } from "./util/types.js"
 
 export interface AutocompleteSettings {
   enableAutoTrigger?: boolean
   model?: string
-  snoozeUntil?: number
 }
 
-export const INLINE_COMPLETION_ACCEPTED_COMMAND = "raccoon.autocomplete.inline-completion.accepted"
+const INLINE_COMPLETION_ACCEPTED_COMMAND = "raccoon.autocomplete.inline-completion.accepted"
 
 let completionIdCounter = 0
 
@@ -39,7 +37,6 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
   constructor(
     modelId: string,
     private readonly connectionService: RaccoonConnectionService,
-    private readonly costTrackingCallback: CostTrackingCallback,
     private readonly getSettings: () => AutocompleteSettings | null,
     private readonly workspacePath: string,
     private readonly onFatalError?: (status: number | null) => void,
@@ -67,10 +64,6 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
     this.modelId = modelId
   }
 
-  public getModelId(): string {
-    return this.modelId
-  }
-
   public resetBackoff(): void {
     this.backoff.reset()
     this.fatalNotified = false
@@ -86,8 +79,6 @@ export class AutocompleteInlineCompletionProvider implements vscode.InlineComple
       onSuccess: () => {
         this.backoff.success()
         this.fatalNotified = false
-        // Backend does not report usage yet.
-        this.costTrackingCallback(0, 0, 0)
       },
       onFailure: (error) => {
         const kind = this.backoff.failure(error)

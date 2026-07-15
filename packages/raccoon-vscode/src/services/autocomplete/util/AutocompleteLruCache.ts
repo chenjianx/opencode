@@ -30,8 +30,4 @@ export class AutocompleteLruCache {
       this.cache.delete(oldest)
     }
   }
-
-  clear(): void {
-    this.cache.clear()
-  }
 }

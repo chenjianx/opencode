@@ -31,7 +31,7 @@ export const DEFAULT_AUTOCOMPLETE_OPTIONS: AutocompleteOptions = {
 }
 
 /** Cursor position as a plain object (decoupled from vscode.Position). */
-export interface Position {
+interface Position {
   line: number
   character: number
 }
@@ -51,7 +51,7 @@ export interface AutocompleteInput {
   isUntitledFile: boolean
 }
 
-/** Result of a completion, with metadata for caching/logging/cost. */
+/** Result of a completion, with metadata for caching/logging. */
 export interface AutocompleteOutcome {
   completion: string
   prefix: string
@@ -63,5 +63,3 @@ export interface AutocompleteOutcome {
   completionId: string
   filepath: string
 }
-
-export type CostTrackingCallback = (cost: number, inputTokens: number, outputTokens: number) => void

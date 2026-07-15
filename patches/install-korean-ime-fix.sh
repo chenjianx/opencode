@@ -90,19 +90,19 @@ ARCH=$(uname -m)
 [ "$PLATFORM" = "darwin" ] && true
 [ "$PLATFORM" = "linux" ] && true
 
-BUILT_BINARY="$OPENCODE_SRC/packages/opencode/dist/opencode-${PLATFORM}-${ARCH}/bin/opencode"
+BUILT_BINARY="$OPENCODE_SRC/packages/opencode/dist/raccoon-${PLATFORM}-${ARCH}/bin/raccoon"
 
 if [ ! -f "$BUILT_BINARY" ]; then
-  BUILT_BINARY=$(find "$OPENCODE_SRC/packages/opencode/dist" -name "opencode" -type f -executable 2>/dev/null | head -1)
+  BUILT_BINARY=$(find "$OPENCODE_SRC/packages/opencode/dist" -name "raccoon" -type f -executable 2>/dev/null | head -1)
 fi
 
 if [ -f "$BUILT_BINARY" ]; then
-  if [ -f "$OPENCODE_DIR/bin/opencode" ]; then
-    cp "$OPENCODE_DIR/bin/opencode" "$OPENCODE_DIR/bin/opencode.bak.$(date +%Y%m%d%H%M%S)"
+  if [ -f "$OPENCODE_DIR/bin/raccoon" ]; then
+    cp "$OPENCODE_DIR/bin/raccoon" "$OPENCODE_DIR/bin/raccoon.bak.$(date +%Y%m%d%H%M%S)"
   fi
-  cp "$BUILT_BINARY" "$OPENCODE_DIR/bin/opencode"
-  chmod +x "$OPENCODE_DIR/bin/opencode"
-  ok "Installed to $OPENCODE_DIR/bin/opencode"
+  cp "$BUILT_BINARY" "$OPENCODE_DIR/bin/raccoon"
+  chmod +x "$OPENCODE_DIR/bin/raccoon"
+  ok "Installed to $OPENCODE_DIR/bin/raccoon"
 else
   err "Build failed - binary not found in dist/"
   info "Try running manually:"

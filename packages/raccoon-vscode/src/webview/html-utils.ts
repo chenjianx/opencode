@@ -1,4 +1,4 @@
-export function buildConnectSrc(port?: number) {
+function buildConnectSrc(port?: number) {
   if (port) return `http://127.0.0.1:${port} http://localhost:${port} ws://127.0.0.1:${port} ws://localhost:${port}`
   return "http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:*"
 }
