@@ -24,9 +24,9 @@ const archMap = {
 
 const platform = platformMap[os.platform()] ?? os.platform()
 const arch = archMap[os.arch()] ?? os.arch()
-const base = `opencode-${platform}-${arch}`
-const sourceBinary = platform === "windows" ? "opencode.exe" : "opencode"
-const targetBinary = path.join(__dirname, "bin", "opencode.exe")
+const base = `raccoon-${platform}-${arch}` // raccoon_change - resolve raccoon platform packages
+const sourceBinary = platform === "windows" ? "raccoon.exe" : "raccoon" // raccoon_change - install raccoon binary
+const targetBinary = path.join(__dirname, "bin", "raccoon.exe") // raccoon_change - expose raccoon command shim
 
 function supportsAvx2() {
   if (arch !== "x64") return false
@@ -127,7 +127,7 @@ function installPackage(name) {
   const version = packageJson.optionalDependencies?.[name]
   if (!version) return
 
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-install-"))
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "raccoon-install-")) // raccoon_change - use raccoon temp prefix
   try {
     const result = childProcess.spawnSync(
       "npm",
@@ -174,11 +174,13 @@ function main() {
     }
   }
 
+  // raccoon_change start - rebrand install error
   throw new Error(
-    `It seems your package manager failed to install the right opencode CLI package. Try manually installing ${packageNames()
+    `It seems your package manager failed to install the right raccoon CLI package. Try manually installing ${packageNames()
       .map((name) => JSON.stringify(name))
       .join(" or ")}.`,
   )
+  // raccoon_change end
 }
 
 try {

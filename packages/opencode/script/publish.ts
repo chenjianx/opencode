@@ -35,7 +35,7 @@ await $`mkdir -p ./dist/${pkg.name}`
 await $`mkdir -p ./dist/${pkg.name}/bin`
 await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
 await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
-await Bun.file(`./dist/${pkg.name}/bin/${pkg.name}.exe`).write(
+await Bun.file(`./dist/${pkg.name}/bin/raccoon.exe`).write( // raccoon_change - create raccoon bin shim
   [
     `echo "Error: ${pkg.name}-ai's postinstall script was not run." >&2`,
     'echo "" >&2',
@@ -56,7 +56,7 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
     {
       name: pkg.name + "-ai",
       bin: {
-        [pkg.name]: `./bin/${pkg.name}.exe`,
+        raccoon: "./bin/raccoon.exe", // raccoon_change - expose raccoon command from npm package
       },
       scripts: {
         postinstall: "node ./postinstall.mjs",
@@ -87,10 +87,10 @@ const tagFlags = tags.flatMap((t) => ["-t", t])
 if (!Script.preview) {
   await $`docker buildx build --platform ${platforms} ${tagFlags} --push .`
   // Calculate SHA values
-  const arm64Sha = await $`sha256sum ./dist/opencode-linux-arm64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim())
-  const x64Sha = await $`sha256sum ./dist/opencode-linux-x64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim())
-  const macX64Sha = await $`sha256sum ./dist/opencode-darwin-x64.zip | cut -d' ' -f1`.text().then((x) => x.trim())
-  const macArm64Sha = await $`sha256sum ./dist/opencode-darwin-arm64.zip | cut -d' ' -f1`.text().then((x) => x.trim())
+  const arm64Sha = await $`sha256sum ./dist/raccoon-linux-arm64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim()) // raccoon_change - publish raccoon artifact
+  const x64Sha = await $`sha256sum ./dist/raccoon-linux-x64.tar.gz | cut -d' ' -f1`.text().then((x) => x.trim()) // raccoon_change - publish raccoon artifact
+  const macX64Sha = await $`sha256sum ./dist/raccoon-darwin-x64.zip | cut -d' ' -f1`.text().then((x) => x.trim()) // raccoon_change - publish raccoon artifact
+  const macArm64Sha = await $`sha256sum ./dist/raccoon-darwin-arm64.zip | cut -d' ' -f1`.text().then((x) => x.trim()) // raccoon_change - publish raccoon artifact
 
   const [pkgver, _subver = ""] = Script.version.split(/(-.*)/, 2)
 
@@ -112,14 +112,14 @@ if (!Script.preview) {
     "conflicts=('opencode')",
     "depends=('ripgrep')",
     "",
-    `source_aarch64=("\${pkgname}_\${pkgver}_aarch64.tar.gz::https://github.com/anomalyco/opencode/releases/download/v\${pkgver}\${_subver}/opencode-linux-arm64.tar.gz")`,
+    `source_aarch64=("\${pkgname}_\${pkgver}_aarch64.tar.gz::https://github.com/anomalyco/opencode/releases/download/v\${pkgver}\${_subver}/raccoon-linux-arm64.tar.gz")`, // raccoon_change - publish raccoon artifact
     `sha256sums_aarch64=('${arm64Sha}')`,
 
-    `source_x86_64=("\${pkgname}_\${pkgver}_x86_64.tar.gz::https://github.com/anomalyco/opencode/releases/download/v\${pkgver}\${_subver}/opencode-linux-x64.tar.gz")`,
+    `source_x86_64=("\${pkgname}_\${pkgver}_x86_64.tar.gz::https://github.com/anomalyco/opencode/releases/download/v\${pkgver}\${_subver}/raccoon-linux-x64.tar.gz")`, // raccoon_change - publish raccoon artifact
     `sha256sums_x86_64=('${x64Sha}')`,
     "",
     "package() {",
-    '  install -Dm755 ./opencode "${pkgdir}/usr/bin/opencode"',
+    '  install -Dm755 ./raccoon "${pkgdir}/usr/bin/raccoon"', // raccoon_change - install raccoon binary
     "}",
     "",
   ].join("\n")
@@ -158,36 +158,36 @@ if (!Script.preview) {
     "",
     "  on_macos do",
     "    if Hardware::CPU.intel?",
-    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/opencode-darwin-x64.zip"`,
+    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/raccoon-darwin-x64.zip"`, // raccoon_change - publish raccoon artifact
     `      sha256 "${macX64Sha}"`,
     "",
     "      def install",
-    '        bin.install "opencode"',
+    '        bin.install "raccoon"', // raccoon_change - install raccoon binary
     "      end",
     "    end",
     "    if Hardware::CPU.arm?",
-    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/opencode-darwin-arm64.zip"`,
+    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/raccoon-darwin-arm64.zip"`, // raccoon_change - publish raccoon artifact
     `      sha256 "${macArm64Sha}"`,
     "",
     "      def install",
-    '        bin.install "opencode"',
+    '        bin.install "raccoon"', // raccoon_change - install raccoon binary
     "      end",
     "    end",
     "  end",
     "",
     "  on_linux do",
     "    if Hardware::CPU.intel? and Hardware::CPU.is_64_bit?",
-    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/opencode-linux-x64.tar.gz"`,
+    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/raccoon-linux-x64.tar.gz"`, // raccoon_change - publish raccoon artifact
     `      sha256 "${x64Sha}"`,
     "      def install",
-    '        bin.install "opencode"',
+    '        bin.install "raccoon"', // raccoon_change - install raccoon binary
     "      end",
     "    end",
     "    if Hardware::CPU.arm? and Hardware::CPU.is_64_bit?",
-    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/opencode-linux-arm64.tar.gz"`,
+    `      url "https://github.com/anomalyco/opencode/releases/download/v${Script.version}/raccoon-linux-arm64.tar.gz"`, // raccoon_change - publish raccoon artifact
     `      sha256 "${arm64Sha}"`,
     "      def install",
-    '        bin.install "opencode"',
+    '        bin.install "raccoon"', // raccoon_change - install raccoon binary
     "      end",
     "    end",
     "  end",
