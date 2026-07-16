@@ -223,6 +223,27 @@ export class VscodeHostPlatform implements HostPlatform {
       return createEditorContext(document, range)
     },
     searchFiles: (query: string, kind?: "file" | "folder") => searchFiles({ query, kind }),
+    getOpenFiles: (): string[] => {
+      const dir = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+      if (!dir) return []
+      const result: string[] = []
+      const seen = new Set<string>()
+      const collect = (uri: vscode.Uri | undefined) => {
+        if (!uri || uri.scheme !== "file") return
+        const rel = vscode.workspace.asRelativePath(uri, false).replaceAll("\\", "/")
+        if (isAbsolutePath(rel) || rel.startsWith("..")) return
+        if (seen.has(rel)) return
+        seen.add(rel)
+        result.push(rel)
+      }
+      collect(vscode.window.activeTextEditor?.document.uri)
+      for (const group of vscode.window.tabGroups.all) {
+        for (const tab of group.tabs) {
+          collect(tab.input instanceof vscode.TabInputText || tab.input instanceof vscode.TabInputNotebook ? tab.input.uri : undefined)
+        }
+      }
+      return result
+    },
     terminalContext: () => captureTerminal(),
     gitChangesContext: (directory: string) => gitChangesContext(directory),
   }

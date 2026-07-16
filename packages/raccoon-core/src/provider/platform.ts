@@ -138,6 +138,9 @@ export interface HostPlatform {
     getActiveContext(): EditorContext | undefined
     getRangeContext(ref: DocumentRangeRef): Promise<EditorContext | undefined>
     searchFiles(query: string, kind?: "file" | "folder"): Promise<FileSearchResult>
+    // Workspace-relative paths of currently open editor tabs, active document first.
+    // Used to pin open files to the top of @file search results.
+    getOpenFiles?(): string[]
     terminalContext(): Promise<string>
     gitChangesContext(directory: string): Promise<string>
   }

@@ -7,6 +7,7 @@ import {
 import type {
   ChatMode,
   ExtensionToWebview,
+  RaccoonFileSearchItem,
   RaccoonMessage,
   RaccoonPluginLanguage,
   RaccoonState,
@@ -62,6 +63,21 @@ function imageExtension(filename: string | undefined, mime: string) {
 function normalizePluginLanguage(value: string | undefined): RaccoonPluginLanguage {
   if (value?.toLowerCase().startsWith("zh")) return "zh-Hans"
   return "en"
+}
+
+// Subsequence fuzzy match used to filter open editor tabs against the mention query.
+// Empty query matches everything so all open tabs are pinned when the popover first opens.
+function fuzzyMatch(query: string, target: string): boolean {
+  const q = query.trim().replaceAll("\\", "/").toLowerCase()
+  if (!q) return true
+  const t = target.toLowerCase()
+  if (t.includes(q)) return true
+  let index = -1
+  for (const char of q) {
+    index = t.indexOf(char, index + 1)
+    if (index === -1) return false
+  }
+  return true
 }
 
 export class RaccoonProvider {
@@ -319,13 +335,60 @@ export class RaccoonProvider {
   }
 
   private async requestFileSearch(requestID: string, query: string, kind?: "file" | "folder") {
-    const result = await this.platform.editor.searchFiles(query, kind)
+    const directory = this.directory()
+    const items = this.pinOpenFiles(await this.searchFiles(query, kind), query, kind)
     this.webviewHost.post("chat", {
       type: "fileSearchResult",
       requestID,
-      items: result.items,
-      workspaceDir: result.workspaceDir,
+      items,
+      workspaceDir: directory,
     })
+  }
+
+  // Search via the opencode backend (ripgrep cache + fuzzysort); fall back to the host's
+  // native editor search when the backend is unavailable (e.g. still connecting).
+  private async searchFiles(query: string, kind?: "file" | "folder"): Promise<RaccoonFileSearchItem[]> {
+    try {
+      const client = await this.client()
+      const directory = this.directory()
+      if (kind === "file") {
+        const res = await client.find.files({ directory, query, type: "file", limit: 100 })
+        return (res.data ?? []).map((path) => ({ path, type: "file" as const }))
+      }
+      if (kind === "folder") {
+        const res = await client.find.files({ directory, query, type: "directory", limit: 100 })
+        return (res.data ?? []).map((path) => ({ path, type: "folder" as const }))
+      }
+      const [filesRes, dirsRes] = await Promise.all([
+        client.find.files({ directory, query, type: "file", limit: 100 }),
+        client.find.files({ directory, query, type: "directory", limit: 100 }),
+      ])
+      return [
+        ...(filesRes.data ?? []).map((path) => ({ path, type: "file" as const })),
+        ...(dirsRes.data ?? []).map((path) => ({ path, type: "folder" as const })),
+      ]
+    } catch {
+      const result = await this.platform.editor.searchFiles(query, kind)
+      return result.items
+    }
+  }
+
+  // Promote open editor tabs (active file first) to the top of the result list. Open files
+  // are treated as an independent candidate source: any tab whose path fuzzy-matches the
+  // query is included, even if the backend didn't return it (limit or ranking cutoff).
+  private pinOpenFiles(items: RaccoonFileSearchItem[], query: string, kind?: "file" | "folder"): RaccoonFileSearchItem[] {
+    if (kind === "folder") return items
+    const openFiles = this.platform.editor.getOpenFiles?.() ?? []
+    if (!openFiles.length) return items
+    const active = openFiles[0]
+    const matched = openFiles.filter((path) => fuzzyMatch(query, path))
+    if (!matched.length) return items
+    const ordered = active && matched.includes(active) ? [active, ...matched.filter((p) => p !== active)] : matched
+    const pinned = new Set(ordered)
+    return [
+      ...ordered.map((path) => ({ path, type: "opened-file" as const })),
+      ...items.filter((item) => !pinned.has(item.path)),
+    ]
   }
 
   async openHistory() {

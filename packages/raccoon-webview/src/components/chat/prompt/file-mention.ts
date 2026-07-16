@@ -7,10 +7,10 @@ const AT_GROUP_PATTERN = /(?:^|\s)@(file|folder)\s+(\S*)$/
 
 const FILE_SEARCH_DEBOUNCE_MS = 150
 export const SPECIAL_MENTIONS: RaccoonFileSearchItem[] = [
-  { type: "terminal", path: "terminal", label: "Terminal", description: "Active terminal output" },
-  { type: "git-changes", path: "git-changes", label: "Git changes", description: "Current session/worktree changes" },
   { type: "file-group", path: "file", label: "File", description: "Search workspace files" },
   { type: "folder-group", path: "folder", label: "Folder", description: "Search workspace folders" },
+  { type: "terminal", path: "terminal", label: "Terminal", description: "Active terminal output" },
+  { type: "git-changes", path: "git-changes", label: "Git changes", description: "Current session/worktree changes" },
 ]
 
 // Mention paths that don't map to a workspace file (terminal/git-changes specials and the
