@@ -10,6 +10,7 @@ import { SettingsProviderConnectDialog } from "./settings-provider-connect-dialo
 import { ProviderIcon } from "./provider-icons"
 import { Button } from "../ui"
 import { TextField } from "./settings-common"
+import { visiblePrompt } from "./utils"
 
 const popularProviders = [
   { id: "openai", name: "OpenAI", noteKey: "settings.providers.openai.note" },
@@ -50,15 +51,6 @@ type CustomHeaderDraft = {
 type CustomHeadersResult =
   | { ok: true; headers?: Record<string, string> }
   | { ok: false; key: string }
-
-type Prompt = NonNullable<RaccoonProviderAuthMethod["prompts"]>[number]
-
-function visiblePrompt(prompt: Prompt, values: Record<string, string>) {
-  if (!prompt.when) return true
-  const value = values[prompt.when.key] ?? ""
-  if (prompt.when.op === "eq") return value === prompt.when.value
-  return value !== prompt.when.value
-}
 
 function customHeaders(headers: CustomHeaderDraft[]): CustomHeadersResult {
   const entries = headers

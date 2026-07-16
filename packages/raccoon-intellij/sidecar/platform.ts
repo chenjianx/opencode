@@ -64,7 +64,7 @@ export class SidecarPlatform implements HostPlatform {
       // Webview reveal/open/external flows are host-driven; for the chat MVP they are best-effort
       // no-ops logged to stderr. Phase 2 routes these to Kotlin over the bridge.
       revealChat: async () => {},
-      openFile: () => {},
+      openFile: (_filePath: string, _directory: string, _line?: number, _column?: number) => {},
       openPath: async () => {},
       openExternal: async (url: string) => opts.log(`openExternal (unhandled in MVP): ${url}`),
       promptInput: async () => undefined,

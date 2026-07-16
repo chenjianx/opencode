@@ -28,6 +28,22 @@ bun run --cwd packages/raccoon-vscode dev
 
 6. In the extension host window, open the Raccoon sidebar.
 
+## Debug Webview Source
+
+The default local flow loads the built webview from `dist/webview`, which can make VS Code DevTools show compiled code even when sourcemaps exist. For source-level debugging, run the webview through Vite:
+
+```bash
+bun run --cwd packages/raccoon-webview dev
+```
+
+Then start the VS Code extension watcher with the dev server URL:
+
+```bash
+RACCOON_WEBVIEW_DEV_SERVER=http://127.0.0.1:5173 bun run --cwd packages/raccoon-vscode dev
+```
+
+Launch the extension host from VS Code as usual. The webview will load `packages/raccoon-webview/src/main.tsx` from Vite, so DevTools should show files under `packages/raccoon-webview/src`.
+
 ## Config
 
 - `raccoon.serverUrl`: use an existing Raccoon server instead of starting one

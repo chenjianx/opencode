@@ -26,10 +26,12 @@ async function publish(dir: string, name: string, version: string) {
 const binaries: Record<string, string> = {}
 for (const filepath of new Bun.Glob("*/package.json").scanSync({ cwd: "./dist" })) {
   const pkg = await Bun.file(`./dist/${filepath}`).json()
+  if (!/^raccoon-(darwin|linux|windows)-/.test(pkg.name)) continue // raccoon_change - ignore generated npm wrapper package on publish reruns
   binaries[pkg.name] = pkg.version
 }
 console.log("binaries", binaries)
 const version = Object.values(binaries)[0]
+const npmPackageName = "raccoon-code-cli" // raccoon_change - publish installable npm wrapper as raccoon-code-cli
 
 await $`mkdir -p ./dist/${pkg.name}`
 await $`mkdir -p ./dist/${pkg.name}/bin`
@@ -37,15 +39,15 @@ await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
 await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
 await Bun.file(`./dist/${pkg.name}/bin/raccoon.exe`).write( // raccoon_change - create raccoon bin shim
   [
-    `echo "Error: ${pkg.name}-ai's postinstall script was not run." >&2`,
+    `echo "Error: ${npmPackageName}'s postinstall script was not run." >&2`, // raccoon_change - mention raccoon-code-cli package name
     'echo "" >&2',
     'echo "This occurs when using --ignore-scripts during installation, or when using a" >&2',
     'echo "package manager like pnpm that does not run postinstall scripts by default." >&2',
     'echo "" >&2',
     'echo "To fix this, run the postinstall script manually:" >&2',
-    `echo "  cd node_modules/${pkg.name}-ai && node postinstall.mjs" >&2`,
+    `echo "  cd node_modules/${npmPackageName} && node postinstall.mjs" >&2`, // raccoon_change - point manual fix to raccoon-code-cli
     'echo "" >&2',
-    `echo "Or reinstall ${pkg.name}-ai without the --ignore-scripts flag." >&2`,
+    `echo "Or reinstall ${npmPackageName} without the --ignore-scripts flag." >&2`, // raccoon_change - mention raccoon-code-cli reinstall command
     "exit 1",
     "",
   ].join("\n"),
@@ -54,7 +56,7 @@ await Bun.file(`./dist/${pkg.name}/bin/raccoon.exe`).write( // raccoon_change - 
 await Bun.file(`./dist/${pkg.name}/package.json`).write(
   JSON.stringify(
     {
-      name: pkg.name + "-ai",
+      name: npmPackageName, // raccoon_change - publish main npm package as raccoon-code-cli
       bin: {
         raccoon: "./bin/raccoon.exe", // raccoon_change - expose raccoon command from npm package
       },
@@ -76,7 +78,7 @@ const tasks = Object.entries(binaries).map(async ([name]) => {
   await publish(`./dist/${name}`, name, binaries[name])
 })
 await Promise.all(tasks)
-await publish(`./dist/${pkg.name}`, `${pkg.name}-ai`, version)
+await publish(`./dist/${pkg.name}`, npmPackageName, version) // raccoon_change - publish raccoon-code-cli wrapper package
 
 const image = "ghcr.io/anomalyco/opencode"
 const platforms = "linux/amd64,linux/arm64"

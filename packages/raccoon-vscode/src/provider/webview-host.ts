@@ -112,6 +112,16 @@ export class RaccoonWebviewHost implements WebviewTransport {
   }
 
   private html(webview: vscode.Webview) {
+    const devServerUri = process.env.RACCOON_WEBVIEW_DEV_SERVER?.trim().replace(/\/+$/, "")
+    if (devServerUri) {
+      return buildWebviewHtml(webview, {
+        scriptUri: vscode.Uri.parse(`${devServerUri}/src/main.tsx`),
+        title: "Raccoon",
+        port: this.connection.getServerConfig()?.port,
+        devServerUri,
+      })
+    }
+
     const dist = vscode.Uri.joinPath(this.extensionUri, "dist", "webview")
     return buildWebviewHtml(webview, {
       scriptUri: webview.asWebviewUri(vscode.Uri.joinPath(dist, "assets", "index.js")),

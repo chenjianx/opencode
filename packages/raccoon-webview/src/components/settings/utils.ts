@@ -1,9 +1,19 @@
 // Shared helpers for the settings UI. Centralizes small transforms that were
 // previously duplicated across several settings components.
 
-import type { RaccoonMarketplaceScope } from "../../protocol"
+import type { RaccoonMarketplaceScope, RaccoonProviderAuthMethod } from "../../protocol"
 
 type ModelSelection = { providerID: string; modelID: string }
+
+type AuthPrompt = NonNullable<RaccoonProviderAuthMethod["prompts"]>[number]
+
+/** Whether an auth prompt should render, based on its `when` condition. */
+export function visiblePrompt(prompt: AuthPrompt, values: Record<string, string>) {
+  if (!prompt.when) return true
+  const value = values[prompt.when.key] ?? ""
+  if (prompt.when.op === "eq") return value === prompt.when.value
+  return value !== prompt.when.value
+}
 
 /** Validates a config entity name: starts alphanumeric, then word/dash chars. */
 export const NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/

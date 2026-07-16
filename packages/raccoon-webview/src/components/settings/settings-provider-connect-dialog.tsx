@@ -3,20 +3,12 @@ import { useLanguage } from "../../context/language"
 import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
 import { SelectField, TextField } from "./settings-common"
+import { visiblePrompt } from "./utils"
 
 type ProviderDraft = {
   methodIndex: number
   apiKey: string
   inputs: Record<string, string>
-}
-
-type Prompt = NonNullable<RaccoonProviderAuthMethod["prompts"]>[number]
-
-function visiblePrompt(prompt: Prompt, values: Record<string, string>) {
-  if (!prompt.when) return true
-  const value = values[prompt.when.key] ?? ""
-  if (prompt.when.op === "eq") return value === prompt.when.value
-  return value !== prompt.when.value
 }
 
 function optionText(option: { label: string; value: string; hint?: string }) {

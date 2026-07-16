@@ -47,8 +47,7 @@ class RaccoonService(private val project: Project) : Disposable {
             nodePath = plugin.nodePath,
             sidecarCjs = plugin.sidecarCjs,
             workingDir = project.basePath ?: System.getProperty("user.dir"),
-            raccoonBin = plugin.raccoonBin,
-            onMessage = ::onSidecarMessage,
+            raccoonBin = plugin.raccoonBin,           onMessage = ::onSidecarMessage,
         )
         sidecar = proc
         proc.start()

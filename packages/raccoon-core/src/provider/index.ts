@@ -1,4 +1,3 @@
-import * as nodePath from "node:path"
 import {
   type Message,
   type OpencodeClient,
@@ -49,40 +48,6 @@ import type {
   RaccoonWebviewSource,
   WebviewTransport,
 } from "./platform.js"
-
-function isAbsolutePath(filePath: string) {
-  if (filePath.charCodeAt(0) === 47) return true
-  if (
-    filePath.length >= 3 &&
-    filePath.charCodeAt(1) === 58 &&
-    (filePath.charCodeAt(2) === 92 || filePath.charCodeAt(2) === 47) &&
-    ((filePath.charCodeAt(0) >= 65 && filePath.charCodeAt(0) <= 90) ||
-      (filePath.charCodeAt(0) >= 97 && filePath.charCodeAt(0) <= 122))
-  )
-    return true
-  return filePath.length >= 2 && filePath.charCodeAt(0) === 92 && filePath.charCodeAt(1) === 92
-}
-
-// Resolve a (possibly workspace-relative) path to an absolute path, collapsing any overlap
-// between the tail of the workspace directory and the head of the relative path. Pure string
-// logic so the orchestrator stays platform-agnostic; the host opens the resulting path.
-function resolveFilePath(filePath: string, directory: string): string {
-  if (isAbsolutePath(filePath)) return filePath
-  const normalized = filePath.replace(/\\/g, "/").replace(/^\.?\//, "")
-  const directoryParts = directory.replace(/\\/g, "/").split("/").filter(Boolean)
-  const fileParts = normalized.split("/").filter(Boolean)
-  const overlap = fileParts
-    .map((_, index) => index + 1)
-    .reverse()
-    .find(
-      (length) =>
-        length < fileParts.length &&
-        length <= directoryParts.length &&
-        fileParts.slice(0, length).join("/") === directoryParts.slice(-length).join("/"),
-    )
-  const relative = overlap ? fileParts.slice(overlap).join("/") : normalized
-  return nodePath.join(directory, relative)
-}
 
 function imageExtension(filename: string | undefined, mime: string) {
   const current = filename?.match(/\.[A-Za-z0-9]+$/)?.[0]
@@ -604,7 +569,7 @@ export class RaccoonProvider {
   }
 
   private openFile(filePath: string, line?: number, column?: number) {
-    this.platform.ui.openFile(resolveFilePath(filePath, this.directory()), line, column)
+    this.platform.ui.openFile(filePath, this.directory(), line, column)
   }
 
   private async openImage(url: string, filename?: string, mime?: string) {

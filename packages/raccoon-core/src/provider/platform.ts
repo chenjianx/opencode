@@ -111,7 +111,10 @@ export interface HostPlatform {
   }
   ui: {
     revealChat(): Promise<void>
-    openFile(absolutePath: string, line?: number, column?: number): void
+    // Opens a file by its (possibly workspace-relative) path. The host resolves it against
+    // `directory`, checks existence, and falls back to a recursive basename search when the
+    // resolved path does not exist — so callers can pass bare filenames or partial paths.
+    openFile(filePath: string, directory: string, line?: number, column?: number): void
     // Opens an already-materialized file/image by absolute path or file:// URL.
     openPath(target: string): Promise<void>
     // Opens a URL in the host's external browser (OAuth flows).
