@@ -54,6 +54,7 @@ type SessionStateContextValue = {
   slashCommands: RaccoonSlashCommand[]
   selectedModel?: RaccoonModel
   conversationModel?: RaccoonModel
+  conversationVariant?: string
   activeSession?: RaccoonSession
   latestUserMessage?: RaccoonMessage
   latestAssistantMessage?: RaccoonMessage
@@ -87,6 +88,7 @@ type SessionActionsContextValue = {
   setAutocompleteEnabled: (enabled: boolean) => void
   setModel: (model: { providerID: string; modelID: string }) => void
   setConversationModel: (sessionID: string, model: { providerID: string; modelID: string }) => void
+  setConversationVariant: (sessionID: string, variant?: string) => void
   setModeModel: (mode: ChatMode, model?: { providerID: string; modelID: string }) => void
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
   setProviderEnabled: (providerID: string, enabled: boolean) => void
@@ -123,7 +125,7 @@ type SessionActionsContextValue = {
     models: Array<{ id: string; name: string }>
     editing?: boolean
   }) => void
-  sendMessage: (text: string, files?: RaccoonFileAttachment[], model?: { providerID: string; modelID: string }) => void
+  sendMessage: (text: string, files?: RaccoonFileAttachment[], model?: { providerID: string; modelID: string; variant?: string }) => void
   replyToQuestion: (requestID: string, answers: string[][]) => void
   rejectQuestion: (requestID: string) => void
   replyToPermission: (requestID: string, reply: RaccoonPermissionReply) => void
@@ -192,6 +194,7 @@ export function SessionProvider(props: { children: ReactNode }) {
   // Client-only per-conversation model override. Switching the model while a session is active
   // affects only that session's next messages, without changing the global default model.
   const [sessionModels, setSessionModels] = useState<Record<string, { providerID: string; modelID: string }>>({})
+  const [sessionVariants, setSessionVariants] = useState<Record<string, string | undefined>>({})
   // Client-only flag: settings is being shown inline in the chat surface (JetBrains) rather than
   // in a dedicated settings webview (VSCode). Drives the Back button and survives state refreshes.
   const [settingsInline, setSettingsInline] = useState(false)
@@ -541,6 +544,9 @@ export function SessionProvider(props: { children: ReactNode }) {
             model.providerID === conversationSelection.providerID && model.modelID === conversationSelection.modelID,
         ) ?? selectedModel
       : selectedModel
+    const conversationVariant = state.activeSessionID
+      ? sessionVariants[state.activeSessionID] ?? (conversationModel?.variants?.includes("none") ? "none" : undefined)
+      : undefined
     const activeSession = state.activeSession ?? sessions.find((session) => session.id === state.activeSessionID)
     const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")
     const latestAssistantMessage = [...messages].reverse().find((message) => message.role === "assistant")
@@ -566,6 +572,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       slashCommands,
       selectedModel,
       conversationModel,
+      conversationVariant,
       activeSession,
       latestUserMessage,
       latestAssistantMessage,
@@ -578,7 +585,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       autoApprovePermissions: !!state.activeSessionID && autoApproveSessions.has(state.activeSessionID),
       settingsInline,
     }
-  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, sessionModels, state, settingsInline])
+  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, sessionModels, sessionVariants, state, settingsInline])
 
   const sessionConfig = useMemo<SessionConfigContextValue>(() => {
     return {
@@ -685,6 +692,11 @@ export function SessionProvider(props: { children: ReactNode }) {
       setConversationModel: (sessionID, model) => {
         if (!sessionID) return
         setSessionModels((current) => ({ ...current, [sessionID]: model }))
+        setSessionVariants((current) => ({ ...current, [sessionID]: undefined }))
+      },
+      setConversationVariant: (sessionID, variant) => {
+        if (!sessionID) return
+        setSessionVariants((current) => ({ ...current, [sessionID]: variant }))
       },
       setModeModel: (mode, model) => {
         setState((current) => {
@@ -738,7 +750,16 @@ export function SessionProvider(props: { children: ReactNode }) {
       sendMessage: (text, files, model) => {
         const trimmed = text.trim()
         if (!trimmed && !(files?.length ?? 0)) return
-        vscode.postMessage({ type: "sendMessage", text: trimmed, mode: stateRef.current.mode, model: model ?? stateRef.current.selectedModel, files })
+        const sessionID = stateRef.current.activeSessionID
+        const variant = sessionID ? sessionVariants[sessionID] : undefined
+        const selected = model ?? stateRef.current.selectedModel
+        vscode.postMessage({
+          type: "sendMessage",
+          text: trimmed,
+          mode: stateRef.current.mode,
+          model: selected ? { ...selected, variant } : undefined,
+          files,
+        })
       },
       replyToQuestion: (requestID, answers) => {
         setQuestionErrors((current) => {
@@ -804,7 +825,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       openImage: (input) => vscode.postMessage({ type: "openImage", ...input }),
       stopSession: () => vscode.postMessage({ type: "stopSession" }),
     }
-  }, [vscode])
+  }, [sessionVariants, vscode])
 
   return (
     <SessionStateContext.Provider value={sessionState}>

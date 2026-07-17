@@ -14,6 +14,8 @@ export const dict = {
   "common.saving": "儲存中...",
   "modelPicker.search": "搜尋模型",
   "modelPicker.empty": "找不到模型",
+  "reasoningPicker.label": "推理強度",
+  "reasoningPicker.default": "無",
   "message.scrollToBottom": "捲動到底部",
   "revert.title": "{{count}} 則已還原訊息",
   "revert.restore": "還原",

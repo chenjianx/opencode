@@ -21,6 +21,10 @@ describe("mapProviderModels", () => {
           "raccoon-chat": {
             id: "raccoon-chat",
             name: "Raccoon Chat",
+            variants: {
+              low: {},
+              high: {},
+            },
           },
         },
       } as never,
@@ -29,6 +33,7 @@ describe("mapProviderModels", () => {
     )
 
     expect(models.map((model) => model.modelID)).toEqual(["raccoon-chat"])
+    expect(models[0]?.variants).toEqual(["low", "high"])
   })
 })
 

@@ -74,7 +74,7 @@ type MessageRouterDeps = {
   sendMessage: (
     text: string,
     mode: ChatMode,
-    model?: { providerID: string; modelID: string },
+    model?: { providerID: string; modelID: string; variant?: string },
     files?: { path: string; filename?: string; mime?: string; url: string; source?: FilePartInput["source"] }[],
   ) => Promise<void>
 }

@@ -65,6 +65,7 @@ export type RaccoonModel = {
   connected: boolean
   source?: "env" | "config" | "custom" | "api"
   contextLimit?: number
+  variants?: string[]
 }
 
 export type RaccoonProviderInfo = {
@@ -609,7 +610,7 @@ export type WebviewToExtension =
       type: "sendMessage"
       text: string
       mode: ChatMode
-      model?: { providerID: string; modelID: string }
+      model?: { providerID: string; modelID: string; variant?: string }
       files?: RaccoonFileAttachment[]
     }
   | { type: "stopSession" }

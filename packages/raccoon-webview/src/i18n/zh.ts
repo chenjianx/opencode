@@ -14,6 +14,8 @@ export const dict = {
   "common.saving": "保存中...",
   "modelPicker.search": "搜索模型",
   "modelPicker.empty": "未找到模型",
+  "reasoningPicker.label": "推理强度",
+  "reasoningPicker.default": "无",
   "message.scrollToBottom": "滚动到底部",
   "revert.title": "{{count}} 条已回滚消息",
   "revert.restore": "恢复",

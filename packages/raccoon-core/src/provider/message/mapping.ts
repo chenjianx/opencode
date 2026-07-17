@@ -184,6 +184,7 @@ export function mapProviderModels(provider: Provider, connected: boolean, disabl
       connected: selectable,
       enabled: !disabledModels.has(modelKey({ providerID: provider.id, modelID: model.id })),
       contextLimit: model.limit?.context && model.limit.context > 0 ? model.limit.context : undefined,
+      variants: Object.keys(model.variants ?? {}),
     }))
     .sort((a, b) => a.modelName.localeCompare(b.modelName))
 }

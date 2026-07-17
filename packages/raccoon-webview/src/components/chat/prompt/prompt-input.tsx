@@ -17,6 +17,7 @@ import {
 import { modeLabel, requestContext, slashQuery } from "./prompt-input-utils"
 import { usePromptAttachments } from "./use-prompt-attachments"
 import { PromptCommandList, PromptMentionList, PromptModePicker } from "./prompt-popovers"
+import { ReasoningPicker } from "../../ui/reasoning-picker"
 
 function PromptDragOverlay(props: { active: boolean }) {
   if (!props.active) return null
@@ -391,6 +392,13 @@ export function PromptInput() {
               placeholder="No model"
               compact
             />
+            {activeSessionID && session.conversationModel?.variants ? (
+              <ReasoningPicker
+                value={session.conversationVariant}
+                variants={session.conversationModel.variants}
+                onChange={(variant) => session.setConversationVariant(activeSessionID, variant)}
+              />
+            ) : null}
           </div>
           {session.state.activeSessionID ? (
             <button

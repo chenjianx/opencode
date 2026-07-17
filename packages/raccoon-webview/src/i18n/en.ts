@@ -11,6 +11,8 @@ export const dict = {
   "common.saving": "Saving...",
   "modelPicker.search": "Search models",
   "modelPicker.empty": "No models found",
+  "reasoningPicker.label": "Reasoning effort",
+  "reasoningPicker.default": "None",
   "message.scrollToBottom": "Scroll to bottom",
   "revert.title": "{{count}} reverted messages",
   "revert.restore": "Restore",
