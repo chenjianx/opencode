@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useLanguage } from "../../context/language"
 import { useSessionActions, useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
-import type { RaccoonProviderAuthMethod } from "../../protocol"
+import type { CustomProviderPackage, RaccoonProviderAuthMethod } from "../../protocol"
 import { RACCOON_LOGIN_URL } from "../../config"
 import { SettingsCustomProviderDialog } from "./settings-custom-provider-dialog"
 import { SettingsDialog } from "./settings-dialog"
@@ -20,9 +20,9 @@ const popularProviders = [
   { id: "copilot", name: "GitHub Copilot", noteKey: "settings.providers.copilot.note" },
 ] as const
 
-// 暂时隐藏国外供应商的「热门供应商」发现入口，只保留自定义添加入口。
-// 恢复时将此开关改回 false 即可重新展示上面的 popularProviders 列表。
-const HIDE_FOREIGN_PROVIDERS = true
+// 展示国外供应商的「热门供应商」发现入口。
+// 隐藏时将此开关改回 true 即可只保留自定义添加入口。
+const HIDE_FOREIGN_PROVIDERS = false
 
 // raccoon (login) and opencode (free models) get their own pinned cards at the
 // top, so they are excluded from the dynamic connected/popular sections.
@@ -89,6 +89,7 @@ export function SettingsProviders() {
   const [custom, setCustom] = useState<{
     providerID: string
     name: string
+    package: CustomProviderPackage
     baseURL: string
     apiKey: string
     headers: CustomHeaderDraft[]
@@ -96,6 +97,7 @@ export function SettingsProviders() {
   }>({
     providerID: "",
     name: "",
+    package: "@ai-sdk/openai-compatible",
     baseURL: "",
     apiKey: "",
     headers: [emptyCustomHeader()],
@@ -275,6 +277,7 @@ export function SettingsProviders() {
     setCustom({
       providerID: provider.providerID,
       name: provider.name,
+      package: provider.package,
       baseURL: provider.baseURL,
       apiKey: "",
       headers: customHeaderDrafts(provider.headers),
@@ -292,6 +295,7 @@ export function SettingsProviders() {
     setCustom({
       providerID: "",
       name: "",
+      package: "@ai-sdk/openai-compatible",
       baseURL: "",
       apiKey: "",
       headers: [emptyCustomHeader()],

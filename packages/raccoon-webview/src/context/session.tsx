@@ -116,6 +116,7 @@ type SessionActionsContextValue = {
   configureCustomProvider: (input: {
     providerID: string
     name: string
+    package: import("../protocol").CustomProviderPackage
     baseURL: string
     apiKey: string
     headers?: Record<string, string>

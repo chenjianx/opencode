@@ -2,11 +2,13 @@ import { X } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
-import { TextField, TextInput } from "./settings-common"
+import { SelectField, TextField, TextInput } from "./settings-common"
+import type { CustomProviderPackage } from "../../protocol"
 
 type CustomProviderDraft = {
   providerID: string
   name: string
+  package: CustomProviderPackage
   baseURL: string
   apiKey: string
   headers: Array<{ key: string; value: string }>
@@ -67,6 +69,16 @@ export function SettingsCustomProviderDialog(props: {
               value={props.custom.name}
               placeholder={language.t("settings.customProvider.displayName.placeholder")}
               onChange={(value) => props.onCustomChange((current) => ({ ...current, name: value }))}
+            />
+            <SelectField
+              label={language.t("settings.customProvider.package")}
+              value={props.custom.package}
+              options={[
+                { value: "@ai-sdk/openai", label: "OpenAI" },
+                { value: "@ai-sdk/anthropic", label: "Anthropic" },
+                { value: "@ai-sdk/openai-compatible", label: "OpenAI Compatible" },
+              ]}
+              onChange={(value) => props.onCustomChange((current) => ({ ...current, package: value as CustomProviderPackage }))}
             />
           </div>
           <TextField

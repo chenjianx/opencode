@@ -1,6 +1,7 @@
 export type ChatMode = string
 export type RaccoonPluginLanguage = "en" | "zh-Hans" | "zh-Hant"
 export type RaccoonPluginLanguageMode = "auto" | RaccoonPluginLanguage
+export type CustomProviderPackage = "@ai-sdk/openai" | "@ai-sdk/anthropic" | "@ai-sdk/openai-compatible"
 export type RaccoonAgentMode = "subagent" | "primary" | "all"
 export type RaccoonAgentScope = "project" | "user"
 export type RaccoonPermissionAction = "allow" | "ask" | "deny"
@@ -111,6 +112,7 @@ export type RaccoonProviderAuthMethod = {
 export type RaccoonCustomProvider = {
   providerID: string
   name: string
+  package: CustomProviderPackage
   baseURL: string
   headers?: Record<string, string>
   models: Array<{ id: string; name: string; supportsImage?: boolean }>
@@ -596,6 +598,7 @@ export type WebviewToExtension =
       type: "configureCustomProvider"
       providerID: string
       name: string
+      package: CustomProviderPackage
       baseURL: string
       apiKey: string
       headers?: Record<string, string>

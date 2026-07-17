@@ -145,6 +145,7 @@ export class RaccoonProviderConfig {
       .map((provider) => ({
         providerID: provider.id,
         name: provider.name,
+        package: customProviderPackage(Object.values(provider.models)[0]?.api.npm),
         baseURL: typeof provider.options?.baseURL === "string" ? provider.options.baseURL : "",
         headers: customProviderHeaders(provider.options?.headers),
         models: Object.values(provider.models).map((model) => ({
@@ -603,7 +604,7 @@ export class RaccoonProviderConfig {
     }
     const providerValue = {
       api: baseURL,
-      npm: "@ai-sdk/openai-compatible",
+      npm: message.package,
       name,
       options: {
         baseURL,
@@ -749,6 +750,11 @@ function normalizePluginLanguageMode(value: string | undefined): RaccoonPluginLa
 function customProviderHeaders(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
   return cleanHeaders(value as Record<string, unknown>)
+}
+
+function customProviderPackage(value: unknown): "@ai-sdk/openai" | "@ai-sdk/anthropic" | "@ai-sdk/openai-compatible" {
+  if (value === "@ai-sdk/openai" || value === "@ai-sdk/anthropic" || value === "@ai-sdk/openai-compatible") return value
+  return "@ai-sdk/openai-compatible" as const
 }
 
 function cleanHeaders(value: Record<string, unknown> | undefined) {
