@@ -22,6 +22,8 @@ interface RemovalTargets {
   binary: string | null
 }
 
+const PACKAGE_NAME = "raccoon-code-cli" // raccoon_change - use the current CLI package name
+
 export const UninstallCommand = {
   command: "uninstall",
   describe: "uninstall Raccoon and remove all related files", // raccoon_change - rebrand command description
@@ -128,15 +130,17 @@ async function showRemovalSummary(targets: RemovalTargets, method: Installation.
   }
 
   if (method !== "curl" && method !== "unknown") {
+    // raccoon_change start - uninstall the current CLI package
     const cmds: Record<string, string> = {
-      npm: "npm uninstall -g opencode-ai",
-      pnpm: "pnpm uninstall -g opencode-ai",
-      bun: "bun remove -g opencode-ai",
-      yarn: "yarn global remove opencode-ai",
-      brew: "brew uninstall opencode",
-      choco: "choco uninstall opencode",
-      scoop: "scoop uninstall opencode",
+      npm: `npm uninstall -g ${PACKAGE_NAME}`,
+      pnpm: `pnpm uninstall -g ${PACKAGE_NAME}`,
+      bun: `bun remove -g ${PACKAGE_NAME}`,
+      yarn: `yarn global remove ${PACKAGE_NAME}`,
+      brew: `brew uninstall ${PACKAGE_NAME}`,
+      choco: `choco uninstall ${PACKAGE_NAME}`,
+      scoop: `scoop uninstall ${PACKAGE_NAME}`,
     }
+    // raccoon_change end
     prompts.log.info(`  ✓ Package: ${cmds[method] || method}`)
   }
 }
@@ -179,20 +183,22 @@ async function executeUninstall(method: Installation.Method, targets: RemovalTar
   }
 
   if (method !== "curl" && method !== "unknown") {
+    // raccoon_change start - uninstall the current CLI package
     const cmds: Record<string, string[]> = {
-      npm: ["npm", "uninstall", "-g", "opencode-ai"],
-      pnpm: ["pnpm", "uninstall", "-g", "opencode-ai"],
-      bun: ["bun", "remove", "-g", "opencode-ai"],
-      yarn: ["yarn", "global", "remove", "opencode-ai"],
-      brew: ["brew", "uninstall", "opencode"],
-      choco: ["choco", "uninstall", "opencode"],
-      scoop: ["scoop", "uninstall", "opencode"],
+      npm: ["npm", "uninstall", "-g", PACKAGE_NAME],
+      pnpm: ["pnpm", "uninstall", "-g", PACKAGE_NAME],
+      bun: ["bun", "remove", "-g", PACKAGE_NAME],
+      yarn: ["yarn", "global", "remove", PACKAGE_NAME],
+      brew: ["brew", "uninstall", PACKAGE_NAME],
+      choco: ["choco", "uninstall", PACKAGE_NAME],
+      scoop: ["scoop", "uninstall", PACKAGE_NAME],
     }
+    // raccoon_change end
 
     const cmd = cmds[method]
     if (cmd) {
       spinner.start(`Running ${cmd.join(" ")}...`)
-      const result = await Process.run(method === "choco" ? ["choco", "uninstall", "opencode", "-y", "-r"] : cmd, {
+      const result = await Process.run(method === "choco" ? [...cmd, "-y", "-r"] : cmd, {
         nothrow: true,
       })
       if (result.code !== 0) {

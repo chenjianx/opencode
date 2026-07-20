@@ -178,6 +178,12 @@ function findBinary(startDir) {
         if (fs.existsSync(candidate)) return candidate
       }
     }
+    // raccoon_change - use locally built platform binaries during development
+    const localDist = path.join(current, "dist")
+    for (const name of names) {
+      const candidate = path.join(localDist, name, "bin", binary)
+      if (fs.existsSync(candidate)) return candidate
+    }
     const parent = path.dirname(current)
     if (parent === current) {
       return
