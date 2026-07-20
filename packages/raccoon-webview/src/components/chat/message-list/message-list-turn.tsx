@@ -46,6 +46,7 @@ export function MessageTurn(props: {
       {props.turn.assistant.map((message) => {
         const parts = visibleParts(message)
         const hasTextPart = (message.parts ?? []).some((part) => part.type === "text" && part.text?.trim())
+        const streaming = props.session.state.busy && message.id === props.turn.assistant.at(-1)?.id
         return (
           <div className="turn-assistant-group" key={message.id}>
             <div className="turn-assistant">
@@ -60,6 +61,7 @@ export function MessageTurn(props: {
                             key={part.id}
                             id={part.id}
                             text={part.text ?? ""}
+                            streaming={streaming}
                             onOpenFile={props.session.openFile}
                             copyTarget={target}
                           />
@@ -84,11 +86,23 @@ export function MessageTurn(props: {
                       )
                     })}
                     {!hasTextPart && message.text.trim() ? (
-                      <AssistantText id={message.id} text={message.text} onOpenFile={props.session.openFile} copyTarget={target} />
+                      <AssistantText
+                        id={message.id}
+                        text={message.text}
+                        streaming={streaming}
+                        onOpenFile={props.session.openFile}
+                        copyTarget={target}
+                      />
                     ) : null}
                   </>
                 ) : (
-                  <AssistantText id={message.id} text={message.text} onOpenFile={props.session.openFile} copyTarget={target} />
+                  <AssistantText
+                    id={message.id}
+                    text={message.text}
+                    streaming={streaming}
+                    onOpenFile={props.session.openFile}
+                    copyTarget={target}
+                  />
                 )}
                 {props.inlineQuestions
                   .filter((request) => request.tool?.messageID === message.id)

@@ -1,0 +1,7 @@
+{
+  "disabled_providers": [
+    "zhipuai",
+    "comp11"
+  ],
+  "$schema": "https://opencode.ai/config.json"
+}

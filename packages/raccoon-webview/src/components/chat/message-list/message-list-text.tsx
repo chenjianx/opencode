@@ -70,6 +70,7 @@ export function AssistantCopyButton(props: { text: string }) {
 export function AssistantText(props: {
   id: string
   text: string
+  streaming?: boolean
   onOpenFile?: (filePath: string, line?: number, column?: number) => void
   copyTarget?: { id: string; text: string }
 }) {
@@ -84,11 +85,11 @@ export function AssistantText(props: {
             return (
               <details className="assistant-reasoning" key={`${props.id}-think-${index}`}>
                 <summary>Thinking</summary>
-                <MarkdownLite text={block.text} onOpenFile={props.onOpenFile} />
+                <MarkdownLite text={block.text} streaming={props.streaming} onOpenFile={props.onOpenFile} />
               </details>
             )
           }
-          return <MarkdownLite key={`${props.id}-text-${index}`} text={block.text} onOpenFile={props.onOpenFile} />
+          return <MarkdownLite key={`${props.id}-text-${index}`} text={block.text} streaming={props.streaming} onOpenFile={props.onOpenFile} />
         })}
         {showCopy && props.copyTarget ? <AssistantCopyButton text={props.copyTarget.text} /> : null}
       </div>

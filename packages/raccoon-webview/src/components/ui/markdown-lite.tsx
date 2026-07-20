@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useDeferredValue, useEffect, useState } from "react"
 import { CopyIcon, CheckIcon } from "@phosphor-icons/react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -9,6 +9,8 @@ const FILE_PATH_UNIX_RE =
   /^((?:\/|\.\.?\/)?(?:[a-zA-Z0-9_@-][a-zA-Z0-9_@./-]*\/)*[a-zA-Z0-9_@.-]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?)?$/
 const FILE_PATH_WIN_RE = /^((?:[a-zA-Z]:[/\\]|\\\\)(?:[^\\/]+[/\\])*[^\\/]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?)?$/
 const SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
+const MAX_HIGHLIGHT_LENGTH = 50_000
+const highlightCache = new Map<string, ThemedToken[][]>()
 
 type FileReference = {
   filePath: string
@@ -83,20 +85,46 @@ function tokenClass(color: string | undefined) {
   return normalized in colors ? colors[normalized as keyof typeof colors] : undefined
 }
 
-function CodeBlock(props: { language?: string; code: string }) {
+function CodeBlock(props: { language?: string; code: string; streaming?: boolean }) {
   const { t } = useLanguage()
   const [tokens, setTokens] = useState<ThemedToken[][]>()
   const [copied, setCopied] = useState(false)
   const language = shikiLanguage(props.language)
+  const deferredCode = useDeferredValue(props.code)
 
   useEffect(() => {
     let mounted = true
+    if (props.streaming) {
+      setTokens(undefined)
+      return () => {
+        mounted = false
+      }
+    }
+
+    const code = deferredCode.replace(/\n$/, "")
+    if (code.length > MAX_HIGHLIGHT_LENGTH) {
+      setTokens(undefined)
+      return () => {
+        mounted = false
+      }
+    }
+
+    const cacheKey = `${language}\u0000${code}`
+    const cached = highlightCache.get(cacheKey)
+    if (cached) {
+      setTokens(cached)
+      return () => {
+        mounted = false
+      }
+    }
+
     setTokens(undefined)
-    codeToTokens(props.code.replace(/\n$/, ""), {
+    codeToTokens(code, {
       lang: language,
       theme: "light-plus",
     })
       .then((next) => {
+        highlightCache.set(cacheKey, next.tokens)
         if (mounted) setTokens(next.tokens)
       })
       .catch((error) => {
@@ -106,7 +134,7 @@ function CodeBlock(props: { language?: string; code: string }) {
     return () => {
       mounted = false
     }
-  }, [language, props.code])
+  }, [deferredCode, language, props.streaming])
 
   useEffect(() => {
     if (!copied) return
@@ -153,7 +181,7 @@ function CodeBlock(props: { language?: string; code: string }) {
   )
 }
 
-function components(onOpenFile?: (filePath: string, line?: number, column?: number) => void): Components {
+function components(onOpenFile?: (filePath: string, line?: number, column?: number) => void, streaming?: boolean): Components {
   return {
     a(props) {
       const fileReference = fileReferenceFromHref(typeof props.href === "string" ? props.href : undefined)
@@ -200,7 +228,7 @@ function components(onOpenFile?: (filePath: string, line?: number, column?: numb
           />
         )
       }
-      return <CodeBlock code={text} language={language} />
+      return <CodeBlock code={text} language={language} streaming={streaming} />
     },
     table(props) {
       return (
@@ -212,10 +240,14 @@ function components(onOpenFile?: (filePath: string, line?: number, column?: numb
   }
 }
 
-export function MarkdownLite(props: { text: string; onOpenFile?: (filePath: string, line?: number, column?: number) => void }) {
+export function MarkdownLite(props: {
+  text: string
+  streaming?: boolean
+  onOpenFile?: (filePath: string, line?: number, column?: number) => void
+}) {
   return (
     <div className="prose max-w-none text-[12px] leading-[17px] text-[var(--color-foreground)]" data-component="markdown-lite">
-      <ReactMarkdown components={components(props.onOpenFile)} remarkPlugins={[remarkGfm]} skipHtml>
+      <ReactMarkdown components={components(props.onOpenFile, props.streaming)} remarkPlugins={[remarkGfm]} skipHtml>
         {props.text}
       </ReactMarkdown>
     </div>
