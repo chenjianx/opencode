@@ -28,8 +28,8 @@
 - Only inline logic into an upstream file when it genuinely cannot be
   externalized (e.g. passing a flag into an upstream function, or spreading into
   an upstream object literal).
-- When editing files under `packages/core` or `packages/opencode`, mark any
-  changed lines with `// raccoon_change` comments.
+- When editing files under `packages/core`, `packages/opencode`, `packages/cli`,
+  or `packages/tui`, mark any changed lines with `// raccoon_change` comments.
 - Use a single-line `// raccoon_change - ...` comment for a one-line change.
 - Use `// raccoon_change start - ...` and `// raccoon_change end` around a
   multi-line change block.

@@ -167,7 +167,7 @@ const TIPS: Tip[] = [
   (shortcuts) => press(shortcuts.agentCycle(), "to cycle between Build and Plan agents"),
   "Use {highlight}/undo{/highlight} to revert the last message and file changes",
   "Use {highlight}/redo{/highlight} to restore previously undone messages and file changes",
-  "Run {highlight}/share{/highlight} to create a public opencode.ai link",
+  "Run {highlight}/share{/highlight} to create a public Raccoon link", // raccoon_change - rebrand sharing tip
   "Drag and drop images or PDFs into the terminal as context",
   (shortcuts) => press(shortcuts.inputPaste(), "to paste images from your clipboard into the prompt"),
   (shortcuts) => `Use ${commandText("/editor", shortcuts.editorOpen())} to compose messages in your external editor`,
@@ -249,9 +249,9 @@ const TIPS: Tip[] = [
   "Run {highlight}raccoon auth list{/highlight} to see all configured providers",
   "Run {highlight}raccoon agent create{/highlight} for guided agent creation",
   // raccoon_change end
-  "Use {highlight}/opencode{/highlight} in GitHub issues/PRs to trigger AI actions",
+  "Use {highlight}/opencode{/highlight} in GitHub issues/PRs to trigger Raccoon actions", // raccoon_change - rebrand GitHub tip
   "Run {highlight}raccoon github install{/highlight} to set up the GitHub workflow", // raccoon_change - rebrand CLI tip
-  "Comment {highlight}/opencode fix this{/highlight} on issues to auto-create PRs",
+  "Comment {highlight}/opencode fix this{/highlight} on issues to ask Raccoon to create a PR", // raccoon_change - rebrand GitHub tip
   "Comment {highlight}/oc{/highlight} on PR code lines for targeted code reviews",
   'Use {highlight}"theme": "system"{/highlight} to match your terminal\'s colors',
   "Create JSON theme files in {highlight}.raccoon/themes/{/highlight} directory", // raccoon_change - prefer raccoon project dir in tips
@@ -280,7 +280,7 @@ const TIPS: Tip[] = [
     shortcuts.commandList()
       ? `Toggle username display in chat via the command palette (${shortcutText(shortcuts.commandList())})`
       : "Toggle username display in chat via the command palette",
-  "Run {highlight}docker run -it --rm ghcr.io/anomalyco/opencode{/highlight} in a container",
+  "Run Raccoon in a container with the published Docker image", // raccoon_change - rebrand container tip
   "Use {highlight}/connect{/highlight} with Raccoon Zen for curated, tested models", // raccoon_change - rebrand model service tip
   "Commit your project's {highlight}AGENTS.md{/highlight} file to Git for team sharing",
   "Use {highlight}/review{/highlight} to review uncommitted changes, branches, or PRs",

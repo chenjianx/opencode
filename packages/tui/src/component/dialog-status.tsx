@@ -80,7 +80,9 @@ export function DialogStatus() {
                       <Match when={item.status === "failed" && item}>{(val) => val().error}</Match>
                       <Match when={item.status === "disabled"}>Disabled in configuration</Match>
                       <Match when={(item.status as string) === "needs_auth"}>
-                        Needs authentication (run: opencode mcp auth {key})
+                        {/* raccoon_change start - rebrand authentication command hint */}
+                        Needs authentication (run: lildax mcp auth {key})
+                        {/* raccoon_change end */}
                       </Match>
                       <Match when={(item.status as string) === "needs_client_registration" && item}>
                         {(val) => (val() as { error: string }).error}

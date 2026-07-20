@@ -32,7 +32,7 @@ export function sessionEpilogue(input: { title: string; sessionID?: string }) {
     ...wordmark("  "),
     "",
     `  ${weak("Session")}${bold}${input.title}${reset}`,
-    `  ${weak("Continue")}${bold}opencode -s ${input.sessionID}${reset}`,
+    `  ${weak("Continue")}${bold}lildax -s ${input.sessionID}${reset}`, // raccoon_change - rebrand session continuation command
     "",
   ].join("\n")
 }
