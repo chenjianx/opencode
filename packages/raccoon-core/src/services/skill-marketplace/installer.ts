@@ -39,8 +39,15 @@ export class SkillMarketplaceInstaller {
       this.userSkillRoot(client, directory),
     ])
     const skills = response.data ?? []
-    return skills
-      .map((skill) => classifyInstalledSkill(skill, projectRoot, userRoot))
+    const classified = await Promise.all(
+      skills.map(async (skill) => {
+        const installed = classifyInstalledSkill(skill, projectRoot, userRoot)
+        if (!installed.removable) return installed
+        return (await exists(join(installed.scope === "project" ? projectRoot : userRoot, installed.id))) ? installed : undefined
+      }),
+    )
+    return classified
+      .filter((skill): skill is SkillMarketplaceInstalledSkill => skill !== undefined)
       .sort((a, b) => a.name.localeCompare(b.name))
   }
 

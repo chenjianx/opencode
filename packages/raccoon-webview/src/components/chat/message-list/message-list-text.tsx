@@ -72,10 +72,8 @@ export function AssistantText(props: {
   text: string
   streaming?: boolean
   onOpenFile?: (filePath: string, line?: number, column?: number) => void
-  copyTarget?: { id: string; text: string }
 }) {
   const blocks = splitThinkBlocks(props.text)
-  const showCopy = props.copyTarget?.id === props.id
 
   return (
     <div className="assistant-message-row">
@@ -91,7 +89,6 @@ export function AssistantText(props: {
           }
           return <MarkdownLite key={`${props.id}-text-${index}`} text={block.text} streaming={props.streaming} onOpenFile={props.onOpenFile} />
         })}
-        {showCopy && props.copyTarget ? <AssistantCopyButton text={props.copyTarget.text} /> : null}
       </div>
     </div>
   )

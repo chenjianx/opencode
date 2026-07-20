@@ -1,5 +1,5 @@
 import { useSession } from "../../../context/session"
-import { AssistantText } from "./message-list-text"
+import { AssistantCopyButton, AssistantText } from "./message-list-text"
 import { turns, visibleParts } from "./message-list-model"
 import { ToolPart } from "./message-list-tool"
 import { UserMessage } from "./message-list-user"
@@ -63,7 +63,6 @@ export function MessageTurn(props: {
                             text={part.text ?? ""}
                             streaming={streaming}
                             onOpenFile={props.session.openFile}
-                            copyTarget={target}
                           />
                         )
                       }
@@ -91,7 +90,6 @@ export function MessageTurn(props: {
                         text={message.text}
                         streaming={streaming}
                         onOpenFile={props.session.openFile}
-                        copyTarget={target}
                       />
                     ) : null}
                   </>
@@ -101,7 +99,6 @@ export function MessageTurn(props: {
                     text={message.text}
                     streaming={streaming}
                     onOpenFile={props.session.openFile}
-                    copyTarget={target}
                   />
                 )}
                 {props.inlineQuestions
@@ -114,6 +111,7 @@ export function MessageTurn(props: {
           </div>
         )
       })}
+      {target ? <AssistantCopyButton text={target.text} /> : null}
     </article>
   )
 }

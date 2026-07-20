@@ -95,6 +95,12 @@ describe("SkillMarketplaceInstaller", () => {
       await expect(readFile(join(configDir, "skills", "user-skill", "SKILL.md"), "utf8")).rejects.toThrow()
       expect(projectCalls).toEqual({ instanceDispose: 1, globalDispose: 0 })
       expect(userCalls).toEqual({ instanceDispose: 1, globalDispose: 1 })
+
+      const staleApiSkills = [
+        { name: "project-skill", description: "Project skill", location: join(workspace, ".opencode", "skills", "project-skill", "SKILL.md") },
+        { name: "user-skill", description: "User skill", location: join(configDir, "skills", "user-skill", "SKILL.md") },
+      ]
+      await expect(installer.listInstalled(client(configDir, undefined, staleApiSkills), workspace)).resolves.toEqual([])
     } finally {
       await rm(workspace, { recursive: true, force: true })
       await rm(configDir, { recursive: true, force: true })

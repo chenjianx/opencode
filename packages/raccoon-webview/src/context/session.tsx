@@ -350,6 +350,37 @@ export function SessionProvider(props: { children: ReactNode }) {
         })
         return
       }
+      if (message.type === "skillMarketplaceRemoveResult" && message.success) {
+        setState((current) => {
+          const skillInstalled = current.skillInstalled
+            ? {
+                ...current.skillInstalled,
+                skills: current.skillInstalled.skills.filter(
+                  (skill) => !(skill.id === message.id && (!message.scope || skill.scope === message.scope)),
+                ),
+              }
+            : current.skillInstalled
+          const skillMarketplace = current.skillMarketplace
+            ? {
+                ...current.skillMarketplace,
+                installed: {
+                  ...current.skillMarketplace.installed,
+                  ...(message.scope
+                    ? {
+                        [message.scope]: Object.fromEntries(
+                          Object.entries(current.skillMarketplace.installed[message.scope]).filter(([id]) => id !== message.id),
+                        ),
+                      }
+                    : {}),
+                },
+              }
+            : current.skillMarketplace
+          const next = { ...current, skillInstalled, skillMarketplace }
+          vscode.setState(next)
+          return next
+        })
+        return
+      }
       if (message.type === "questionRequest") {
         setQuestions((current) => {
           const index = current.findIndex((item) => item.id === message.question.id)

@@ -8,11 +8,11 @@
   }
 
   .assistant-summary-actions {
-    @apply flex w-full items-center justify-end gap-1 pt-1 opacity-0 pointer-events-none transition-opacity duration-150 empty:hidden;
+    @apply flex w-full items-center justify-end gap-1 pt-1 opacity-0 pointer-events-none transition-opacity duration-150;
   }
 
-  .turn-assistant-group:hover .assistant-summary-actions,
-  .turn-assistant-group:focus-within .assistant-summary-actions {
+  .session-turn:hover .assistant-summary-actions,
+  .session-turn:focus-within .assistant-summary-actions {
     @apply opacity-100 pointer-events-auto;
   }
 
