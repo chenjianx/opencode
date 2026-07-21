@@ -29,10 +29,11 @@ export function HistoryView(props: { onClose: () => void }) {
   const [menuPosition, setMenuPosition] = useState<{ left: number; top: number }>()
   const [renameSessionID, setRenameSessionID] = useState<string | undefined>()
   const [renameTitle, setRenameTitle] = useState("")
+  const rootSessions = useMemo(() => session.sessions.filter((item) => !item.parentID), [session.sessions])
   const filteredSessions = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    if (!needle) return session.sessions
-    return session.sessions.filter((item) => {
+    if (!needle) return rootSessions
+    return rootSessions.filter((item) => {
       const title = sessionTitle(item.title, language.t("history.untitled")).toLowerCase()
       const agent = (item.agent ?? language.t("history.defaultAgent")).toLowerCase()
       const id = item.id.toLowerCase()
@@ -45,8 +46,8 @@ export function HistoryView(props: { onClose: () => void }) {
         fuzzyMatch(id, needle)
       )
     })
-  }, [language, query, session.sessions])
-  const menuSession = session.sessions.find((item) => item.id === menuSessionID)
+  }, [language, query, rootSessions])
+  const menuSession = rootSessions.find((item) => item.id === menuSessionID)
 
   const openMenu = (sessionID: string, event: { clientX: number; clientY: number }) => {
     setMenuSessionID(sessionID)
@@ -101,8 +102,8 @@ export function HistoryView(props: { onClose: () => void }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto py-2">
-        {session.sessions.length === 0 ? <div className="px-1 py-3 text-[12px] text-[var(--color-muted)]">{language.t("history.empty")}</div> : null}
-        {filteredSessions.length === 0 && session.sessions.length > 0 ? (
+        {rootSessions.length === 0 ? <div className="px-1 py-3 text-[12px] text-[var(--color-muted)]">{language.t("history.empty")}</div> : null}
+        {filteredSessions.length === 0 && rootSessions.length > 0 ? (
           <div className="px-1 py-3 text-[12px] text-[var(--color-muted)]">{language.t("history.searchEmpty")}</div>
         ) : null}
         {filteredSessions.map((item) => (
