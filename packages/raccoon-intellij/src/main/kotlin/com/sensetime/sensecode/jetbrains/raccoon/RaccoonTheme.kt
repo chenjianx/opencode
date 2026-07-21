@@ -79,6 +79,7 @@ internal object RaccoonTheme {
             "--vscode-font-family" to font.family,
             "--vscode-font-size" to "${font.size}px",
             "--vscode-editor-background" to editorBg.hex(),
+            "--vscode-editor-foreground" to scheme.defaultForeground.hex(),
             "--vscode-foreground" to panelFg.hex(),
             "--vscode-descriptionForeground" to
                 JBColor.namedColor("Label.infoForeground", JBColor.gray).hex(),
@@ -91,6 +92,12 @@ internal object RaccoonTheme {
                 JBColor.namedColor("TextField.background", editorBg).hex(),
             "--vscode-input-foreground" to
                 JBColor.namedColor("TextField.foreground", panelFg).hex(),
+            "--vscode-button-background" to
+                JBColor.namedColor("Button.background", panelBg).hex(),
+            "--vscode-button-foreground" to
+                JBColor.namedColor("Button.foreground", panelFg).hex(),
+            "--vscode-button-hoverBackground" to
+                JBColor.namedColor("Button.hoverBackground", hover).hex(),
             "--vscode-button-secondaryBackground" to
                 JBColor.namedColor("Button.background", panelBg).hex(),
             "--vscode-list-activeSelectionBackground" to
@@ -101,6 +108,12 @@ internal object RaccoonTheme {
                 JBColor.namedColor("Component.focusColor", JBColor(0x87AFDA, 0x466D94)).hex(),
             "--vscode-errorForeground" to
                 JBColor.namedColor("Label.errorForeground", JBColor(0xC7222D, 0xFF5261)).hex(),
+            "--vscode-textCodeBlock-background" to editorBg.hex(),
+            "--vscode-editor-font-family" to font.family,
+            "--vscode-diffEditor-removedTextBackground" to
+                JBColor.namedColor("Diff.deleted.background", Color(248, 81, 73, 0x33)).hex(),
+            "--vscode-diffEditor-insertedTextBackground" to
+                JBColor.namedColor("Diff.inserted.background", Color(46, 160, 67, 0x33)).hex(),
         )
     }
 

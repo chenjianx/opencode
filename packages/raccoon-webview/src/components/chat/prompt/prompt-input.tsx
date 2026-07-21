@@ -403,7 +403,7 @@ export function PromptInput() {
           {session.state.activeSessionID ? (
             <button
               type="button"
-              className={`ui-tip absolute right-[40px] top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border p-0 transition-colors ${
+              className={`ui-tip prompt-action-button prompt-auto-approve-button absolute right-[40px] top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border p-0 transition-colors ${
                 session.autoApprovePermissions
                   ? "border-[var(--color-border)] bg-[var(--color-hover-strong)] text-[var(--color-foreground)]"
                   : "border-[var(--color-border)] bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)]"
@@ -422,7 +422,7 @@ export function PromptInput() {
           ) : null}
           <button
             type="button"
-            className="ui-tip absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border border-[var(--color-border)] bg-transparent p-0 text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] disabled:cursor-default"
+            className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border border-[var(--color-border)] bg-transparent p-0 text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] disabled:cursor-default"
             disabled={!busy && !canSend}
             onClick={send}
             aria-label={busy ? t("prompt.stop") : canSend ? t("prompt.send") : t("prompt.cannotSend")}

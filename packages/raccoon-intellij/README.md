@@ -67,10 +67,10 @@ JAVA_HOME=<jdk17> ./gradlew buildPlugin
 JAVA_HOME=<jdk17> ./gradlew runIde
 ```
 
-`runIde` 会自动把 `RACCOON_BIN` 指向 `../raccoon-vscode/bin/raccoon`（若存在），
-这样聊天无需额外配置即可跑通。也可用环境变量覆盖：
+正式构建会生成并打包 `darwin-arm64`、`darwin-x64`、`linux-x64`、`win32-x64` 四个平台的二进制，
+插件运行时按当前平台直接选择内置文件。`runIde` 则使用 `packages/opencode` 源码启动，便于调试。
+也可用环境变量连接已有服务：
 
-- `RACCOON_BIN` —— opencode server 二进制路径（默认回退 PATH 的 `raccoon`）。
 - `RACCOON_NODE` —— node 运行时路径（默认按 PATH / 常见位置查找）。
 - `RACCOON_SERVER_URL` —— 直接连已运行的 server，跳过 spawn。
 

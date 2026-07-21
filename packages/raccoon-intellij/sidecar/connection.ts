@@ -100,9 +100,12 @@ export class SidecarConnection implements ConnectionPort {
     if (configured) return { url: configured.replace(/\/+$/, "") }
 
     const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
+    const sourceDirectory = process.env.RACCOON_SOURCE_DIR?.trim()
     const binary = process.env.RACCOON_BIN?.trim()
-    const command = binary && existsSync(binary) ? binary : "raccoon"
-    const args = ["serve", "--port", String(port), "--hostname", "127.0.0.1"]
+    const command = sourceDirectory ? (process.env.RACCOON_BUN?.trim() || "bun") : binary && existsSync(binary) ? binary : "raccoon"
+    const args = sourceDirectory
+      ? ["run", "--cwd", sourceDirectory, "dev", "--", "serve", "--port", String(port), "--hostname", "127.0.0.1"]
+      : ["serve", "--port", String(port), "--hostname", "127.0.0.1"]
     const password = randomBytes(24).toString("base64url")
     const headers = { Authorization: `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}` }
     this.log(`starting Raccoon server: ${command} ${args.join(" ")}`)

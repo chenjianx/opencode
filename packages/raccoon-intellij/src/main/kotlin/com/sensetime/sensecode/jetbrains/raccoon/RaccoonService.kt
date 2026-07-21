@@ -140,9 +140,42 @@ private object RaccoonPaths {
         // inside a jar, so extract it (and its sourcemap) to a stable temp dir on first use.
         val sidecar = extractResource("/sidecar/sidecar.cjs", "sidecar.cjs")
         runCatching { extractResource("/sidecar/sidecar.cjs.map", "sidecar.cjs.map") }
-        val raccoonBin = System.getenv("RACCOON_BIN")?.takeIf { File(it).exists() }
+        val target = currentTarget()
+        val raccoonBin = runCatching {
+            extractResource("/bin/$target/raccoon${if (target == "win32-x64") ".exe" else ""}", "raccoon")
+        }
+            .getOrNull()
+            ?.takeIf { isRunnableForCurrentPlatform(File(it)) }
         val node = System.getenv("RACCOON_NODE")?.takeIf { File(it).exists() } ?: findNode()
         return Resolved(node, sidecar, raccoonBin)
+    }
+
+    private fun isRunnableForCurrentPlatform(file: File): Boolean {
+        if (!file.isFile || !file.canExecute()) return false
+        val header = runCatching { file.inputStream().use { it.readNBytes(4) } }.getOrNull() ?: return false
+        val os = System.getProperty("os.name").lowercase()
+        return when {
+            os.contains("win") -> header.size >= 2 && header[0] == 'M'.code.toByte() && header[1] == 'Z'.code.toByte()
+            os.contains("mac") -> header.contentEquals(byteArrayOf(0xFE.toByte(), 0xED.toByte(), 0xFA.toByte(), 0xCE.toByte())) ||
+                header.contentEquals(byteArrayOf(0xFE.toByte(), 0xED.toByte(), 0xFA.toByte(), 0xCF.toByte())) ||
+                header.contentEquals(byteArrayOf(0xCE.toByte(), 0xFA.toByte(), 0xED.toByte(), 0xFE.toByte())) ||
+                header.contentEquals(byteArrayOf(0xCF.toByte(), 0xFA.toByte(), 0xED.toByte(), 0xFE.toByte()))
+            else -> header.contentEquals(byteArrayOf(0x7F, 'E'.code.toByte(), 'L'.code.toByte(), 'F'.code.toByte()))
+        }
+    }
+
+    private fun currentTarget(): String {
+        val os = System.getProperty("os.name").lowercase()
+        val platform = when {
+            os.contains("win") -> "win32"
+            os.contains("mac") -> "darwin"
+            else -> "linux"
+        }
+        val arch = when (System.getProperty("os.arch").lowercase()) {
+            "aarch64", "arm64" -> "arm64"
+            else -> "x64"
+        }
+        return "$platform-$arch"
     }
 
     private fun extractResource(resourcePath: String, fileName: String): String {
@@ -151,6 +184,7 @@ private object RaccoonPaths {
         val dir = File(System.getProperty("java.io.tmpdir"), "raccoon-intellij-sidecar").apply { mkdirs() }
         val target = File(dir, fileName)
         input.use { stream -> target.outputStream().use { stream.copyTo(it) } }
+        if (resourcePath.startsWith("/bin/")) target.setExecutable(true)
         return target.absolutePath
     }
 

@@ -50,7 +50,7 @@
   padding: 12px 14px;
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: var(--color-button);
+  background: color-mix(in srgb, var(--color-foreground) 5%, var(--color-background));
 }
 
 .welcome-tips-title {

@@ -38,18 +38,37 @@ kotlin {
 }
 
 tasks {
-  // Sidecar (sidecar.cjs) and webview assets are produced by the `bun run build`
-  // step in package.json and land under src/main/resources, so they are picked up
-  // as plugin resources automatically. Nothing to wire here yet.
+  val raccoonVscode = layout.projectDirectory.dir("../raccoon-vscode").asFile
+  val opencodeDir = layout.projectDirectory.dir("../opencode").asFile
+  val localRun = gradle.startParameter.taskNames.any { it == "runIde" || it.endsWith(":runIde") }
+  val prepareRaccoonBinaries = register<Exec>("prepareRaccoonBinaries") {
+    workingDir(raccoonVscode)
+    commandLine("bun", "run", "build:cli")
+  }
+
+  if (!localRun) {
+    processResources {
+      dependsOn(prepareRaccoonBinaries)
+      listOf(
+        Triple("darwin-arm64", "darwin-arm64", "raccoon"),
+        Triple("darwin-x64", "darwin-x64", "raccoon"),
+        Triple("linux-x64", "linux-x64", "raccoon"),
+        Triple("windows-x64", "win32-x64", "raccoon.exe"),
+      ).forEach { (sourceTarget, resourceTarget, name) ->
+        from(opencodeDir.resolve("dist/raccoon-$sourceTarget/bin/$name")) {
+          into("bin/$resourceTarget")
+          rename { name }
+        }
+      }
+    }
+  }
+
   buildSearchableOptions {
     enabled = false
   }
 
-  // For local `runIde`, point the sidecar at the opencode binary already built for the VSCode
-  // package (bin/raccoon) if present, so chat works without extra setup. Packaged distributions
-  // resolve RACCOON_BIN from the environment or a bundled binary (future work).
-  val bundledBin = layout.projectDirectory.dir("../raccoon-vscode/bin").asFile.resolve("raccoon")
   runIde {
-    if (bundledBin.exists()) environment("RACCOON_BIN", bundledBin.absolutePath)
+    environment("RACCOON_SOURCE_DIR", opencodeDir.absolutePath)
+    environment("RACCOON_BUN", "bun")
   }
 }
