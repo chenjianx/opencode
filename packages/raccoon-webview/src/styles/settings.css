@@ -167,6 +167,10 @@
     @apply grid w-full grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-b border-[var(--color-border)] bg-transparent px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-[var(--color-hover)];
   }
 
+  .settings-agent-list-item:focus-visible {
+    @apply relative z-10 outline outline-1 outline-[var(--color-focus)] outline-offset-[-1px];
+  }
+
   .settings-agent-list-item.active {
     @apply bg-[var(--color-selection)] text-[var(--color-selection-foreground)];
     box-shadow: inset 3px 0 0 var(--color-focus);
@@ -207,6 +211,10 @@
 
   .settings-agent-panel-header {
     @apply flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2.5;
+  }
+
+  .settings-agent-panel-actions button {
+    @apply transition-colors;
   }
 
   .settings-agent-panel-title {
