@@ -85,10 +85,19 @@ export function SettingsMcpMarketplace() {
   const [resultError, setResultError] = useState<string>()
 
   useEffect(() => {
-    if ((config.mcpMarketplace?.items.length ?? 0) === 0 && !config.mcpMarketplace?.loading) {
+    if (
+      (config.mcpMarketplace?.items.length ?? 0) === 0 &&
+      !config.mcpMarketplace?.loading &&
+      !config.mcpMarketplace?.lastFetchedAt
+    ) {
       vscode.postMessage({ type: "fetchMcpMarketplace" })
     }
-  }, [config.mcpMarketplace?.items.length, config.mcpMarketplace?.loading, vscode])
+  }, [
+    config.mcpMarketplace?.items.length,
+    config.mcpMarketplace?.lastFetchedAt,
+    config.mcpMarketplace?.loading,
+    vscode,
+  ])
 
   useEffect(() => {
     return vscode.onMessage((message) => {
