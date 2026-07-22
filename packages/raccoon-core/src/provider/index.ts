@@ -277,7 +277,7 @@ export class RaccoonProvider {
       permissionReply: (message) => this.sessions.permissionReply(message),
       deleteCustomProvider: (providerID) => this.config.deleteCustomProvider(providerID),
       stopSession: () => this.sessions.stopSession(),
-      sendMessage: (text, mode, model, files) => this.sessions.sendMessage(text, mode, model, files),
+      sendMessage: (sessionID, text, mode, model, files) => this.sessions.sendMessage(sessionID, text, mode, model, files),
     })
   }
 
@@ -442,7 +442,12 @@ export class RaccoonProvider {
     if (!this.state.activeSessionID) {
       await this.sessions.createSession(this.state.mode)
     }
-    await this.sessions.sendMessage(createPrompt(type, context, this.state.pluginLanguage), this.state.mode, this.state.selectedModel)
+    await this.sessions.sendMessage(
+      this.state.activeSessionID,
+      createPrompt(type, context, this.state.pluginLanguage),
+      this.state.mode,
+      this.state.selectedModel,
+    )
   }
 
   async setAutocompleteEnabled(enabled: boolean) {

@@ -297,12 +297,13 @@ export class RaccoonSessionController {
   }
 
   async sendMessage(
+    targetSessionID: string | undefined,
     text: string,
     mode: ChatMode,
     model?: { providerID: string; modelID: string; variant?: string },
     files?: { path: string; filename?: string; mime?: string; url: string; source?: FilePartInput["source"] }[],
   ) {
-    let sessionID = this.deps.getState().activeSessionID
+    let sessionID = targetSessionID
     if (!sessionID) {
       await this.createSession(mode)
       sessionID = this.deps.getState().activeSessionID
@@ -312,6 +313,7 @@ export class RaccoonSessionController {
     const status = await client.session.status({ directory: this.deps.directory() }, { throwOnError: true })
     const sessionStatus = status.data[sessionID]?.type ?? "idle"
     if (sessionStatus !== "idle") {
+      if (this.deps.getState().activeSessionID !== sessionID) return
       this.deps.setState({ ...this.deps.getState(), loading: true, busy: true })
       this.deps.post()
       this.schedulePromptRefresh(sessionID)
@@ -319,9 +321,6 @@ export class RaccoonSessionController {
     }
 
     const messageID = ascendingID("msg")
-    this.activePromptSessionID = sessionID
-    this.activePromptMessageID = messageID
-    this.pendingOptimisticMessages.add(messageID)
     const firstLine = text.split("\n")[0] ?? ""
     const commandName = firstLine.startsWith("/") ? firstLine.split(" ")[0]?.slice(1) : undefined
     const command = commandName ? this.deps.getState().commands?.find((item) => item.name === commandName) : undefined
@@ -342,24 +341,30 @@ export class RaccoonSessionController {
       source: file.source,
     }))
     const textPart = { id: ascendingID("prt"), type: "text" as const, text }
-    this.deps.setState({
-      ...this.deps.getState(),
-      loading: true,
-      busy: true,
-      error: undefined,
-      messages: sortMessages([
-        ...this.deps.getState().messages.filter((message) => message.id !== messageID),
-        {
-          id: messageID,
-          role: "user",
-          text,
-          parts: [...fileParts, textPart],
-          createdAt: Date.now(),
-        },
-      ]),
-    })
-    this.deps.post()
-    this.schedulePromptRefresh(sessionID)
+    const tracksActiveSession = this.deps.getState().activeSessionID === sessionID
+    if (tracksActiveSession) {
+      this.activePromptSessionID = sessionID
+      this.activePromptMessageID = messageID
+      this.pendingOptimisticMessages.add(messageID)
+      this.deps.setState({
+        ...this.deps.getState(),
+        loading: true,
+        busy: true,
+        error: undefined,
+        messages: sortMessages([
+          ...this.deps.getState().messages.filter((message) => message.id !== messageID),
+          {
+            id: messageID,
+            role: "user",
+            text,
+            parts: [...fileParts, textPart],
+            createdAt: Date.now(),
+          },
+        ]),
+      })
+      this.deps.post()
+      this.schedulePromptRefresh(sessionID)
+    }
     void (command
       ? client.session.command(
           {
@@ -392,7 +397,7 @@ export class RaccoonSessionController {
           { throwOnError: true },
         ))
       .then(() => {
-        this.schedulePromptRefresh(sessionID)
+        if (tracksActiveSession && this.deps.getState().activeSessionID === sessionID) this.schedulePromptRefresh(sessionID)
       })
       .catch((error) => {
         if (this.activePromptSessionID === sessionID) this.activePromptSessionID = undefined

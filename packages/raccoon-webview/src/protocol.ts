@@ -608,6 +608,7 @@ export type WebviewToExtension =
   | { type: "deleteCustomProvider"; providerID: string }
   | {
       type: "sendMessage"
+      sessionID: string | undefined
       text: string
       mode: ChatMode
       model?: { providerID: string; modelID: string; variant?: string }

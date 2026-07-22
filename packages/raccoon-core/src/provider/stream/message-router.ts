@@ -72,6 +72,7 @@ type MessageRouterDeps = {
   deleteCustomProvider: (providerID: string) => Promise<void>
   stopSession: () => Promise<void>
   sendMessage: (
+    sessionID: string | undefined,
     text: string,
     mode: ChatMode,
     model?: { providerID: string; modelID: string; variant?: string },
@@ -337,7 +338,7 @@ export class RaccoonMessageRouter {
       return
     }
     if (message.type === "sendMessage") {
-      await this.deps.sendMessage(message.text, message.mode, message.model, message.files)
+      await this.deps.sendMessage(message.sessionID, message.text, message.mode, message.model, message.files)
     }
   }
 }

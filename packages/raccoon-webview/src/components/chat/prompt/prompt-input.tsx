@@ -71,7 +71,10 @@ export function PromptInput() {
   const commandItemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const mentionItemRefs = useRef<Array<HTMLButtonElement | null>>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const submissionIDRef = useRef(0)
+  const submissionRef = useRef<{ id: number; sessionID?: string } | undefined>(undefined)
   const [draft, setDraft] = useState("")
+  const [submitting, setSubmitting] = useState(false)
   const [modeOpen, setModeOpen] = useState(false)
   const [commandOpen, setCommandOpen] = useState(false)
   const [commandSelected, setCommandSelected] = useState(0)
@@ -93,6 +96,10 @@ export function PromptInput() {
     label: modeLabel(session.state.mode),
   }
   const activeSessionID = session.state.activeSessionID
+  const activeSessionIDRef = useRef(activeSessionID)
+  const submissionSessionIDRef = useRef(activeSessionID)
+  activeSessionIDRef.current = activeSessionID
+  const submittingCurrentSession = submitting && submissionRef.current?.sessionID === activeSessionID
   const selectedModel = session.conversationModel
   const canSend = session.canSend(draft, attachments)
   const busy = session.state.busy ?? false
@@ -121,6 +128,13 @@ export function PromptInput() {
   }, [commandOptions])
   const commandVisible = commandOpen && commandQuery !== undefined && commandOptions.length > 0
   const mentionVisible = mention.visible
+
+  useEffect(() => {
+    if (submissionSessionIDRef.current === activeSessionID) return
+    submissionSessionIDRef.current = activeSessionID
+    submissionRef.current = undefined
+    setSubmitting(false)
+  }, [activeSessionID])
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -192,6 +206,7 @@ export function PromptInput() {
       return
     }
     if (!canSend) return
+    if (submissionRef.current && submissionRef.current.sessionID === activeSessionID) return
     const slashName = draft.startsWith("/") ? draft.split(/\s+/)[0]?.slice(1) : undefined
     const slashCommand = slashName ? session.slashCommands.find((command) => command.name === slashName || command.aliases?.includes(slashName)) : undefined
     if (slashCommand?.mode === "action") {
@@ -200,30 +215,37 @@ export function PromptInput() {
       setCommandOpen(false)
       return
     }
-    const sessionID = session.state.activeSessionID
-    let terminalFile
-    let gitFile
+    const sessionID = activeSessionID
+    const submissionID = ++submissionIDRef.current
+    submissionRef.current = { id: submissionID, sessionID }
+    setSubmitting(true)
     try {
-      terminalFile = hasTerminalMention(draft)
+      const terminalFile = hasTerminalMention(draft)
         ? textAttachment(draft, "terminal", "terminal-output.txt", await requestContext(vscode, "terminal", sessionID))
         : undefined
-      gitFile = hasGitChangesMention(draft)
+      const gitFile = hasGitChangesMention(draft)
         ? textAttachment(draft, "git-changes", "git-changes.txt", await requestContext(vscode, "git-changes", sessionID))
         : undefined
+      if (submissionRef.current?.id !== submissionID || activeSessionIDRef.current !== sessionID) return
+      session.sendMessage(
+        sessionID,
+        draft,
+        [...attachments, ...mention.parseFileAttachments(draft, session.state.directory ?? ""), ...(terminalFile ? [terminalFile] : []), ...(gitFile ? [gitFile] : [])],
+        selectedModel,
+      )
+      setDraft("")
+      clearAttachments()
+      setCommandOpen(false)
+      mention.close()
+      mention.clearMentionedPaths()
     } catch (error) {
-      console.error(error)
-      return
+      if (submissionRef.current?.id === submissionID) console.error(error)
+    } finally {
+      if (submissionRef.current?.id === submissionID) {
+        submissionRef.current = undefined
+        setSubmitting(false)
+      }
     }
-    session.sendMessage(
-      draft,
-      [...attachments, ...mention.parseFileAttachments(draft, session.state.directory ?? ""), ...(terminalFile ? [terminalFile] : []), ...(gitFile ? [gitFile] : [])],
-      selectedModel,
-    )
-    setDraft("")
-    clearAttachments()
-    setCommandOpen(false)
-    mention.close()
-    mention.clearMentionedPaths()
   }
 
   const selectCommand = (command: RaccoonSlashCommand) => {
@@ -423,12 +445,12 @@ export function PromptInput() {
           <button
             type="button"
             className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border border-[var(--color-border)] bg-transparent p-0 text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] disabled:cursor-default"
-            disabled={!busy && !canSend}
+            disabled={!busy && (!canSend || submittingCurrentSession)}
             onClick={send}
             aria-label={busy ? t("prompt.stop") : canSend ? t("prompt.send") : t("prompt.cannotSend")}
             data-tip={busy ? t("prompt.stop") : t("prompt.send")}
           >
-            {busy ? (
+            {busy || submittingCurrentSession ? (
               <ArrowClockwiseIcon className="animate-spin" size={20} weight="bold" />
             ) : (
               <PaperPlaneRightIcon className={canSend ? undefined : "opacity-55"} size={20} weight={canSend ? "fill" : "regular"} />

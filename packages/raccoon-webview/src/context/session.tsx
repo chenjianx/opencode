@@ -125,7 +125,12 @@ type SessionActionsContextValue = {
     models: Array<{ id: string; name: string }>
     editing?: boolean
   }) => void
-  sendMessage: (text: string, files?: RaccoonFileAttachment[], model?: { providerID: string; modelID: string; variant?: string }) => void
+  sendMessage: (
+    sessionID: string | undefined,
+    text: string,
+    files?: RaccoonFileAttachment[],
+    model?: { providerID: string; modelID: string; variant?: string },
+  ) => void
   replyToQuestion: (requestID: string, answers: string[][]) => void
   rejectQuestion: (requestID: string) => void
   replyToPermission: (requestID: string, reply: RaccoonPermissionReply) => void
@@ -778,14 +783,14 @@ export function SessionProvider(props: { children: ReactNode }) {
       cancelProviderConnect: (providerID) => vscode.postMessage({ type: "cancelProviderConnect", providerID }),
       disconnectProvider: (providerID) => vscode.postMessage({ type: "disconnectProvider", providerID }),
       configureCustomProvider: (input) => vscode.postMessage({ type: "configureCustomProvider", ...input }),
-      sendMessage: (text, files, model) => {
+      sendMessage: (sessionID, text, files, model) => {
         const trimmed = text.trim()
         if (!trimmed && !(files?.length ?? 0)) return
-        const sessionID = stateRef.current.activeSessionID
         const variant = sessionID ? sessionVariants[sessionID] : undefined
         const selected = model ?? stateRef.current.selectedModel
         vscode.postMessage({
           type: "sendMessage",
+          sessionID,
           text: trimmed,
           mode: stateRef.current.mode,
           model: selected ? { ...selected, variant } : undefined,

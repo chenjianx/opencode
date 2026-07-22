@@ -72,6 +72,52 @@ function makeController() {
   return { controller, resolveMessages, getState: () => state, messagesQueue }
 }
 
+function makeSendController(sessionStatus: "idle" | "busy" = "idle") {
+  const terminal = defer<string>()
+  const prompts: { sessionID: string }[] = []
+  let state = {
+    activeSessionID: "A",
+    sessions: [],
+    messages: [{ id: "msg-a", role: "user", text: "A", parts: [], createdAt: 1 }],
+    loading: false,
+    busy: false,
+  } as unknown as RaccoonState
+  const client = {
+    session: {
+      status: async () => ({ data: sessionStatus === "idle" ? {} : { A: { type: sessionStatus } } }),
+      promptAsync: async ({ sessionID }: { sessionID: string }) => {
+        prompts.push({ sessionID })
+      },
+    },
+  } as unknown as OpencodeClient
+  const controller = new RaccoonSessionController({
+    client: async () => client,
+    directory: () => "/workspace",
+    getState: () => state,
+    setState: (next: RaccoonState) => {
+      state = next
+    },
+    post: () => {},
+    log: () => {},
+    report: () => {},
+    captureTerminal: () => terminal.promise,
+    config: { modeModel: () => undefined },
+  } as never)
+  return {
+    controller,
+    terminal,
+    prompts,
+    getState: () => state,
+    switchToB: () => {
+      state = {
+        ...state,
+        activeSessionID: "B",
+        messages: [{ id: "msg-b", role: "user", text: "B", parts: [], createdAt: 2 }],
+      } as RaccoonState
+    },
+  }
+}
+
 describe("RaccoonSessionController loadMessages generation", () => {
   test("discards a stale load when a newer one supersedes it", async () => {
     const { controller, resolveMessages, getState } = makeController()
@@ -126,5 +172,36 @@ describe("RaccoonSessionController loadMessages generation", () => {
 
     resolveMessages(1, [userMessage("root", "msg-root-2", "still root")])
     await reply
+  })
+})
+
+describe("RaccoonSessionController sendMessage session isolation", () => {
+  test("sends to the original session without mutating the newly active session", async () => {
+    const { controller, terminal, prompts, getState, switchToB } = makeSendController()
+
+    const send = controller.sendMessage("A", "check @terminal", "build")
+    await tick()
+    switchToB()
+    terminal.resolve("terminal output")
+    await send
+
+    expect(prompts).toEqual([{ sessionID: "A" }])
+    expect(getState().activeSessionID).toBe("B")
+    expect(getState().messages.map((message) => message.id)).toEqual(["msg-b"])
+    expect(getState().loading).toBe(false)
+    expect(getState().busy).toBe(false)
+  })
+
+  test("does not mark the active session busy when the target session is busy", async () => {
+    const { controller, prompts, getState, switchToB } = makeSendController("busy")
+    switchToB()
+
+    await controller.sendMessage("A", "hello", "build")
+
+    expect(prompts).toEqual([])
+    expect(getState().activeSessionID).toBe("B")
+    expect(getState().messages.map((message) => message.id)).toEqual(["msg-b"])
+    expect(getState().loading).toBe(false)
+    expect(getState().busy).toBe(false)
   })
 })
