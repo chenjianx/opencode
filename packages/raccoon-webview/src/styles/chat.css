@@ -783,11 +783,36 @@
   }
 
   .tool-diff-file {
-    @apply min-w-0 overflow-hidden rounded-[6px] border border-[color-mix(in_srgb,var(--color-border)_75%,transparent)] bg-[var(--color-background)];
+    @apply min-w-0 overflow-hidden rounded-[6px] border border-[color-mix(in_srgb,var(--color-border)_85%,transparent)] bg-[var(--color-background)];
   }
 
   .tool-diff-file-head {
-    @apply flex cursor-pointer list-none items-center justify-between gap-2 border-b border-[var(--color-border)] px-2 py-1.5;
+    @apply flex cursor-pointer list-none items-center gap-2 bg-[color-mix(in_srgb,var(--color-button)_45%,transparent)] px-2 py-1.5 transition-colors;
+  }
+
+  .tool-part .tool-diff-file-head {
+    @apply justify-start px-2;
+  }
+
+  .tool-diff-file[open] > .tool-diff-file-head {
+    @apply border-b border-[color-mix(in_srgb,var(--color-border)_85%,transparent)];
+  }
+
+  .tool-diff-file-head:hover {
+    @apply bg-[var(--color-hover)];
+  }
+
+  .tool-diff-file-head:focus-visible {
+    @apply outline-1 outline-offset-[-1px] outline-[var(--color-focus)];
+  }
+
+  .tool-diff-file-head::before {
+    @apply size-1.5 shrink-0 rotate-[-45deg] border-b border-r border-[var(--color-muted)] transition-transform;
+    content: "";
+  }
+
+  .tool-diff-file[open] > .tool-diff-file-head::before {
+    @apply rotate-45;
   }
 
   .tool-diff-file-head::-webkit-details-marker {
@@ -795,7 +820,7 @@
   }
 
   .tool-diff-file-path {
-    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] text-[var(--color-foreground)];
+    @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] font-medium text-[var(--color-foreground)];
   }
 
   .tool-diff-stats {
@@ -811,18 +836,17 @@
   }
 
   .tool-diff-status {
-    @apply rounded-[4px] bg-[var(--color-button)] px-1 py-0.5 text-[var(--color-muted)];
+    @apply rounded-[3px] bg-[var(--color-button)] px-1 py-0.5 text-[10px] uppercase tracking-wide text-[var(--color-muted)];
   }
 
   .tool-diff-body {
-    @apply min-w-0 overflow-x-hidden overflow-y-visible bg-[var(--color-background)] p-0;
+    @apply min-w-0 overflow-auto bg-[var(--color-background)] p-0;
   }
 
   .tool-pierre-diff {
-    @apply block min-w-0 overflow-hidden rounded-[6px] border border-[color-mix(in_srgb,var(--color-border)_75%,transparent)] bg-[var(--color-background)];
-    min-height: 96px;
+    @apply block min-w-0 bg-[var(--color-background)];
     --diffs-font-family: var(--vscode-editor-font-family, var(--font-mono));
-    --diffs-font-size: 12px;
+    --diffs-font-size: var(--vscode-editor-font-size, 12px);
     --diffs-line-height: 20px;
     --diffs-tab-size: 2;
     --diffs-font-features: var(--font-mono--font-feature-settings, normal);
@@ -839,14 +863,14 @@
     --diffs-deletion-base: var(--vscode-diffEditor-removedTextBackground, rgb(248 81 73 / 0.2));
     --diffs-addition-base: var(--vscode-diffEditor-insertedTextBackground, rgb(46 160 67 / 0.2));
     --diffs-modified-base: var(--color-focus);
-    --diffs-bg-deletion: rgb(from var(--diffs-deletion-base) r g b / 0.08);
-    --diffs-bg-deletion-number: rgb(from var(--diffs-deletion-base) r g b / 0.14);
-    --diffs-bg-deletion-hover: rgb(from var(--diffs-deletion-base) r g b / 0.16);
-    --diffs-bg-deletion-emphasis: rgb(from var(--diffs-deletion-base) r g b / 0.3);
-    --diffs-bg-addition: rgb(from var(--diffs-addition-base) r g b / 0.08);
-    --diffs-bg-addition-number: rgb(from var(--diffs-addition-base) r g b / 0.14);
-    --diffs-bg-addition-hover: rgb(from var(--diffs-addition-base) r g b / 0.16);
-    --diffs-bg-addition-emphasis: rgb(from var(--diffs-addition-base) r g b / 0.3);
+    --diffs-bg-deletion: rgb(from var(--diffs-deletion-base) r g b / 0.14);
+    --diffs-bg-deletion-number: rgb(from var(--diffs-deletion-base) r g b / 0.2);
+    --diffs-bg-deletion-hover: rgb(from var(--diffs-deletion-base) r g b / 0.22);
+    --diffs-bg-deletion-emphasis: rgb(from var(--diffs-deletion-base) r g b / 0.38);
+    --diffs-bg-addition: rgb(from var(--diffs-addition-base) r g b / 0.14);
+    --diffs-bg-addition-number: rgb(from var(--diffs-addition-base) r g b / 0.2);
+    --diffs-bg-addition-hover: rgb(from var(--diffs-addition-base) r g b / 0.22);
+    --diffs-bg-addition-emphasis: rgb(from var(--diffs-addition-base) r g b / 0.38);
     --diffs-bg-selection: rgb(from var(--color-focus) r g b / 0.12);
     --diffs-bg-selection-number: rgb(from var(--color-focus) r g b / 0.18);
     --diffs-bg-selection-text: rgb(from var(--color-focus) r g b / 0.2);

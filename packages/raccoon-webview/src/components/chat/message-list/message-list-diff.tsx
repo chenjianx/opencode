@@ -133,6 +133,12 @@ export function DiffPanel(props: { files: DiffFile[] }) {
 function ReactDiff(props: { file: DiffFile }) {
   if (!props.file.fileDiff) return null
 
+  const themeType = document.body.classList.contains("vscode-dark") || document.body.classList.contains("vscode-high-contrast")
+    ? "dark"
+    : document.body.classList.contains("vscode-light") || document.body.classList.contains("vscode-high-contrast-light")
+      ? "light"
+      : "system"
+
   return (
     <FileDiff
       fileDiff={props.file.fileDiff}
@@ -143,13 +149,13 @@ function ReactDiff(props: { file: DiffFile }) {
         diffIndicators: "bars",
         disableFileHeader: true,
         hunkSeparators: "simple",
-        lineDiffType: "none",
-        overflow: "wrap",
+        lineDiffType: "word-alt",
+        overflow: "scroll",
         theme: {
           dark: "github-dark",
           light: "github-light",
         },
-        themeType: "system",
+        themeType,
       }}
       metrics={{
         hunkLineCount: 50,
