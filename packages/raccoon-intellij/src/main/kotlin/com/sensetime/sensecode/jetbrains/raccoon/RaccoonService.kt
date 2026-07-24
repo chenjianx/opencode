@@ -141,8 +141,9 @@ private object RaccoonPaths {
         val sidecar = extractResource("/sidecar/sidecar.cjs", "sidecar.cjs")
         runCatching { extractResource("/sidecar/sidecar.cjs.map", "sidecar.cjs.map") }
         val target = currentTarget()
+        val binaryName = if (target.startsWith("win32-")) "raccoon.exe" else "raccoon"
         val raccoonBin = runCatching {
-            extractResource("/bin/$target/raccoon${if (target == "win32-x64") ".exe" else ""}", "raccoon")
+            extractResource("/bin/$target/$binaryName", binaryName)
         }
             .getOrNull()
             ?.takeIf { isRunnableForCurrentPlatform(File(it)) }
@@ -175,7 +176,21 @@ private object RaccoonPaths {
             "aarch64", "arm64" -> "arm64"
             else -> "x64"
         }
-        return "$platform-$arch"
+        val abi = if (platform == "linux" && isMusl()) "-musl" else ""
+        return "$platform-$arch$abi"
+    }
+
+    private fun isMusl(): Boolean {
+        if (File("/etc/alpine-release").exists()) return true
+        return runCatching {
+            ProcessBuilder("ldd", "--version")
+                .redirectErrorStream(true)
+                .start()
+                .inputStream
+                .bufferedReader()
+                .use { it.readText() }
+                .contains("musl", ignoreCase = true)
+        }.getOrDefault(false)
     }
 
     private fun extractResource(resourcePath: String, fileName: String): String {

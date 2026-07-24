@@ -31,8 +31,10 @@ const SERVER_STOP_TIMEOUT = 6_000
 
 export class RaccoonServerManager implements vscode.Disposable {
   private instance?: ServerInstance
+  private process?: ServerProcess
   private startup?: Promise<ServerInstance>
   private stopping?: Promise<void>
+  private readonly exitListeners = new Set<() => void>()
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -48,6 +50,7 @@ export class RaccoonServerManager implements vscode.Disposable {
 
   async getServer(): Promise<ServerInstance> {
     if (this.instance) return this.instance
+    if (this.stopping) await this.stopping
     this.startup ??= this.startServer()
     try {
       this.instance = await this.startup
@@ -61,13 +64,19 @@ export class RaccoonServerManager implements vscode.Disposable {
     void this.stop()
   }
 
+  onServerExit(listener: () => void) {
+    this.exitListeners.add(listener)
+    return () => this.exitListeners.delete(listener)
+  }
+
   // Graceful stop: ask the server to exit, then force-kill if it does not
   // exit within SERVER_STOP_TIMEOUT. Idempotent while a stop is in flight.
   async stop(): Promise<void> {
-    const child = this.instance?.process
+    if (this.stopping) return this.stopping
+    const child = this.process
+    this.process = undefined
     this.instance = undefined
     if (!child) return
-    if (this.stopping) return this.stopping
 
     let exited = false
     const done = new Promise<void>((resolve) =>
@@ -77,14 +86,15 @@ export class RaccoonServerManager implements vscode.Disposable {
       }),
     )
     child.kill("SIGTERM")
-    this.stopping = Promise.race([
-      done,
-      delay(SERVER_STOP_TIMEOUT).then(() => {
-        if (!exited) child.kill("SIGKILL")
-      }),
-    ]).then(() => {
-      this.stopping = undefined
-    })
+    this.stopping = Promise.race([done, delay(SERVER_STOP_TIMEOUT)])
+      .then(async () => {
+        if (exited) return
+        child.kill("SIGKILL")
+        await Promise.race([done, delay(1_000)])
+      })
+      .finally(() => {
+        this.stopping = undefined
+      })
     return this.stopping
   }
 
@@ -108,6 +118,7 @@ export class RaccoonServerManager implements vscode.Disposable {
       env: sidecarEnv(password),
       stdio: ["ignore", "pipe", "pipe"],
     })
+    this.process = child
 
     const output = recentOutput()
     child.stdout?.on("data", (chunk) => {
@@ -142,14 +153,18 @@ export class RaccoonServerManager implements vscode.Disposable {
         )
       })
     })
-    child.on("exit", (code) => {
+    child.on("exit", () => {
+      if (this.process !== child) return
+      this.process = undefined
       if (this.instance?.process === child) this.instance = undefined
+      for (const listener of this.exitListeners) listener()
     })
 
     const url = `http://127.0.0.1:${port}`
     try {
       await Promise.race([this.wait(url, headers), startupFailure])
       ready = true
+      if (this.process !== child) throw new ServerStartupError("Raccoon server stopped during startup")
     } catch (error) {
       child.kill()
       if (error instanceof ServerStartupError) {

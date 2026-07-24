@@ -173,4 +173,63 @@ describe("RaccoonServerManager", () => {
     expect(server.headers?.Authorization).toBe(healthAuthorization)
     expect(server.headers?.Authorization).toStartWith("Basic ")
   })
+
+  test("stops a managed process while startup is still pending", async () => {
+    serverUrl = ""
+    const output = createOutput()
+    const child = createChild()
+    const manager = new RaccoonServerManager(
+      { extensionPath: "/extension" } as never,
+      output.channel as never,
+      {
+        existsSync: () => false,
+        fetch: async () => ({ ok: true }) as Response,
+        getConfig: (key) => {
+          if (key === "serverUrl") return serverUrl
+          if (key === "opencodeCommand") return opencodeCommand
+          return undefined
+        },
+        spawn: () => child as never,
+        workspaceDirectory: () => "/workspace",
+      },
+    )
+
+    const startup = manager.getServer()
+    await Promise.resolve()
+    const stopping = manager.stop()
+    child.emit("exit", null, "SIGTERM")
+    const rejection = expect(startup).rejects.toThrow("Raccoon server")
+    await stopping
+
+    await rejection
+    expect(child.killed).toBe(true)
+  })
+
+  test("notifies listeners when a running managed server exits", async () => {
+    serverUrl = ""
+    const output = createOutput()
+    const child = createChild()
+    const manager = new RaccoonServerManager(
+      { extensionPath: "/extension" } as never,
+      output.channel as never,
+      {
+        existsSync: () => false,
+        fetch: async () => ({ ok: true }) as Response,
+        getConfig: (key) => {
+          if (key === "serverUrl") return serverUrl
+          if (key === "opencodeCommand") return opencodeCommand
+          return undefined
+        },
+        spawn: () => child as never,
+        workspaceDirectory: () => "/workspace",
+      },
+    )
+    let exits = 0
+    manager.onServerExit(() => exits++)
+
+    await manager.getServer()
+    child.emit("exit", 1, null)
+
+    expect(exits).toBe(1)
+  })
 })

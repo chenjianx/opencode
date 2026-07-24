@@ -9,6 +9,8 @@ import { RaccoonWebviewHost } from "./provider/webview-host.js"
 import { RaccoonConnectionService } from "./services/cli-backend/index.js"
 import { registerAutocompleteProvider } from "./services/autocomplete/index.js"
 
+let activeConnection: RaccoonConnectionService | undefined
+
 function rangeRef(uri: vscode.Uri, range: vscode.Range): DocumentRangeRef {
   return {
     uri: uri.toString(),
@@ -22,6 +24,7 @@ function rangeRef(uri: vscode.Uri, range: vscode.Range): DocumentRangeRef {
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel("Raccoon")
   const connection = new RaccoonConnectionService(context, output)
+  activeConnection = connection
   const platform = new VscodeHostPlatform(context.globalStorageUri, output, context.globalState)
   const transport = new RaccoonWebviewHost(context.extensionUri, connection)
   const provider = new RaccoonProvider(connection, platform, transport)
@@ -95,4 +98,8 @@ export function activate(context: vscode.ExtensionContext) {
   })
 }
 
-export function deactivate() {}
+export async function deactivate() {
+  const connection = activeConnection
+  activeConnection = undefined
+  await connection?.shutdown()
+}

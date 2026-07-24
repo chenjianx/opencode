@@ -67,7 +67,7 @@ JAVA_HOME=<jdk17> ./gradlew buildPlugin
 JAVA_HOME=<jdk17> ./gradlew runIde
 ```
 
-正式构建会生成并打包 `darwin-arm64`、`darwin-x64`、`linux-x64`、`win32-x64` 四个平台的二进制，
+正式构建会生成并打包 macOS、Windows、Linux glibc 和 Alpine/musl 的 x64、ARM64 二进制，
 插件运行时按当前平台直接选择内置文件。`runIde` 则使用 `packages/opencode` 源码启动，便于调试。
 也可用环境变量连接已有服务：
 

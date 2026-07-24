@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
+import { spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join, relative } from "node:path"
 
@@ -13,13 +14,21 @@ const targetDir = join(dir, "bin")
 export const TARGETS: Record<string, { distDir: string; binName: string }> = {
   "darwin-arm64": { distDir: "raccoon-darwin-arm64", binName: "raccoon" },
   "darwin-x64": { distDir: "raccoon-darwin-x64", binName: "raccoon" },
+  "alpine-arm64": { distDir: "raccoon-linux-arm64-musl", binName: "raccoon" },
+  "alpine-x64": { distDir: "raccoon-linux-x64-musl", binName: "raccoon" },
+  "linux-arm64": { distDir: "raccoon-linux-arm64", binName: "raccoon" },
   "linux-x64": { distDir: "raccoon-linux-x64", binName: "raccoon" },
+  "win32-arm64": { distDir: "raccoon-windows-arm64", binName: "raccoon.exe" },
   "win32-x64": { distDir: "raccoon-windows-x64", binName: "raccoon.exe" },
 }
 
 function currentTarget() {
   const arch = process.arch === "arm64" ? "arm64" : "x64"
-  return `${process.platform}-${arch}`
+  if (process.platform !== "linux") return `${process.platform}-${arch}`
+  if (existsSync("/etc/alpine-release")) return `alpine-${arch}`
+  const ldd = spawnSync("ldd", ["--version"], { encoding: "utf8" })
+  const output = `${ldd.stdout ?? ""}${ldd.stderr ?? ""}`.toLowerCase()
+  return `${output.includes("musl") ? "alpine" : "linux"}-${arch}`
 }
 
 // Resolve the requested target: `--target <t>` flag, else the RACCOON_PACKAGE_TARGET

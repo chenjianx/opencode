@@ -52,7 +52,11 @@ tasks {
       listOf(
         Triple("darwin-arm64", "darwin-arm64", "raccoon"),
         Triple("darwin-x64", "darwin-x64", "raccoon"),
+        Triple("linux-arm64-musl", "linux-arm64-musl", "raccoon"),
+        Triple("linux-x64-musl", "linux-x64-musl", "raccoon"),
+        Triple("linux-arm64", "linux-arm64", "raccoon"),
         Triple("linux-x64", "linux-x64", "raccoon"),
+        Triple("windows-arm64", "win32-arm64", "raccoon.exe"),
         Triple("windows-x64", "win32-x64", "raccoon.exe"),
       ).forEach { (sourceTarget, resourceTarget, name) ->
         from(opencodeDir.resolve("dist/raccoon-$sourceTarget/bin/$name")) {
