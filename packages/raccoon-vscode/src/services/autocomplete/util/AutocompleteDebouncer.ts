@@ -6,19 +6,20 @@
  */
 export class AutocompleteDebouncer {
   private debounceTimeout: ReturnType<typeof setTimeout> | undefined
-  private currentRequestId = 0
+  private resolvePending: ((shouldDebounce: boolean) => void) | undefined
 
   async delayAndShouldDebounce(debounceDelay: number): Promise<boolean> {
-    const requestId = ++this.currentRequestId
-
     if (this.debounceTimeout) {
       clearTimeout(this.debounceTimeout)
+      this.resolvePending?.(true)
     }
 
     return new Promise<boolean>((resolve) => {
+      this.resolvePending = resolve
       this.debounceTimeout = setTimeout(() => {
-        const shouldDebounce = this.currentRequestId !== requestId
-        resolve(shouldDebounce)
+        this.debounceTimeout = undefined
+        this.resolvePending = undefined
+        resolve(false)
       }, debounceDelay)
     })
   }
