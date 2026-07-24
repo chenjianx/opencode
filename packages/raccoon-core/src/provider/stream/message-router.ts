@@ -29,37 +29,80 @@ type MessageRouterDeps = {
   setAutocompleteEnabled: (enabled: boolean) => Promise<void> | void
   setModel: (model: ModelSelection | undefined) => Promise<void>
   setModeModel: (mode: ChatMode, model?: ModelSelection) => Promise<void>
+  saveSettings: (
+    message: Extract<WebviewToExtension, { type: "saveSettings" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => Promise<void>
   setProviderEnabled: (providerID: string, enabled: boolean) => Promise<void>
   loginRaccoon: (serverUrl: string | undefined, source: RaccoonWebviewSource) => Promise<void>
   cancelRaccoonLogin: () => void
   logoutRaccoon: () => Promise<void>
   configureProvider: (providerID: string, apiKey: string) => Promise<void>
-  configureAgent: (message: Extract<WebviewToExtension, { type: "configureAgent" }>) => Promise<void>
-  deleteAgent: (name: string, scope: Extract<WebviewToExtension, { type: "deleteAgent" }>["scope"]) => Promise<void>
-  saveRule: (message: Extract<WebviewToExtension, { type: "saveRule" }>) => Promise<void>
-  toggleRule: (message: Extract<WebviewToExtension, { type: "toggleRule" }>) => Promise<void>
-  deleteRule: (message: Extract<WebviewToExtension, { type: "deleteRule" }>) => Promise<void>
-  saveCommand: (message: Extract<WebviewToExtension, { type: "saveCommand" }>) => Promise<void>
-  deleteCommand: (message: Extract<WebviewToExtension, { type: "deleteCommand" }>) => Promise<void>
+  configureAgent: (
+    message: Extract<WebviewToExtension, { type: "configureAgent" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  deleteAgent: (
+    message: Extract<WebviewToExtension, { type: "deleteAgent" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  saveRule: (message: Extract<WebviewToExtension, { type: "saveRule" }>, source: RaccoonWebviewSource) => Promise<void>
+  toggleRule: (message: Extract<WebviewToExtension, { type: "toggleRule" }>, source: RaccoonWebviewSource) => Promise<void>
+  deleteRule: (message: Extract<WebviewToExtension, { type: "deleteRule" }>, source: RaccoonWebviewSource) => Promise<void>
+  saveCommand: (message: Extract<WebviewToExtension, { type: "saveCommand" }>, source: RaccoonWebviewSource) => Promise<void>
+  deleteCommand: (message: Extract<WebviewToExtension, { type: "deleteCommand" }>, source: RaccoonWebviewSource) => Promise<void>
   connectProvider: (message: Extract<WebviewToExtension, { type: "connectProvider" }>) => Promise<void>
   cancelProviderConnect: (providerID?: string) => void
   disconnectProvider: (providerID: string) => Promise<void>
-  fetchCustomProviderModels: (message: Extract<WebviewToExtension, { type: "fetchCustomProviderModels" }>, source: RaccoonWebviewSource) => Promise<void>
+  fetchCustomProviderModels: (
+    message: Extract<WebviewToExtension, { type: "fetchCustomProviderModels" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
   fetchMcpMarketplace: (force: boolean | undefined, source: RaccoonWebviewSource) => Promise<void>
   fetchSkillMarketplace: (force: boolean | undefined, source: RaccoonWebviewSource) => Promise<void>
-  installMcpMarketplaceItem: (message: Extract<WebviewToExtension, { type: "installMcpMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
-  removeMcpMarketplaceItem: (message: Extract<WebviewToExtension, { type: "removeMcpMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
-  installSkillMarketplaceItem: (message: Extract<WebviewToExtension, { type: "installSkillMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
-  removeSkillMarketplaceItem: (message: Extract<WebviewToExtension, { type: "removeSkillMarketplaceItem" }>, source: RaccoonWebviewSource) => Promise<void>
-  addMcpServerManual: (message: Extract<WebviewToExtension, { type: "addMcpServerManual" }>, source: RaccoonWebviewSource) => Promise<void>
+  installMcpMarketplaceItem: (
+    message: Extract<WebviewToExtension, { type: "installMcpMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  removeMcpMarketplaceItem: (
+    message: Extract<WebviewToExtension, { type: "removeMcpMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  installSkillMarketplaceItem: (
+    message: Extract<WebviewToExtension, { type: "installSkillMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  removeSkillMarketplaceItem: (
+    message: Extract<WebviewToExtension, { type: "removeSkillMarketplaceItem" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  addMcpServerManual: (
+    message: Extract<WebviewToExtension, { type: "addMcpServerManual" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
   fetchMcpInstalled: (source: RaccoonWebviewSource) => Promise<void>
   fetchSkillInstalled: (source: RaccoonWebviewSource) => Promise<void>
-  setMcpServerEnabled: (message: Extract<WebviewToExtension, { type: "setMcpServerEnabled" }>, source: RaccoonWebviewSource) => Promise<void>
-  connectMcpServer: (message: Extract<WebviewToExtension, { type: "connectMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
-  disconnectMcpServer: (message: Extract<WebviewToExtension, { type: "disconnectMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
-  removeMcpServer: (message: Extract<WebviewToExtension, { type: "removeMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
-  updateMcpServer: (message: Extract<WebviewToExtension, { type: "updateMcpServer" }>, source: RaccoonWebviewSource) => Promise<void>
+  setMcpServerEnabled: (
+    message: Extract<WebviewToExtension, { type: "setMcpServerEnabled" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  connectMcpServer: (
+    message: Extract<WebviewToExtension, { type: "connectMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  disconnectMcpServer: (
+    message: Extract<WebviewToExtension, { type: "disconnectMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  removeMcpServer: (
+    message: Extract<WebviewToExtension, { type: "removeMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
+  updateMcpServer: (
+    message: Extract<WebviewToExtension, { type: "updateMcpServer" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
   configureCustomProvider: (message: Extract<WebviewToExtension, { type: "configureCustomProvider" }>) => Promise<void>
   requestFileSearch: (requestID: string, query: string, kind?: "file" | "folder") => Promise<void>
   openFile: (filePath: string, line?: number, column?: number) => void
@@ -169,6 +212,10 @@ export class RaccoonMessageRouter {
       await this.deps.setModeModel(message.mode, message.model)
       return
     }
+    if (message.type === "saveSettings") {
+      await this.deps.saveSettings(message, source)
+      return
+    }
     if (message.type === "setModelEnabled") {
       await this.deps.setModelEnabled(message.model, message.enabled)
       return
@@ -194,31 +241,31 @@ export class RaccoonMessageRouter {
       return
     }
     if (message.type === "configureAgent") {
-      await this.deps.configureAgent(message)
+      await this.deps.configureAgent(message, source)
       return
     }
     if (message.type === "deleteAgent") {
-      await this.deps.deleteAgent(message.name, message.scope)
+      await this.deps.deleteAgent(message, source)
       return
     }
     if (message.type === "saveRule") {
-      await this.deps.saveRule(message)
+      await this.deps.saveRule(message, source)
       return
     }
     if (message.type === "toggleRule") {
-      await this.deps.toggleRule(message)
+      await this.deps.toggleRule(message, source)
       return
     }
     if (message.type === "deleteRule") {
-      await this.deps.deleteRule(message)
+      await this.deps.deleteRule(message, source)
       return
     }
     if (message.type === "saveCommand") {
-      await this.deps.saveCommand(message)
+      await this.deps.saveCommand(message, source)
       return
     }
     if (message.type === "deleteCommand") {
-      await this.deps.deleteCommand(message)
+      await this.deps.deleteCommand(message, source)
       return
     }
     if (message.type === "connectProvider") {

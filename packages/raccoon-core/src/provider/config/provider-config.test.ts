@@ -29,22 +29,26 @@ describe("RaccoonProviderConfig", () => {
         throw new Error("not used")
       },
       directory: () => "/workspace",
-      getState: () => ({
-        selectedModel: { providerID: "openai", modelID: "gpt-5" },
-        mode: "build",
-      } as never),
+      getState: () =>
+        ({
+          selectedModel: { providerID: "openai", modelID: "gpt-5" },
+          mode: "build",
+        }) as never,
       setState: () => {},
       post: () => {},
       refresh: async () => {},
       withLoading: async (run) => await run(),
-      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+      webviewHost: {
+        post: () => {},
+        postState: () => {},
+        postError: () => {},
+        postRaccoonLoginFinished: () => {},
+        postCustomProviderSaved: () => {},
+      } as never,
     })
 
     expect(
-      config.selectModel(
-        [model("openai", "gpt-5"), model("raccoon", "big-pickle")],
-        { raccoon: "big-pickle" },
-      ),
+      config.selectModel([model("openai", "gpt-5"), model("raccoon", "big-pickle")], { raccoon: "big-pickle" }),
     ).toEqual({ providerID: "openai", modelID: "gpt-5" })
   })
 
@@ -54,22 +58,26 @@ describe("RaccoonProviderConfig", () => {
         throw new Error("not used")
       },
       directory: () => "/workspace",
-      getState: () => ({
-        selectedModel: { providerID: "openai", modelID: "missing" },
-        mode: "build",
-      } as never),
+      getState: () =>
+        ({
+          selectedModel: { providerID: "openai", modelID: "missing" },
+          mode: "build",
+        }) as never,
       setState: () => {},
       post: () => {},
       refresh: async () => {},
       withLoading: async (run) => await run(),
-      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+      webviewHost: {
+        post: () => {},
+        postState: () => {},
+        postError: () => {},
+        postRaccoonLoginFinished: () => {},
+        postCustomProviderSaved: () => {},
+      } as never,
     })
 
     expect(
-      config.selectModel(
-        [model("openai", "gpt-5"), model("raccoon", "big-pickle")],
-        { raccoon: "big-pickle" },
-      ),
+      config.selectModel([model("openai", "gpt-5"), model("raccoon", "big-pickle")], { raccoon: "big-pickle" }),
     ).toEqual({ providerID: "raccoon", modelID: "big-pickle" })
   })
 
@@ -79,12 +87,18 @@ describe("RaccoonProviderConfig", () => {
         throw new Error("not used")
       },
       directory: () => "/workspace",
-      getState: () => ({ mode: "build" } as never),
+      getState: () => ({ mode: "build" }) as never,
       setState: () => {},
       post: () => {},
       refresh: async () => {},
       withLoading: async (run) => await run(),
-      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+      webviewHost: {
+        post: () => {},
+        postState: () => {},
+        postError: () => {},
+        postRaccoonLoginFinished: () => {},
+        postCustomProviderSaved: () => {},
+      } as never,
     })
 
     // openai is listed first and has a server default, but raccoon is logged in (connected),
@@ -103,19 +117,22 @@ describe("RaccoonProviderConfig", () => {
         throw new Error("not used")
       },
       directory: () => "/workspace",
-      getState: () => ({ mode: "build" } as never),
+      getState: () => ({ mode: "build" }) as never,
       setState: () => {},
       post: () => {},
       refresh: async () => {},
       withLoading: async (run) => await run(),
-      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+      webviewHost: {
+        post: () => {},
+        postState: () => {},
+        postError: () => {},
+        postRaccoonLoginFinished: () => {},
+        postCustomProviderSaved: () => {},
+      } as never,
     })
 
     expect(
-      config.resolveDefaultModel(
-        [model("openai", "gpt-5"), model("raccoon", "raccoon-chat")],
-        { openai: "gpt-5" },
-      ),
+      config.resolveDefaultModel([model("openai", "gpt-5"), model("raccoon", "raccoon-chat")], { openai: "gpt-5" }),
     ).toEqual({ providerID: "raccoon", modelID: "raccoon-chat" })
   })
 
@@ -125,12 +142,18 @@ describe("RaccoonProviderConfig", () => {
         throw new Error("not used")
       },
       directory: () => "/workspace",
-      getState: () => ({ mode: "build" } as never),
+      getState: () => ({ mode: "build" }) as never,
       setState: () => {},
       post: () => {},
       refresh: async () => {},
       withLoading: async (run) => await run(),
-      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+      webviewHost: {
+        post: () => {},
+        postState: () => {},
+        postError: () => {},
+        postRaccoonLoginFinished: () => {},
+        postCustomProviderSaved: () => {},
+      } as never,
     })
     // Simulate a persisted explicit selection of a non-raccoon model.
     ;(config as unknown as { selectedModel?: { providerID: string; modelID: string } }).selectedModel = {
@@ -139,10 +162,9 @@ describe("RaccoonProviderConfig", () => {
     }
 
     expect(
-      config.resolveDefaultModel(
-        [model("openai", "gpt-5"), model("raccoon", "raccoon-chat")],
-        { raccoon: "raccoon-chat" },
-      ),
+      config.resolveDefaultModel([model("openai", "gpt-5"), model("raccoon", "raccoon-chat")], {
+        raccoon: "raccoon-chat",
+      }),
     ).toEqual({ providerID: "openai", modelID: "gpt-5" })
   })
 
@@ -152,18 +174,25 @@ describe("RaccoonProviderConfig", () => {
         throw new Error("not used")
       },
       directory: () => "/workspace",
-      getState: () => ({ mode: "build" } as never),
+      getState: () => ({ mode: "build" }) as never,
       setState: () => {},
       post: () => {},
       refresh: async () => {},
       withLoading: async (run) => await run(),
-      webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+      webviewHost: {
+        post: () => {},
+        postState: () => {},
+        postError: () => {},
+        postRaccoonLoginFinished: () => {},
+        postCustomProviderSaved: () => {},
+      } as never,
     })
 
     const raccoonDisconnected: RaccoonModel = { ...model("raccoon", "raccoon-chat"), connected: false }
-    expect(
-      config.resolveDefaultModel([model("openai", "gpt-5"), raccoonDisconnected], { openai: "gpt-5" }),
-    ).toEqual({ providerID: "openai", modelID: "gpt-5" })
+    expect(config.resolveDefaultModel([model("openai", "gpt-5"), raccoonDisconnected], { openai: "gpt-5" })).toEqual({
+      providerID: "openai",
+      modelID: "gpt-5",
+    })
   })
 
   test("keeps global-only agents scoped to user when merged config includes them", async () => {
@@ -182,7 +211,13 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
         pluginLanguage: () => "en",
       })
 
@@ -224,13 +259,17 @@ describe("RaccoonProviderConfig", () => {
     }
   })
 
-  test("project-scope agent config defaults to raccoon.json in an empty project", async () => {
+  test("project-scope agent config defaults to raccoon.jsonc in an empty project", async () => {
     const dir = await mkdtemp(join(tmpdir(), "raccoon-agent-"))
     try {
       let disposed = false
       let refreshed = false
       const client = {
-        instance: { dispose: async () => { disposed = true } },
+        instance: {
+          dispose: async () => {
+            disposed = true
+          },
+        },
       }
       const config = new RaccoonProviderConfig({
         client: async () => client as never,
@@ -238,19 +277,27 @@ describe("RaccoonProviderConfig", () => {
         getState: () => ({}) as never,
         setState: () => {},
         post: () => {},
-        refresh: async () => { refreshed = true },
+        refresh: async () => {
+          refreshed = true
+        },
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.configureAgent({
         type: "configureAgent",
-        name: "reviewer",
+        requestID: "create-project-reviewer",
         scope: "project",
         agent: { name: "reviewer", description: "review code", mode: "subagent" },
-      } as never)
+      })
 
-      const written = JSON.parse(await readFile(join(dir, "raccoon.json"), "utf8"))
+      const written = JSON.parse(await readFile(join(dir, "raccoon.jsonc"), "utf8"))
       expect(written.agent?.reviewer).toMatchObject({ description: "review code", mode: "subagent" })
       // The change must flush the instance cache and refresh the webview state.
       expect(disposed).toBe(true)
@@ -278,15 +325,21 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.configureAgent({
         type: "configureAgent",
-        name: "reviewer",
+        requestID: "create-project-reviewer",
         scope: "project",
         agent: { name: "reviewer", mode: "subagent" },
-      } as never)
+      })
 
       let written = JSON.parse(await readFile(join(dir, "opencode.json"), "utf8"))
       // Existing top-level keys and sibling agents are preserved.
@@ -318,8 +371,14 @@ describe("RaccoonProviderConfig", () => {
         instance: { dispose: async () => {} },
         path: { get: async () => ({ data: { config: globalDir } }) },
         global: {
-          config: { update: async (body: unknown) => { globalUpdates.push(body) } },
-          dispose: async () => { globalDisposed = true },
+          config: {
+            update: async (body: unknown) => {
+              globalUpdates.push(body)
+            },
+          },
+          dispose: async () => {
+            globalDisposed = true
+          },
         },
       }
       const config = new RaccoonProviderConfig({
@@ -330,7 +389,13 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.deleteAgent("mine", "user")
@@ -373,7 +438,13 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.deleteAgent("mine", "user")
@@ -409,7 +480,13 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.deleteAgent("mine", "project")
@@ -436,7 +513,9 @@ describe("RaccoonProviderConfig", () => {
         path: { get: async () => ({ data: { config: globalDir } }) },
         global: {
           config: { update: async () => {} },
-          dispose: async () => { globalDisposed = true },
+          dispose: async () => {
+            globalDisposed = true
+          },
         },
       }
       const config = new RaccoonProviderConfig({
@@ -447,7 +526,13 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.deleteAgent("mine", "user")
@@ -470,7 +555,9 @@ describe("RaccoonProviderConfig", () => {
         path: { get: async () => ({ data: { config: globalDir } }) },
         global: {
           config: { update: async () => {} },
-          dispose: async () => { globalDisposed = true },
+          dispose: async () => {
+            globalDisposed = true
+          },
         },
       }
       const config = new RaccoonProviderConfig({
@@ -481,20 +568,110 @@ describe("RaccoonProviderConfig", () => {
         post: () => {},
         refresh: async () => {},
         withLoading: async (run) => await run(),
-        webviewHost: { post: () => {}, postState: () => {}, postError: () => {}, postRaccoonLoginFinished: () => {}, postCustomProviderSaved: () => {} } as never,
+        webviewHost: {
+          post: () => {},
+          postState: () => {},
+          postError: () => {},
+          postRaccoonLoginFinished: () => {},
+          postCustomProviderSaved: () => {},
+        } as never,
       })
 
       await config.configureAgent({
         type: "configureAgent",
-        name: "helper",
+        requestID: "create-user-helper",
         scope: "user",
         agent: { name: "helper", mode: "subagent", description: "global helper" },
-      } as never)
+      })
 
       // Empty global dir → defaults to the raccoon-branded config file.
-      const written = JSON.parse(await readFile(join(globalDir, "raccoon.json"), "utf8"))
+      const written = JSON.parse(await readFile(join(globalDir, "raccoon.jsonc"), "utf8"))
       expect(written.agent?.helper).toMatchObject({ mode: "subagent", description: "global helper" })
       expect(globalDisposed).toBe(true)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+      await rm(globalDir, { recursive: true, force: true })
+    }
+  })
+
+  test("moving and renaming an agent from project to user removes the project source", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "raccoon-agent-"))
+    const globalDir = await mkdtemp(join(tmpdir(), "raccoon-global-"))
+    try {
+      await writeFile(join(dir, "raccoon.json"), JSON.stringify({ agent: { reviewer: { mode: "subagent" } } }))
+      const client = {
+        instance: { dispose: async () => {} },
+        path: { get: async () => ({ data: { config: globalDir } }) },
+        global: {
+          config: { update: async () => {} },
+          dispose: async () => {},
+        },
+      }
+      const config = new RaccoonProviderConfig({
+        client: async () => client as never,
+        directory: () => dir,
+        getState: () => ({}) as never,
+        setState: () => {},
+        post: () => {},
+        refresh: async () => {},
+        withLoading: async (run) => await run(),
+        webviewHost: { post: () => {} } as never,
+      })
+
+      await config.configureAgent({
+        type: "configureAgent",
+        requestID: "move-project-user",
+        original: { name: "reviewer", scope: "project" },
+        scope: "user",
+        agent: { name: "global-reviewer", mode: "subagent", description: "moved" },
+      })
+
+      const project = JSON.parse(await readFile(join(dir, "raccoon.json"), "utf8"))
+      const user = JSON.parse(await readFile(join(globalDir, "raccoon.jsonc"), "utf8"))
+      expect(project.agent?.reviewer).toBeUndefined()
+      expect(user.agent?.["global-reviewer"]).toMatchObject({ mode: "subagent", description: "moved" })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+      await rm(globalDir, { recursive: true, force: true })
+    }
+  })
+
+  test("moving an agent from user to project removes the user source", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "raccoon-agent-"))
+    const globalDir = await mkdtemp(join(tmpdir(), "raccoon-global-"))
+    try {
+      await writeFile(join(globalDir, "raccoon.json"), JSON.stringify({ agent: { helper: { mode: "subagent" } } }))
+      const client = {
+        instance: { dispose: async () => {} },
+        path: { get: async () => ({ data: { config: globalDir } }) },
+        global: {
+          config: { update: async () => {} },
+          dispose: async () => {},
+        },
+      }
+      const config = new RaccoonProviderConfig({
+        client: async () => client as never,
+        directory: () => dir,
+        getState: () => ({}) as never,
+        setState: () => {},
+        post: () => {},
+        refresh: async () => {},
+        withLoading: async (run) => await run(),
+        webviewHost: { post: () => {} } as never,
+      })
+
+      await config.configureAgent({
+        type: "configureAgent",
+        requestID: "move-user-project",
+        original: { name: "helper", scope: "user" },
+        scope: "project",
+        agent: { name: "helper", mode: "all", description: "local" },
+      })
+
+      const project = JSON.parse(await readFile(join(dir, "raccoon.jsonc"), "utf8"))
+      const user = JSON.parse(await readFile(join(globalDir, "raccoon.json"), "utf8"))
+      expect(project.agent?.helper).toMatchObject({ mode: "all", description: "local" })
+      expect(user.agent?.helper).toBeUndefined()
     } finally {
       await rm(dir, { recursive: true, force: true })
       await rm(globalDir, { recursive: true, force: true })

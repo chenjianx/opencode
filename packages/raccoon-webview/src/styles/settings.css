@@ -139,6 +139,14 @@
     @apply text-[var(--color-foreground)];
   }
 
+  .settings-actions-status.error {
+    @apply text-[var(--color-error)];
+  }
+
+  .settings-actions-status.success {
+    @apply text-[var(--color-success,#3fb950)];
+  }
+
   .settings-actions-buttons {
     @apply flex gap-2;
   }
@@ -204,7 +212,7 @@
   }
 
   .settings-agent-panel {
-    @apply overflow-visible;
+    @apply overflow-clip;
     container-type: inline-size;
     container-name: settings-agent-panel;
   }
@@ -233,6 +241,63 @@
     @apply flex flex-wrap justify-end gap-1.5;
   }
 
+  .settings-agent-tabs {
+    @apply flex border-b border-[var(--color-border)] bg-[var(--color-background)] px-3;
+  }
+
+  .settings-agent-tab {
+    @apply relative min-h-[38px] border-0 bg-transparent px-3 text-[12px] text-[var(--color-muted)] transition-colors hover:text-[var(--color-foreground)];
+  }
+
+  .settings-agent-tab.active {
+    @apply text-[var(--color-foreground)];
+  }
+
+  .settings-agent-tab.active::after {
+    @apply absolute inset-x-2 bottom-0 h-0.5 bg-[var(--color-focus)] content-[''];
+  }
+
+  .settings-agent-tab:focus-visible {
+    @apply outline outline-1 outline-[var(--color-focus)] outline-offset-[-2px];
+  }
+
+  .settings-agent-editor-body {
+    @apply min-h-[260px];
+  }
+
+  .settings-agent-fields {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+
+  .settings-agent-instructions,
+  .settings-agent-permissions {
+    @apply p-3;
+  }
+
+  .settings-agent-instructions .settings-row {
+    @apply border-0 p-0;
+  }
+
+  .settings-agent-savebar {
+    @apply sticky bottom-0 z-10 flex min-h-[54px] items-center justify-between gap-3 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_96%,var(--color-button))] px-3 py-2.5;
+  }
+
+  .settings-agent-save-status {
+    @apply text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-agent-save-status.dirty {
+    @apply text-[var(--color-foreground)];
+  }
+
+  .settings-agent-save-status.error {
+    @apply text-[var(--color-error)];
+  }
+
+  .settings-agent-save-actions {
+    @apply flex shrink-0 gap-2;
+  }
+
   .settings-agent-panel .settings-row {
     @apply grid grid-cols-[minmax(150px,210px)_minmax(0,1fr)] items-start gap-4;
   }
@@ -241,10 +306,22 @@
     .settings-agent-panel .settings-row {
       @apply grid-cols-1;
     }
+
+    .settings-agent-savebar {
+      @apply items-end;
+    }
   }
 
   .settings-agent-panel .settings-row-control {
     @apply max-w-none justify-start;
+  }
+
+  .settings-agent-panel .settings-agent-instructions .settings-row {
+    @apply grid-cols-1 gap-2;
+  }
+
+  .settings-agent-instructions .settings-row-control {
+    @apply w-full;
   }
 
   .settings-agent-params {
@@ -1139,7 +1216,6 @@
   .settings-rules-danger {
     @apply text-[var(--color-error)];
   }
-
 
   .settings-dialog-backdrop {
     @apply absolute inset-0 z-30 flex items-stretch justify-center bg-[light-dark(rgba(0,0,0,0.2),rgba(0,0,0,0.55))] p-2;

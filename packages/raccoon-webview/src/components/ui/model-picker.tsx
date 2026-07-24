@@ -34,6 +34,7 @@ export function ModelPicker(props: {
   allowUnset?: boolean
   unsetLabel?: string
   onUnset?: () => void
+  disabled?: boolean
 }) {
   const language = useLanguage()
   const [open, setOpen] = useState(false)
@@ -87,7 +88,7 @@ export function ModelPicker(props: {
           aria-label={props.ariaLabel}
           aria-haspopup="listbox"
           aria-expanded={api.open}
-          disabled={props.models.length === 0}
+          disabled={props.disabled || props.models.length === 0}
           onClick={api.toggle}
         >
           <span className={compact ? "flex min-w-0 items-center gap-1.5" : "flex min-w-0 flex-col gap-px"}>

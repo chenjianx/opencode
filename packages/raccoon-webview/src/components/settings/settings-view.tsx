@@ -1,5 +1,15 @@
-import { memo, useCallback, useEffect, useState } from "react"
-import { Cloud, FileText, MagicWand, Plugs, Robot, Scroll, SlidersHorizontal, TerminalWindow, Translate } from "@phosphor-icons/react"
+import { memo, useEffect, useState } from "react"
+import {
+  Cloud,
+  FileText,
+  MagicWand,
+  Plugs,
+  Robot,
+  Scroll,
+  SlidersHorizontal,
+  TerminalWindow,
+  Translate,
+} from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSessionActions, useSessionConfig } from "../../context/session"
 import { SettingsActions } from "./settings-actions"
@@ -23,20 +33,32 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
   const language = useLanguage()
   const config = useSessionConfig()
   const actions = useSessionActions()
-  const [tab, setTab] = useState<"models" | "agents" | "commands" | "rules" | "providers" | "mcp" | "skills" | "language" | "autocomplete">("providers")
+  const [tab, setTab] = useState<
+    "models" | "agents" | "commands" | "rules" | "providers" | "mcp" | "skills" | "language" | "autocomplete"
+  >("providers")
   const [draftPluginLanguageMode, setDraftPluginLanguageMode] = useState(config.pluginLanguageMode ?? "auto")
   const [draftSelectedModel, setDraftSelectedModel] = useState<ModelSelection | undefined>(config.defaultModel)
-  const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(config.modeModels ?? {})
-  const [agentDirty, setAgentDirty] = useState(false)
-  const [agentSave, setAgentSave] = useState<(() => void) | undefined>()
-  const [agentResetToken, setAgentResetToken] = useState(0)
-  const handleAgentSave = useCallback((next: (() => void) | undefined) => setAgentSave(() => next), [])
+  const [draftModeModels, setDraftModeModels] = useState<Partial<Record<string, ModelSelection>>>(
+    config.modeModels ?? {},
+  )
+  const [draftAutocompleteEnabled, setDraftAutocompleteEnabled] = useState(config.autocompleteEnabled ?? true)
+  const [saveState, setSaveState] = useState<{ status: "idle" | "saving" | "error" | "success"; error?: string }>({
+    status: "idle",
+  })
 
   useEffect(() => {
+    if (saveState.status === "saving" || saveState.status === "error") return
     setDraftSelectedModel(config.defaultModel)
     setDraftModeModels(config.modeModels ?? {})
     setDraftPluginLanguageMode(config.pluginLanguageMode ?? "auto")
-  }, [config.defaultModel, config.modeModels, config.pluginLanguageMode])
+    setDraftAutocompleteEnabled(config.autocompleteEnabled ?? true)
+  }, [config.autocompleteEnabled, config.defaultModel, config.modeModels, config.pluginLanguageMode, saveState.status])
+
+  useEffect(() => {
+    if (saveState.status !== "success") return
+    const timeout = window.setTimeout(() => setSaveState({ status: "idle" }), 2000)
+    return () => window.clearTimeout(timeout)
+  }, [saveState.status])
 
   const connectedModels = config.models.filter((model) => model.connected)
   const modeAgents = config.agents.filter((agent) => agent.mode !== "subagent" && !agent.hidden)
@@ -45,23 +67,35 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
     !sameModel(draftSelectedModel, config.defaultModel) ||
     modes.some((mode) => !sameModel(draftModeModels[mode], config.modeModels?.[mode])) ||
     draftPluginLanguageMode !== (config.pluginLanguageMode ?? "auto") ||
-    agentDirty
+    draftAutocompleteEnabled !== (config.autocompleteEnabled ?? true)
 
   const discard = () => {
     setDraftSelectedModel(config.defaultModel)
     setDraftModeModels(config.modeModels ?? {})
     setDraftPluginLanguageMode(config.pluginLanguageMode ?? "auto")
-    setAgentDirty(false)
-    setAgentResetToken((token) => token + 1)
+    setDraftAutocompleteEnabled(config.autocompleteEnabled ?? true)
+    setSaveState({ status: "idle" })
   }
 
-  const save = () => {
-    if (draftSelectedModel && !sameModel(draftSelectedModel, config.defaultModel)) actions.setModel(draftSelectedModel)
-    modes
-      .filter((mode) => !sameModel(draftModeModels[mode], config.modeModels?.[mode]))
-      .forEach((mode) => actions.setModeModel(mode, draftModeModels[mode]))
-    if (draftPluginLanguageMode !== (config.pluginLanguageMode ?? "auto")) actions.setPluginLanguage(draftPluginLanguageMode)
-    if (agentDirty) agentSave?.()
+  const save = async () => {
+    if (saveState.status === "saving") return
+    setSaveState({ status: "saving" })
+    const changedModes = modes.filter((mode) => !sameModel(draftModeModels[mode], config.modeModels?.[mode]))
+    const result = await actions.saveSettings({
+      ...(!sameModel(draftSelectedModel, config.defaultModel) && draftSelectedModel
+        ? { defaultModel: draftSelectedModel }
+        : {}),
+      ...(changedModes.length
+        ? { modeModels: Object.fromEntries(changedModes.map((mode) => [mode, draftModeModels[mode]])) }
+        : {}),
+      ...(draftPluginLanguageMode !== (config.pluginLanguageMode ?? "auto")
+        ? { pluginLanguageMode: draftPluginLanguageMode }
+        : {}),
+      ...(draftAutocompleteEnabled !== (config.autocompleteEnabled ?? true)
+        ? { autocompleteEnabled: draftAutocompleteEnabled }
+        : {}),
+    })
+    setSaveState(result.success ? { status: "success" } : { status: "error", error: result.error })
   }
 
   return (
@@ -84,55 +118,100 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
 
       <div className="settings-shell">
         <nav className="settings-nav" aria-label={language.t("settings.nav.label")}>
-          <button type="button" className={`settings-nav-item ${tab === "providers" ? "active" : ""}`} onClick={() => setTab("providers")} title={language.t("settings.nav.providers")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "providers" ? "active" : ""}`}
+            onClick={() => setTab("providers")}
+            title={language.t("settings.nav.providers")}
+          >
             <span className="settings-nav-icon">
               <Cloud size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.providers")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "models" ? "active" : ""}`} onClick={() => setTab("models")} title={language.t("settings.nav.models")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "models" ? "active" : ""}`}
+            onClick={() => setTab("models")}
+            title={language.t("settings.nav.models")}
+          >
             <span className="settings-nav-icon">
               <SlidersHorizontal size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.models")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "agents" ? "active" : ""}`} onClick={() => setTab("agents")} title={language.t("settings.nav.agents")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "agents" ? "active" : ""}`}
+            onClick={() => setTab("agents")}
+            title={language.t("settings.nav.agents")}
+          >
             <span className="settings-nav-icon">
               <Robot size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.agents")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "mcp" ? "active" : ""}`} onClick={() => setTab("mcp")} title={language.t("settings.nav.mcp")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "mcp" ? "active" : ""}`}
+            onClick={() => setTab("mcp")}
+            title={language.t("settings.nav.mcp")}
+          >
             <span className="settings-nav-icon">
               <Plugs size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.mcp")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "skills" ? "active" : ""}`} onClick={() => setTab("skills")} title={language.t("settings.nav.skills")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "skills" ? "active" : ""}`}
+            onClick={() => setTab("skills")}
+            title={language.t("settings.nav.skills")}
+          >
             <span className="settings-nav-icon">
               <FileText size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.skills")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "commands" ? "active" : ""}`} onClick={() => setTab("commands")} title={language.t("settings.nav.commands")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "commands" ? "active" : ""}`}
+            onClick={() => setTab("commands")}
+            title={language.t("settings.nav.commands")}
+          >
             <span className="settings-nav-icon">
               <TerminalWindow size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.commands")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "rules" ? "active" : ""}`} onClick={() => setTab("rules")} title={language.t("settings.nav.rules")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "rules" ? "active" : ""}`}
+            onClick={() => setTab("rules")}
+            title={language.t("settings.nav.rules")}
+          >
             <span className="settings-nav-icon">
               <Scroll size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.rules")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "language" ? "active" : ""}`} onClick={() => setTab("language")} title={language.t("settings.nav.language")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "language" ? "active" : ""}`}
+            onClick={() => setTab("language")}
+            title={language.t("settings.nav.language")}
+          >
             <span className="settings-nav-icon">
               <Translate size={16} weight="bold" />
             </span>
             <span className="settings-nav-label">{language.t("settings.nav.language")}</span>
           </button>
-          <button type="button" className={`settings-nav-item ${tab === "autocomplete" ? "active" : ""}`} onClick={() => setTab("autocomplete")} title={language.t("settings.nav.autocomplete")}>
+          <button
+            type="button"
+            className={`settings-nav-item ${tab === "autocomplete" ? "active" : ""}`}
+            onClick={() => setTab("autocomplete")}
+            title={language.t("settings.nav.autocomplete")}
+          >
             <span className="settings-nav-icon">
               <MagicWand size={16} weight="bold" />
             </span>
@@ -155,9 +234,6 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
             <SettingsAgents
               agents={config.agents}
               connectedModels={connectedModels}
-              resetToken={agentResetToken}
-              onDirtyChange={setAgentDirty}
-              onSave={handleAgentSave}
               onConfigureAgent={actions.configureAgent}
               onDeleteAgent={actions.deleteAgent}
             />
@@ -171,11 +247,14 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
               onDeleteCommand={actions.deleteCommand}
             />
           ) : tab === "language" ? (
-            <SettingsLanguage pluginLanguageMode={draftPluginLanguageMode} onPluginLanguageChange={setDraftPluginLanguageMode} />
+            <SettingsLanguage
+              pluginLanguageMode={draftPluginLanguageMode}
+              onPluginLanguageChange={setDraftPluginLanguageMode}
+            />
           ) : tab === "autocomplete" ? (
             <SettingsAutocomplete
-              enabled={config.autocompleteEnabled ?? true}
-              onEnabledChange={actions.setAutocompleteEnabled}
+              enabled={draftAutocompleteEnabled}
+              onEnabledChange={setDraftAutocompleteEnabled}
             />
           ) : tab === "rules" ? (
             <SettingsRules
@@ -194,7 +273,14 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
         </div>
       </div>
 
-      <SettingsActions dirty={dirty} onDiscard={discard} onSave={save} />
+      {dirty || saveState.status !== "idle" ? (
+        <SettingsActions
+          status={saveState.status === "idle" || (dirty && saveState.status === "success") ? "dirty" : saveState.status}
+          error={saveState.error}
+          onDiscard={discard}
+          onSave={save}
+        />
+      ) : null}
     </section>
   )
 })

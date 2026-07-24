@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { $ } from "bun"
 import { join } from "node:path"
-import { mkdir } from "node:fs/promises"
+import { mkdir, rm } from "node:fs/promises"
 import { stageBinary, TARGETS } from "./local-bin.ts"
 import pkg from "../package.json"
 
@@ -22,6 +22,7 @@ const vsceSecretArgs = [
 
 // 1. Build the shared (platform-agnostic) artifacts once: webview + bundled JS.
 console.log("Building shared artifacts (webview + extension bundle)…")
+await rm(outDir, { recursive: true, force: true })
 await mkdir(outDir, { recursive: true })
 await $`bun run --cwd ${dir} build:webview`
 await $`bun run --cwd ${dir} check-types`

@@ -1,9 +1,4 @@
-import {
-  type Message,
-  type OpencodeClient,
-  type Part,
-  type Session,
-} from "@opencode-ai/sdk/v2/client"
+import { type Message, type OpencodeClient, type Part, type Session } from "@opencode-ai/sdk/v2/client"
 import type {
   ChatMode,
   ExtensionToWebview,
@@ -16,10 +11,7 @@ import type {
 import { MarketplaceService } from "../services/marketplace/index.js"
 import type { McpStatus } from "../services/marketplace/index.js"
 import { SkillMarketplaceService } from "../services/skill-marketplace/index.js"
-import {
-  mapPart,
-  messageText,
-} from "./message/mapping.js"
+import { mapPart, messageText } from "./message/mapping.js"
 import { createPrompt } from "./editor/editor-prompt.js"
 import {
   removePart as removeSessionPart,
@@ -196,7 +188,8 @@ export class RaccoonProvider {
       removePart: (messageID, partID) => this.removePart(messageID, partID),
       pushPartUpdate: (part) => this.pushPartUpdate(part),
       pushPartDelta: (messageID, partID, field, delta) => this.pushPartDelta(messageID, partID, field, delta),
-      pushSubAgentPartDelta: (messageID, partID, field, delta) => this.pushSubAgentPartDelta(messageID, partID, field, delta),
+      pushSubAgentPartDelta: (messageID, partID, field, delta) =>
+        this.pushSubAgentPartDelta(messageID, partID, field, delta),
       upsertSubAgentMessage: (message) => this.upsertSubAgentMessage(message),
       flushStreams: () => this.streams.flush(),
       stopPromptRefresh: (sessionID) => this.sessions.stopPromptRefresh(sessionID),
@@ -235,19 +228,31 @@ export class RaccoonProvider {
       setAutocompleteEnabled: (enabled) => this.setAutocompleteEnabled(enabled),
       setModel: (model) => this.config.setModel(model),
       setModeModel: (mode, model) => this.config.setModeModel(mode, model),
+      saveSettings: (message, source) => this.saveSettings(message, source),
       setModelEnabled: (model, enabled) => this.config.setModelEnabled(model, enabled),
       setProviderEnabled: (providerID, enabled) => this.config.setProviderEnabled(providerID, enabled),
       loginRaccoon: (serverUrl, source) => this.config.loginRaccoon(serverUrl, source),
       cancelRaccoonLogin: () => this.config.cancelRaccoonLogin(),
       logoutRaccoon: () => this.logoutRaccoon(),
       configureProvider: (providerID, apiKey) => this.config.configureProvider(providerID, apiKey),
-      configureAgent: (message) => this.config.configureAgent(message),
-      deleteAgent: (name, scope) => this.config.deleteAgent(name, scope),
-      saveRule: (message) => this.rules.saveRule(message),
-      toggleRule: (message) => this.rules.toggleRule(message.scope, message.name, message.enabled),
-      deleteRule: (message) => this.rules.deleteRule(message.scope, message.name),
-      saveCommand: (message) => this.commands.saveCommand(message),
-      deleteCommand: (message) => this.commands.deleteCommand(message.scope, message.name),
+      configureAgent: (message, source) => this.configureAgent(message, source),
+      deleteAgent: (message, source) => this.deleteAgent(message, source),
+      saveRule: (message, source) =>
+        this.runSettingsAction(source, "ruleSaveResult", message.requestID, () => this.rules.saveRule(message)),
+      toggleRule: (message, source) =>
+        this.runSettingsAction(source, "ruleToggleResult", message.requestID, () =>
+          this.rules.toggleRule(message.scope, message.name, message.enabled),
+        ),
+      deleteRule: (message, source) =>
+        this.runSettingsAction(source, "ruleDeleteResult", message.requestID, () =>
+          this.rules.deleteRule(message.scope, message.name),
+        ),
+      saveCommand: (message, source) =>
+        this.runSettingsAction(source, "commandSaveResult", message.requestID, () => this.commands.saveCommand(message)),
+      deleteCommand: (message, source) =>
+        this.runSettingsAction(source, "commandDeleteResult", message.requestID, () =>
+          this.commands.deleteCommand(message.scope, message.name),
+        ),
       connectProvider: (message) => this.config.connectProvider(message),
       cancelProviderConnect: (providerID) => this.config.cancelProviderConnect(providerID),
       disconnectProvider: (providerID) => this.config.disconnectProvider(providerID),
@@ -277,7 +282,8 @@ export class RaccoonProvider {
       permissionReply: (message) => this.sessions.permissionReply(message),
       deleteCustomProvider: (providerID) => this.config.deleteCustomProvider(providerID),
       stopSession: () => this.sessions.stopSession(),
-      sendMessage: (sessionID, text, mode, model, files) => this.sessions.sendMessage(sessionID, text, mode, model, files),
+      sendMessage: (sessionID, text, mode, model, files) =>
+        this.sessions.sendMessage(sessionID, text, mode, model, files),
     })
   }
 
@@ -376,7 +382,11 @@ export class RaccoonProvider {
   // Promote open editor tabs (active file first) to the top of the result list. Open files
   // are treated as an independent candidate source: any tab whose path fuzzy-matches the
   // query is included, even if the backend didn't return it (limit or ranking cutoff).
-  private pinOpenFiles(items: RaccoonFileSearchItem[], query: string, kind?: "file" | "folder"): RaccoonFileSearchItem[] {
+  private pinOpenFiles(
+    items: RaccoonFileSearchItem[],
+    query: string,
+    kind?: "file" | "folder",
+  ): RaccoonFileSearchItem[] {
     if (kind === "folder") return items
     const openFiles = this.platform.editor.getOpenFiles?.() ?? []
     if (!openFiles.length) return items
@@ -454,6 +464,92 @@ export class RaccoonProvider {
     await this.platform.settings.setAutocompleteEnabled(enabled)
     this.state = { ...this.state, autocompleteEnabled: enabled }
     this.post()
+  }
+
+  private async saveSettings(
+    message: Extract<WebviewToExtension, { type: "saveSettings" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      if (message.settings.defaultModel) await this.config.setModel(message.settings.defaultModel)
+      if (message.settings.modeModels) {
+        for (const [mode, model] of Object.entries(message.settings.modeModels)) {
+          await this.config.setModeModel(mode as ChatMode, model)
+        }
+      }
+      if (message.settings.pluginLanguageMode !== undefined) {
+        await this.config.setPluginLanguage(message.settings.pluginLanguageMode)
+      }
+      if (message.settings.autocompleteEnabled !== undefined) {
+        await this.setAutocompleteEnabled(message.settings.autocompleteEnabled)
+      }
+      this.webviewHost.post(source, { type: "settingsSaveResult", requestID: message.requestID, success: true })
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "settingsSaveResult",
+        requestID: message.requestID,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  private async configureAgent(
+    message: Extract<WebviewToExtension, { type: "configureAgent" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const saved = await this.config.configureAgent(message)
+      this.webviewHost.post(source, {
+        type: "agentSaveResult",
+        requestID: message.requestID,
+        success: true,
+        ...saved,
+      })
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "agentSaveResult",
+        requestID: message.requestID,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  private async deleteAgent(
+    message: Extract<WebviewToExtension, { type: "deleteAgent" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      await this.config.deleteAgent(message.name, message.scope)
+      this.webviewHost.post(source, { type: "agentDeleteResult", requestID: message.requestID, success: true })
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type: "agentDeleteResult",
+        requestID: message.requestID,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  private async runSettingsAction(
+    source: RaccoonWebviewSource,
+    type: "ruleSaveResult" | "ruleToggleResult" | "ruleDeleteResult" | "commandSaveResult" | "commandDeleteResult",
+    requestID: string,
+    action: () => Promise<void>,
+  ) {
+    try {
+      await action()
+      this.webviewHost.post(source, { type, requestID, success: true })
+    } catch (error) {
+      this.webviewHost.post(source, {
+        type,
+        requestID,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
 
   getState() {
@@ -557,7 +653,9 @@ export class RaccoonProvider {
       this.scheduleEventRefresh()
       return
     }
-    const hasPart = this.state.messages.some((message) => message.id === messageID && message.parts?.some((part) => part.id === partID))
+    const hasPart = this.state.messages.some(
+      (message) => message.id === messageID && message.parts?.some((part) => part.id === partID),
+    )
     if (!hasPart) {
       this.pendingPartDeltas.set(partID, `${this.pendingPartDeltas.get(partID) ?? ""}${delta}`)
       this.scheduleEventRefresh()
@@ -757,7 +855,12 @@ export class RaccoonProvider {
     source: RaccoonWebviewSource,
   ) {
     try {
-      const result = await this.marketplace.install(await this.client(), this.directory(), message.item, message.options)
+      const result = await this.marketplace.install(
+        await this.client(),
+        this.directory(),
+        message.item,
+        message.options,
+      )
       this.webviewHost.post(source, { type: "mcpMarketplaceInstallResult", ...result } satisfies ExtensionToWebview)
       if (!result.success) return
       await this.refresh()
@@ -852,7 +955,12 @@ export class RaccoonProvider {
     source: RaccoonWebviewSource,
   ) {
     try {
-      const result = await this.skillMarketplace.install(await this.client(), this.directory(), message.item, message.options)
+      const result = await this.skillMarketplace.install(
+        await this.client(),
+        this.directory(),
+        message.item,
+        message.options,
+      )
       this.webviewHost.post(source, { type: "skillMarketplaceInstallResult", ...result } satisfies ExtensionToWebview)
       if (!result.success) return
       await this.refresh()
@@ -874,7 +982,12 @@ export class RaccoonProvider {
     source: RaccoonWebviewSource,
   ) {
     try {
-      const result = await this.skillMarketplace.remove(await this.client(), this.directory(), message.item, message.scope)
+      const result = await this.skillMarketplace.remove(
+        await this.client(),
+        this.directory(),
+        message.item,
+        message.scope,
+      )
       this.webviewHost.post(source, { type: "skillMarketplaceRemoveResult", ...result } satisfies ExtensionToWebview)
       if (!result.success) return
       await this.refresh()
@@ -1021,7 +1134,13 @@ export class RaccoonProvider {
     source: RaccoonWebviewSource,
   ) {
     await this.runMcpServerAction(message.id, source, async () => {
-      await this.marketplace.setEnabled(await this.client(), this.directory(), message.id, message.scope, message.enabled)
+      await this.marketplace.setEnabled(
+        await this.client(),
+        this.directory(),
+        message.id,
+        message.scope,
+        message.enabled,
+      )
     })
   }
 

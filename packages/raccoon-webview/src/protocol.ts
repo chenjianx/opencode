@@ -227,7 +227,18 @@ export type RaccoonSubSession = {
 
 export type RaccoonMessagePart = {
   id: string
-  type: "text" | "reasoning" | "tool" | "file" | "step-start" | "step-finish" | "snapshot" | "patch" | "agent" | "subtask" | "other"
+  type:
+    | "text"
+    | "reasoning"
+    | "tool"
+    | "file"
+    | "step-start"
+    | "step-finish"
+    | "snapshot"
+    | "patch"
+    | "agent"
+    | "subtask"
+    | "other"
   text?: string
   mime?: string
   filename?: string
@@ -524,6 +535,16 @@ export type WebviewToExtension =
   | { type: "setAutocompleteEnabled"; enabled: boolean }
   | { type: "setModel"; model: { providerID: string; modelID: string } }
   | { type: "setModeModel"; mode: ChatMode; model?: { providerID: string; modelID: string } }
+  | {
+      type: "saveSettings"
+      requestID: string
+      settings: {
+        defaultModel?: { providerID: string; modelID: string }
+        modeModels?: Partial<Record<ChatMode, { providerID: string; modelID: string } | undefined>>
+        pluginLanguageMode?: RaccoonPluginLanguageMode
+        autocompleteEnabled?: boolean
+      }
+    }
   | { type: "setModelEnabled"; model: { providerID: string; modelID: string }; enabled: boolean }
   | { type: "setProviderEnabled"; providerID: string; enabled: boolean }
   | { type: "loginRaccoon"; serverUrl?: string }
@@ -532,21 +553,23 @@ export type WebviewToExtension =
   | { type: "configureProvider"; providerID: string; apiKey: string }
   | {
       type: "configureAgent"
-      name: string
+      requestID: string
+      original?: { name: string; scope: RaccoonAgentScope }
       scope: RaccoonAgentScope
       agent: RaccoonAgentConfigInput
     }
-  | { type: "deleteAgent"; name: string; scope: RaccoonAgentScope }
-  | { type: "saveRule"; scope: RaccoonAgentScope; originalName: string; name: string; content: string }
-  | { type: "toggleRule"; scope: RaccoonAgentScope; name: string; enabled: boolean }
-  | { type: "deleteRule"; scope: RaccoonAgentScope; name: string }
+  | { type: "deleteAgent"; requestID: string; name: string; scope: RaccoonAgentScope }
+  | { type: "saveRule"; requestID: string; scope: RaccoonAgentScope; originalName: string; name: string; content: string }
+  | { type: "toggleRule"; requestID: string; scope: RaccoonAgentScope; name: string; enabled: boolean }
+  | { type: "deleteRule"; requestID: string; scope: RaccoonAgentScope; name: string }
   | {
       type: "saveCommand"
+      requestID: string
       scope: RaccoonAgentScope
       originalName: string
       command: RaccoonManagedCommandInput
     }
-  | { type: "deleteCommand"; scope: RaccoonAgentScope; name: string }
+  | { type: "deleteCommand"; requestID: string; scope: RaccoonAgentScope; name: string }
   | {
       type: "connectProvider"
       providerID: string
@@ -556,7 +579,13 @@ export type WebviewToExtension =
     }
   | { type: "cancelProviderConnect"; providerID?: string }
   | { type: "disconnectProvider"; providerID: string }
-  | { type: "fetchCustomProviderModels"; requestID: string; baseURL: string; apiKey?: string; headers?: Record<string, string> }
+  | {
+      type: "fetchCustomProviderModels"
+      requestID: string
+      baseURL: string
+      apiKey?: string
+      headers?: Record<string, string>
+    }
   | { type: "fetchMcpMarketplace"; force?: boolean }
   | { type: "fetchSkillMarketplace"; force?: boolean }
   | {
@@ -648,10 +677,34 @@ export type ExtensionToWebview =
       installed: RaccoonSkillMarketplaceInstalledMetadata
       errors?: string[]
     }
-  | { type: "mcpMarketplaceInstallResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
-  | { type: "mcpMarketplaceRemoveResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
-  | { type: "skillMarketplaceInstallResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
-  | { type: "skillMarketplaceRemoveResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
+  | {
+      type: "mcpMarketplaceInstallResult"
+      id: string
+      scope?: RaccoonMarketplaceScope
+      success: boolean
+      error?: string
+    }
+  | {
+      type: "mcpMarketplaceRemoveResult"
+      id: string
+      scope?: RaccoonMarketplaceScope
+      success: boolean
+      error?: string
+    }
+  | {
+      type: "skillMarketplaceInstallResult"
+      id: string
+      scope?: RaccoonMarketplaceScope
+      success: boolean
+      error?: string
+    }
+  | {
+      type: "skillMarketplaceRemoveResult"
+      id: string
+      scope?: RaccoonMarketplaceScope
+      success: boolean
+      error?: string
+    }
   | { type: "mcpManualAddResult"; id: string; scope?: RaccoonMarketplaceScope; success: boolean; error?: string }
   | { type: "mcpInstalledData"; servers: RaccoonInstalledMcp[]; error?: string }
   | { type: "skillInstalledData"; skills: RaccoonInstalledSkill[]; error?: string }
@@ -674,6 +727,21 @@ export type ExtensionToWebview =
   | { type: "gitChangesContextResult"; requestID: string; content: string }
   | { type: "gitChangesContextError"; requestID: string; error: string }
   | { type: "customProviderSaved"; providerID: string }
+  | { type: "settingsSaveResult"; requestID: string; success: boolean; error?: string }
+  | {
+      type: "agentSaveResult"
+      requestID: string
+      success: boolean
+      name?: string
+      scope?: RaccoonAgentScope
+      error?: string
+    }
+  | { type: "agentDeleteResult"; requestID: string; success: boolean; error?: string }
+  | { type: "ruleSaveResult"; requestID: string; success: boolean; error?: string }
+  | { type: "ruleToggleResult"; requestID: string; success: boolean; error?: string }
+  | { type: "ruleDeleteResult"; requestID: string; success: boolean; error?: string }
+  | { type: "commandSaveResult"; requestID: string; success: boolean; error?: string }
+  | { type: "commandDeleteResult"; requestID: string; success: boolean; error?: string }
   | { type: "providerConnectFinished"; providerID: string; error?: string }
   | { type: "raccoonLoginFinished"; error?: string }
   | { type: "error"; message: string }

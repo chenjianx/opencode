@@ -3,6 +3,7 @@ import { Plus, Trash } from "@phosphor-icons/react"
 import type { RaccoonAgentScope, RaccoonRule } from "../../protocol"
 import { useLanguage } from "../../context/language"
 import { useSessionActions } from "../../context/session"
+import { useVSCode } from "../../context/vscode"
 import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
 import { Select } from "./settings-common"
@@ -18,16 +19,28 @@ type RuleDraft = {
 
 export function SettingsRules(props: {
   rules: RaccoonRule[]
-  onSaveRule: (scope: RaccoonAgentScope, originalName: string, name: string, content: string) => void
-  onToggleRule: (scope: RaccoonAgentScope, name: string, enabled: boolean) => void
-  onDeleteRule: (scope: RaccoonAgentScope, name: string) => void
+  onSaveRule: (requestID: string, scope: RaccoonAgentScope, originalName: string, name: string, content: string) => void
+  onToggleRule: (requestID: string, scope: RaccoonAgentScope, name: string, enabled: boolean) => void
+  onDeleteRule: (requestID: string, scope: RaccoonAgentScope, name: string) => void
 }) {
   const language = useLanguage()
   const actions = useSessionActions()
+  const vscode = useVSCode()
   const { rules, onSaveRule, onToggleRule, onDeleteRule } = props
   const [draft, setDraft] = useState<RuleDraft | undefined>()
   const [editorTab, setEditorTab] = useState<"edit" | "preview">("edit")
   const [pendingDelete, setPendingDelete] = useState<RaccoonRule | undefined>()
+  const [savingRequestID, setSavingRequestID] = useState<string>()
+  const [saveError, setSaveError] = useState("")
+  const [deletingRequestID, setDeletingRequestID] = useState<string>()
+  const [deleteError, setDeleteError] = useState("")
+  const [pendingToggle, setPendingToggle] = useState<{
+    requestID: string
+    scope: RaccoonAgentScope
+    name: string
+    enabled: boolean
+  }>()
+  const [toggleError, setToggleError] = useState("")
 
   const listItems = useMemo(
     () => rules.slice().sort((a, b) => a.name.localeCompare(b.name) || a.scope.localeCompare(b.scope)),
@@ -36,9 +49,40 @@ export function SettingsRules(props: {
 
   // If the rule being edited disappears (deleted/renamed by a refresh), close the editor.
   useEffect(() => {
-    if (!draft || !draft.originalName) return
+    if (!draft || !draft.originalName || savingRequestID) return
     if (!rules.some((rule) => rule.scope === draft.scope && rule.name === draft.originalName)) setDraft(undefined)
-  }, [rules, draft])
+  }, [rules, draft, savingRequestID])
+
+  useEffect(() => {
+    return vscode.onMessage((message) => {
+      if (message.type === "ruleSaveResult" && message.requestID === savingRequestID) {
+        setSavingRequestID(undefined)
+        if (!message.success) {
+          setSaveError(message.error ?? language.t("settings.rules.error.save"))
+          return
+        }
+        setSaveError("")
+        setDraft(undefined)
+        return
+      }
+      if (message.type === "ruleDeleteResult" && message.requestID === deletingRequestID) {
+        setDeletingRequestID(undefined)
+        if (!message.success) {
+          setDeleteError(message.error ?? language.t("settings.rules.error.delete"))
+          return
+        }
+        if (draft && pendingDelete && draft.originalName === pendingDelete.name && draft.scope === pendingDelete.scope) {
+          setDraft(undefined)
+        }
+        setPendingDelete(undefined)
+        setDeleteError("")
+        return
+      }
+      if (message.type !== "ruleToggleResult" || message.requestID !== pendingToggle?.requestID) return
+      setPendingToggle(undefined)
+      setToggleError(message.success ? "" : message.error ?? language.t("settings.rules.error.toggle"))
+    })
+  }, [deletingRequestID, draft, language, pendingDelete, pendingToggle, savingRequestID, vscode])
 
   const trimmedName = draft?.name.trim() ?? ""
   const invalidName = !!draft && !NAME_RE.test(trimmedName)
@@ -50,10 +94,13 @@ export function SettingsRules(props: {
   const canSave = !!draft && !invalidName && !duplicateName
 
   const editRule = (rule: RaccoonRule) => {
+    if (savingRequestID) return
     setEditorTab("edit")
     setDraft({ scope: rule.scope, originalName: rule.name, name: rule.name, content: rule.content })
+    setSaveError("")
   }
   const createRule = () => {
+    if (savingRequestID) return
     setEditorTab("edit")
     setDraft({
       scope: "project",
@@ -61,11 +108,28 @@ export function SettingsRules(props: {
       name: uniqueName("new-rule", rules.filter((rule) => rule.scope === "project").map((rule) => rule.name)),
       content: "",
     })
+    setSaveError("")
   }
   const save = () => {
-    if (!draft || !canSave) return
-    onSaveRule(draft.scope, draft.originalName, trimmedName, draft.content)
-    setDraft(undefined)
+    if (!draft || !canSave || savingRequestID || deletingRequestID || pendingToggle) return
+    const requestID = crypto.randomUUID()
+    setSavingRequestID(requestID)
+    setSaveError("")
+    onSaveRule(requestID, draft.scope, draft.originalName, trimmedName, draft.content)
+  }
+  const toggle = (rule: RaccoonRule, enabled: boolean) => {
+    if (pendingToggle || savingRequestID || deletingRequestID) return
+    const requestID = crypto.randomUUID()
+    setPendingToggle({ requestID, scope: rule.scope, name: rule.name, enabled })
+    setToggleError("")
+    onToggleRule(requestID, rule.scope, rule.name, enabled)
+  }
+  const confirmDelete = () => {
+    if (!pendingDelete || deletingRequestID || savingRequestID || pendingToggle) return
+    const requestID = crypto.randomUUID()
+    setDeletingRequestID(requestID)
+    setDeleteError("")
+    onDeleteRule(requestID, pendingDelete.scope, pendingDelete.name)
   }
 
   const scopeLabel = (scope: RaccoonAgentScope) =>
@@ -77,11 +141,12 @@ export function SettingsRules(props: {
         <h3>{language.t("settings.nav.rules")}</h3>
         <div className="settings-rules-intro settings-commands-header">
           <div className="settings-rules-hint">{language.t("settings.rules.subtitle")}</div>
-          <Button variant="small" onClick={createRule}>
+          <Button variant="small" disabled={!!savingRequestID} onClick={createRule}>
             <Plus size={14} weight="bold" />
             <span>{language.t("settings.rules.new")}</span>
           </Button>
         </div>
+        {toggleError ? <div className="settings-rules-error">{toggleError}</div> : null}
 
         <div className="settings-rules-shell settings-commands-shell">
           <div className="settings-rules-pane settings-commands-pane">
@@ -91,6 +156,7 @@ export function SettingsRules(props: {
               ) : (
                 listItems.map((rule) => {
                   const active = draft?.originalName === rule.name && draft.scope === rule.scope
+                  const toggling = pendingToggle?.scope === rule.scope && pendingToggle.name === rule.name
                   return (
                     <div
                       key={`${rule.scope}:${rule.name}`}
@@ -99,6 +165,7 @@ export function SettingsRules(props: {
                       <button
                         type="button"
                         className="settings-rules-node-main settings-commands-node-main"
+                        disabled={!!savingRequestID}
                         onClick={() => editRule(rule)}
                       >
                         <span className="settings-rules-card-name settings-commands-node-name">{rule.name}</span>
@@ -111,15 +178,17 @@ export function SettingsRules(props: {
                           type="checkbox"
                           role="switch"
                           className="settings-toggle settings-rules-node-toggle"
-                          checked={rule.enabled}
+                          checked={toggling ? pendingToggle.enabled : rule.enabled}
+                          disabled={!!pendingToggle}
                           aria-label={language.t("settings.rules.toggle")}
                           title={rule.enabled ? language.t("settings.rules.enabled") : language.t("settings.rules.disabled")}
-                          onChange={(event) => onToggleRule(rule.scope, rule.name, event.currentTarget.checked)}
+                          onChange={(event) => toggle(rule, event.currentTarget.checked)}
                         />
                         <Button
                           variant="icon"
                           className="settings-rules-danger settings-rules-node-delete settings-commands-node-delete"
                           title={language.t("settings.rules.delete")}
+                          disabled={!!savingRequestID || !!deletingRequestID || !!pendingToggle}
                           onClick={(event) => {
                             event.stopPropagation()
                             setPendingDelete(rule)
@@ -154,6 +223,7 @@ export function SettingsRules(props: {
                     <span>{language.t("settings.rules.scope.title")}</span>
                     <Select
                       value={draft.scope}
+                      disabled={!!savingRequestID}
                       options={[
                         { value: "project", label: language.t("settings.rules.scope.project") },
                         { value: "user", label: language.t("settings.rules.scope.user") },
@@ -177,6 +247,7 @@ export function SettingsRules(props: {
                   <input
                     className="settings-provider-input w-full"
                     value={draft.name}
+                    disabled={!!savingRequestID}
                     placeholder="my-rule"
                     onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })}
                   />
@@ -192,6 +263,7 @@ export function SettingsRules(props: {
                     type="button"
                     className={`settings-rules-tab ${editorTab === "edit" ? "active" : ""}`}
                     onClick={() => setEditorTab("edit")}
+                    disabled={!!savingRequestID}
                   >
                     {language.t("settings.rules.content")}
                   </button>
@@ -199,6 +271,7 @@ export function SettingsRules(props: {
                     type="button"
                     className={`settings-rules-tab ${editorTab === "preview" ? "active" : ""}`}
                     onClick={() => setEditorTab("preview")}
+                    disabled={!!savingRequestID}
                   >
                     {language.t("settings.rules.preview")}
                   </button>
@@ -209,6 +282,7 @@ export function SettingsRules(props: {
                     <textarea
                       className="settings-rules-textarea"
                       value={draft.content}
+                      disabled={!!savingRequestID}
                       placeholder={language.t("settings.rules.content.placeholder")}
                       onChange={(event) => setDraft({ ...draft, content: event.currentTarget.value })}
                     />
@@ -224,11 +298,17 @@ export function SettingsRules(props: {
                 </div>
               </div>
               <div className="settings-rules-editor-footer">
-                <Button variant="small" onClick={() => setDraft(undefined)}>
+                {saveError ? <span className="settings-rules-error">{saveError}</span> : null}
+                <Button variant="small" disabled={!!savingRequestID} onClick={() => setDraft(undefined)}>
                   {language.t("common.cancel")}
                 </Button>
-                <Button variant="small" className="settings-rules-save" disabled={!canSave} onClick={save}>
-                  {language.t("settings.actions.save")}
+                <Button
+                  variant="small"
+                  className="settings-rules-save"
+                  disabled={!canSave || !!savingRequestID || !!deletingRequestID || !!pendingToggle}
+                  onClick={save}
+                >
+                  {language.t(savingRequestID ? "settings.rules.saving" : "settings.actions.save")}
                 </Button>
               </div>
             </>
@@ -244,22 +324,29 @@ export function SettingsRules(props: {
           titleId="rule-delete"
           title={language.t("settings.rules.delete")}
           className="settings-rules-confirm-dialog"
-          onClose={() => setPendingDelete(undefined)}
+          onClose={() => {
+            if (deletingRequestID) return
+            setPendingDelete(undefined)
+            setDeleteError("")
+          }}
           footer={
-            <Button
-              variant="small"
-              className="settings-rules-danger"
-              onClick={() => {
-                onDeleteRule(pendingDelete.scope, pendingDelete.name)
-                if (draft?.originalName === pendingDelete.name && draft.scope === pendingDelete.scope) setDraft(undefined)
-                setPendingDelete(undefined)
-              }}
-            >
-              {language.t("settings.rules.delete")}
-            </Button>
+            <>
+              <Button variant="small" disabled={!!deletingRequestID} onClick={() => setPendingDelete(undefined)}>
+                {language.t("common.cancel")}
+              </Button>
+              <Button
+                variant="small"
+                className="settings-rules-danger"
+                disabled={!!deletingRequestID}
+                onClick={confirmDelete}
+              >
+                {language.t(deletingRequestID ? "settings.rules.deleting" : "settings.rules.delete")}
+              </Button>
+            </>
           }
         >
           <div>{language.t("settings.rules.deleteConfirm", { name: pendingDelete.name })}</div>
+          {deleteError ? <div className="settings-rules-error">{deleteError}</div> : null}
         </SettingsDialog>
       ) : null}
     </>

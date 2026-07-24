@@ -1,7 +1,11 @@
 import * as fs from "node:fs/promises"
 import * as nodePath from "node:path"
 import { applyEdits, modify, parse as parseJsonc, type ParseError } from "jsonc-parser/lib/esm/main.js"
-import type { Agent as OpencodeAgent, AgentConfig as OpencodeAgentConfig, OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import type {
+  Agent as OpencodeAgent,
+  AgentConfig as OpencodeAgentConfig,
+  OpencodeClient,
+} from "@opencode-ai/sdk/v2/client"
 import type {
   ChatMode,
   ExtensionToWebview,
@@ -124,7 +128,15 @@ export class RaccoonProviderConfig {
     const saved = await this.modelState.load(active, { selected: this.selectedModel, model: this.modeModels })
     this.selectedModel = saved.selected
     this.modeModels = saved.model
-    const [configResponse, providerResponse, authResponse, commandResponse, agentResponse, rawConfigResponse, rawGlobalConfigResponse] = await Promise.all([
+    const [
+      configResponse,
+      providerResponse,
+      authResponse,
+      commandResponse,
+      agentResponse,
+      rawConfigResponse,
+      rawGlobalConfigResponse,
+    ] = await Promise.all([
       active.config.providers({ directory: this.deps.directory() }, { throwOnError: true }),
       active.provider.list({ directory: this.deps.directory() }, { throwOnError: true }),
       active.provider.auth({ directory: this.deps.directory() }, { throwOnError: true }),
@@ -138,7 +150,9 @@ export class RaccoonProviderConfig {
     // 暂时隐藏「免费模型」：opencode provider 提供的免费模型不再进入模型列表，
     // 因此对话/设置的模型选择器和默认模型解析都不会再出现它们。恢复时删除此过滤即可。
     const visibleProviders = providerResponse.data.all.filter((provider) => provider.id !== "opencode")
-    const models = visibleProviders.flatMap((provider) => mapProviderModels(provider, connected.has(provider.id), this.disabledModels))
+    const models = visibleProviders.flatMap((provider) =>
+      mapProviderModels(provider, connected.has(provider.id), this.disabledModels),
+    )
     const providers = mapProviders(visibleProviders, connected, models)
     const customProviders = visibleProviders
       .filter((provider) => provider.source === "config" && provider.models && Object.keys(provider.models).length > 0)
@@ -154,12 +168,14 @@ export class RaccoonProviderConfig {
           supportsImage: model.capabilities.input.image,
         })),
       }))
-    const commands = commandResponse.data.map((command): RaccoonCommand => ({
-      name: command.name,
-      description: command.description,
-      source: command.source,
-      hints: command.hints,
-    }))
+    const commands = commandResponse.data.map(
+      (command): RaccoonCommand => ({
+        name: command.name,
+        description: command.description,
+        source: command.source,
+        hints: command.hints,
+      }),
+    )
     const projectAgentNames = await collectProjectAgentNames(this.deps.directory())
     const agentOverrides = collectAgentOverrides(rawGlobalConfigResponse?.data?.agent, rawConfigResponse.data?.agent)
     const agentScopes = collectAgentScopes(rawGlobalConfigResponse?.data?.agent, projectAgentNames)
@@ -182,12 +198,14 @@ export class RaccoonProviderConfig {
       commands,
       slashCommands: [
         ...uiSlashCommands(),
-        ...commands.map((command): RaccoonSlashCommand => ({
-          name: command.name,
-          description: command.description,
-          source: command.source ?? "command",
-          mode: "prompt",
-        })),
+        ...commands.map(
+          (command): RaccoonSlashCommand => ({
+            name: command.name,
+            description: command.description,
+            source: command.source ?? "command",
+            mode: "prompt",
+          }),
+        ),
       ],
       providerAuthMethods: this.providerAuthMethods,
       customProviders,
@@ -233,7 +251,9 @@ export class RaccoonProviderConfig {
         this.disabledModels.add(key)
       })
     await this.deps.storage?.update("raccoon.disabledModels", [...this.disabledModels])
-    const models = this.deps.getState().models.map((model) => (model.providerID === providerID ? { ...model, enabled } : model))
+    const models = this.deps
+      .getState()
+      .models.map((model) => (model.providerID === providerID ? { ...model, enabled } : model))
     this.deps.setState({
       ...this.deps.getState(),
       models,
@@ -270,12 +290,14 @@ export class RaccoonProviderConfig {
   }
 
   async configureAgent(message: Extract<WebviewToExtension, { type: "configureAgent" }>) {
-    const sourceName = requireAgentName(message.name)
-    const targetName = requireAgentName(message.agent.name ?? message.name)
-    if (sourceName !== targetName) await this.writeAgentConfig(message.scope, sourceName, undefined)
+    const targetName = requireAgentName(message.agent.name ?? message.original?.name ?? "")
     await this.writeAgentConfig(message.scope, targetName, agentConfigValue(message.agent))
+    if (message.original && (message.original.name !== targetName || message.original.scope !== message.scope)) {
+      await this.writeAgentConfig(message.original.scope, requireAgentName(message.original.name), undefined)
+    }
     await this.reloadInstanceConfig()
     await this.deps.refresh()
+    return { name: targetName, scope: message.scope }
   }
 
   async deleteAgent(name: string, scope: RaccoonAgentScope) {
@@ -312,9 +334,7 @@ export class RaccoonProviderConfig {
     const file = await pickConfigFile(this.deps.directory(), PROJECT_CONFIG_FILES)
     const wrote = await writeAgentToFile(file, name, value)
     const deletedMarkdown =
-      value === undefined
-        ? await deleteProjectAgentMarkdownFiles(this.deps.directory(), name)
-        : false
+      value === undefined ? await deleteProjectAgentMarkdownFiles(this.deps.directory(), name) : false
     return wrote || deletedMarkdown
   }
 
@@ -415,7 +435,9 @@ export class RaccoonProviderConfig {
         {
           directory: this.deps.directory(),
           config: {
-            disabled_providers: (configResponse.data.disabled_providers ?? []).filter((id) => id !== message.providerID),
+            disabled_providers: (configResponse.data.disabled_providers ?? []).filter(
+              (id) => id !== message.providerID,
+            ),
           },
         },
         { throwOnError: true },
@@ -616,7 +638,12 @@ export class RaccoonProviderConfig {
           {
             name: model.name,
             ...(model.supportsImage
-              ? { modalities: { input: ["text", "image"] as Array<"text" | "image">, output: ["text"] as Array<"text"> } }
+              ? {
+                  modalities: {
+                    input: ["text", "image"] as Array<"text" | "image">,
+                    output: ["text"] as Array<"text">,
+                  },
+                }
               : {}),
           },
         ]),
@@ -690,13 +717,13 @@ export class RaccoonProviderConfig {
     }
     await this.modelState.write(await this.deps.client(), { selected: this.selectedModel, model: this.modeModels })
     await this.deps.storage?.update("raccoon.modeModels", undefined)
-      this.deps.setState({
-        ...this.deps.getState(),
-        modeModels: this.modeModels,
-        selectedModel: model && mode === this.deps.getState().mode ? model : this.deps.getState().selectedModel,
-        pluginLanguageMode: this.pluginLanguageMode,
-        pluginLanguage: this.resolvePluginLanguage(),
-      })
+    this.deps.setState({
+      ...this.deps.getState(),
+      modeModels: this.modeModels,
+      selectedModel: model && mode === this.deps.getState().mode ? model : this.deps.getState().selectedModel,
+      pluginLanguageMode: this.pluginLanguageMode,
+      pluginLanguage: this.resolvePluginLanguage(),
+    })
     this.deps.post()
   }
 
@@ -978,7 +1005,8 @@ export type RaccoonAgentConfigUpdate = {
 
 function requireAgentName(value: string) {
   const name = value.trim()
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name)) throw new Error("Agent name must use letters, numbers, dashes, or underscores")
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(name))
+    throw new Error("Agent name must use letters, numbers, dashes, or underscores")
   return name
 }
 

@@ -9,6 +9,7 @@ import type {
   RaccoonModel,
 } from "../../protocol"
 import { useLanguage } from "../../context/language"
+import { useVSCode } from "../../context/vscode"
 import { SettingsDialog } from "./settings-dialog"
 import { Button } from "../ui"
 import { ModelPicker } from "../ui/model-picker"
@@ -59,13 +60,18 @@ export function SettingsCommands(props: {
   availableCommands: RaccoonCommand[]
   agents: RaccoonAgent[]
   connectedModels: RaccoonModel[]
-  onSaveCommand: (scope: RaccoonAgentScope, originalName: string, command: RaccoonManagedCommandInput) => void
-  onDeleteCommand: (scope: RaccoonAgentScope, name: string) => void
+  onSaveCommand: (requestID: string, scope: RaccoonAgentScope, originalName: string, command: RaccoonManagedCommandInput) => void
+  onDeleteCommand: (requestID: string, scope: RaccoonAgentScope, name: string) => void
 }) {
   const language = useLanguage()
+  const vscode = useVSCode()
   const [draft, setDraft] = useState<CommandDraft | undefined>()
   const [selectedBuiltin, setSelectedBuiltin] = useState<RaccoonCommand | undefined>()
   const [pendingDelete, setPendingDelete] = useState<RaccoonManagedCommand | undefined>()
+  const [savingRequestID, setSavingRequestID] = useState<string>()
+  const [saveError, setSaveError] = useState("")
+  const [deletingRequestID, setDeletingRequestID] = useState<string>()
+  const [deleteError, setDeleteError] = useState("")
 
   const commands = useMemo(
     () => props.commandConfigs.slice().sort((a, b) => a.name.localeCompare(b.name) || a.scope.localeCompare(b.scope)),
@@ -95,28 +101,68 @@ export function SettingsCommands(props: {
   const canSave = !!draft && !invalidName && !duplicateName && draft.template.trim().length > 0
 
   useEffect(() => {
-    if (!draft?.originalName) return
+    if (!draft?.originalName || savingRequestID) return
     if (!commands.some((command) => command.scope === draft.scope && command.name === draft.originalName)) {
       setDraft(undefined)
     }
-  }, [draft, commands])
+  }, [draft, commands, savingRequestID])
+
+  useEffect(() => {
+    return vscode.onMessage((message) => {
+      if (message.type === "commandSaveResult" && message.requestID === savingRequestID) {
+        setSavingRequestID(undefined)
+        if (!message.success) {
+          setSaveError(message.error ?? language.t("settings.commands.error.save"))
+          return
+        }
+        setSaveError("")
+        setDraft(undefined)
+        return
+      }
+      if (message.type !== "commandDeleteResult" || message.requestID !== deletingRequestID) return
+      setDeletingRequestID(undefined)
+      if (!message.success) {
+        setDeleteError(message.error ?? language.t("settings.commands.error.delete"))
+        return
+      }
+      if (draft && pendingDelete && draft.originalName === pendingDelete.name && draft.scope === pendingDelete.scope) {
+        setDraft(undefined)
+      }
+      setPendingDelete(undefined)
+      setDeleteError("")
+    })
+  }, [deletingRequestID, draft, language, pendingDelete, savingRequestID, vscode])
 
   const createCommand = () => {
+    if (savingRequestID) return
     setSelectedBuiltin(undefined)
     setDraft(commandDraft(undefined, "project", uniqueName("new-command", commands.filter((command) => command.scope === "project").map((command) => command.name))))
+    setSaveError("")
   }
   const editCommand = (command: RaccoonManagedCommand) => {
+    if (savingRequestID) return
     setSelectedBuiltin(undefined)
     setDraft(commandDraft(command, command.scope, command.name))
+    setSaveError("")
   }
   const showBuiltin = (command: RaccoonCommand) => {
+    if (savingRequestID) return
     setDraft(undefined)
     setSelectedBuiltin(command)
   }
   const save = () => {
-    if (!draft || !canSave) return
-    props.onSaveCommand(draft.scope, draft.originalName, commandInput(draft))
-    setDraft(undefined)
+    if (!draft || !canSave || savingRequestID || deletingRequestID) return
+    const requestID = crypto.randomUUID()
+    setSavingRequestID(requestID)
+    setSaveError("")
+    props.onSaveCommand(requestID, draft.scope, draft.originalName, commandInput(draft))
+  }
+  const confirmDelete = () => {
+    if (!pendingDelete || deletingRequestID || savingRequestID) return
+    const requestID = crypto.randomUUID()
+    setDeletingRequestID(requestID)
+    setDeleteError("")
+    props.onDeleteCommand(requestID, pendingDelete.scope, pendingDelete.name)
   }
   const scopeLabel = (scope: RaccoonAgentScope) =>
     scope === "project" ? language.t("settings.commands.scope.project") : language.t("settings.commands.scope.user")
@@ -127,7 +173,7 @@ export function SettingsCommands(props: {
         <h3>{language.t("settings.commands.title")}</h3>
         <div className="settings-rules-intro settings-commands-header">
           <div className="settings-rules-hint">{language.t("settings.commands.subtitle")}</div>
-          <Button variant="small" onClick={createCommand}>
+          <Button variant="small" disabled={!!savingRequestID} onClick={createCommand}>
             <Plus size={14} weight="bold" />
             <span>{language.t("settings.commands.new")}</span>
           </Button>
@@ -149,6 +195,7 @@ export function SettingsCommands(props: {
                       type="button"
                       key={`${item.type}:${item.command.name}${item.type === "config" ? `:${item.command.scope}` : ""}`}
                       className={`settings-rules-node settings-commands-node ${active ? "active" : ""}`}
+                      disabled={!!savingRequestID}
                       onClick={() => (item.type === "config" ? editCommand(item.command) : showBuiltin(item.command))}
                     >
                       <span className="settings-rules-node-main settings-commands-node-main">
@@ -234,6 +281,7 @@ export function SettingsCommands(props: {
                       <span>{language.t("settings.commands.scope.title")}</span>
                       <Select
                         value={draft.scope}
+                        disabled={!!savingRequestID}
                         options={[
                           { value: "project", label: language.t("settings.commands.scope.project") },
                           { value: "user", label: language.t("settings.commands.scope.user") },
@@ -257,6 +305,7 @@ export function SettingsCommands(props: {
                     <input
                       className="settings-provider-input w-full"
                       value={draft.name}
+                      disabled={!!savingRequestID}
                       placeholder={language.t("settings.commands.name.placeholder")}
                       onChange={(event) => setDraft({ ...draft, name: event.currentTarget.value })}
                     />
@@ -271,6 +320,7 @@ export function SettingsCommands(props: {
                     <textarea
                       className="settings-provider-input settings-commands-description w-full"
                       value={draft.description}
+                      disabled={!!savingRequestID}
                       placeholder={language.t("settings.commands.description.placeholder")}
                       onChange={(event) => setDraft({ ...draft, description: event.currentTarget.value })}
                     />
@@ -279,6 +329,7 @@ export function SettingsCommands(props: {
                     <span>{language.t("settings.commands.agent.title")}</span>
                     <Select
                       value={draft.agent}
+                      disabled={!!savingRequestID}
                       placeholder={language.t("settings.commands.agent.default")}
                       options={agents.map((agent) => ({ value: agent.name, label: agent.name }))}
                       onChange={(agent) => setDraft({ ...draft, agent })}
@@ -288,6 +339,7 @@ export function SettingsCommands(props: {
                     <span>{language.t("settings.commands.model.title")}</span>
                     <ModelPicker
                       models={props.connectedModels}
+                      disabled={!!savingRequestID}
                       value={draft.model}
                       ariaLabel={language.t("settings.commands.model.title")}
                       placeholder={language.t("settings.models.noModel")}
@@ -303,6 +355,7 @@ export function SettingsCommands(props: {
                       role="switch"
                       className="settings-toggle"
                       checked={draft.subtask}
+                      disabled={!!savingRequestID}
                       onChange={(event) => setDraft({ ...draft, subtask: event.currentTarget.checked })}
                     />
                   </label>
@@ -311,6 +364,7 @@ export function SettingsCommands(props: {
                     <textarea
                       className="settings-rules-textarea settings-commands-textarea"
                       value={draft.template}
+                      disabled={!!savingRequestID}
                       placeholder={language.t("settings.commands.template.placeholder")}
                       onChange={(event) => setDraft({ ...draft, template: event.currentTarget.value })}
                     />
@@ -320,11 +374,17 @@ export function SettingsCommands(props: {
                   </label>
                 </div>
                 <div className="settings-rules-editor-footer settings-commands-editor-footer">
-                  <Button variant="small" onClick={() => setDraft(undefined)}>
+                  {saveError ? <span className="settings-rules-error">{saveError}</span> : null}
+                  <Button variant="small" disabled={!!savingRequestID} onClick={() => setDraft(undefined)}>
                     {language.t("common.cancel")}
                   </Button>
-                  <Button variant="small" className="settings-rules-save" disabled={!canSave} onClick={save}>
-                    {language.t("settings.actions.save")}
+                  <Button
+                    variant="small"
+                    className="settings-rules-save"
+                    disabled={!canSave || !!savingRequestID || !!deletingRequestID}
+                    onClick={save}
+                  >
+                    {language.t(savingRequestID ? "settings.commands.saving" : "settings.actions.save")}
                   </Button>
                 </div>
               </>
@@ -340,22 +400,29 @@ export function SettingsCommands(props: {
           titleId="command-delete"
           title={language.t("settings.commands.delete")}
           className="settings-rules-confirm-dialog"
-          onClose={() => setPendingDelete(undefined)}
+          onClose={() => {
+            if (deletingRequestID) return
+            setPendingDelete(undefined)
+            setDeleteError("")
+          }}
           footer={
-            <Button
-              variant="small"
-              className="settings-rules-danger"
-              onClick={() => {
-                props.onDeleteCommand(pendingDelete.scope, pendingDelete.name)
-                if (draft?.originalName === pendingDelete.name && draft.scope === pendingDelete.scope) setDraft(undefined)
-                setPendingDelete(undefined)
-              }}
-            >
-              {language.t("settings.commands.delete")}
-            </Button>
+            <>
+              <Button variant="small" disabled={!!deletingRequestID} onClick={() => setPendingDelete(undefined)}>
+                {language.t("common.cancel")}
+              </Button>
+              <Button
+                variant="small"
+                className="settings-rules-danger"
+                disabled={!!deletingRequestID}
+                onClick={confirmDelete}
+              >
+                {language.t(deletingRequestID ? "settings.commands.deleting" : "settings.commands.delete")}
+              </Button>
+            </>
           }
         >
           <div>{language.t("settings.commands.deleteConfirm", { name: pendingDelete.name })}</div>
+          {deleteError ? <div className="settings-rules-error">{deleteError}</div> : null}
         </SettingsDialog>
       ) : null}
     </>

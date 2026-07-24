@@ -17,6 +17,7 @@ import type {
   RaccoonSession,
   RaccoonSlashCommand,
   RaccoonState,
+  WebviewToExtension,
 } from "../protocol"
 import { useVSCode } from "./vscode"
 import { applyPartUpdates } from "./session-parts"
@@ -90,6 +91,10 @@ type SessionActionsContextValue = {
   setConversationModel: (sessionID: string, model: { providerID: string; modelID: string }) => void
   setConversationVariant: (sessionID: string, variant?: string) => void
   setModeModel: (mode: ChatMode, model?: { providerID: string; modelID: string }) => void
+  saveSettings: (settings: Extract<WebviewToExtension, { type: "saveSettings" }>["settings"]) => Promise<{
+    success: boolean
+    error?: string
+  }>
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
   setProviderEnabled: (providerID: string, enabled: boolean) => void
   loginRaccoon: (serverUrl?: string) => void
@@ -97,16 +102,17 @@ type SessionActionsContextValue = {
   logoutRaccoon: () => void
   configureProvider: (providerID: string, apiKey: string) => void
   configureAgent: (
-    name: string,
+    requestID: string,
+    original: { name: string; scope: RaccoonAgentScope } | undefined,
     agent: RaccoonAgentConfigInput,
     scope: RaccoonAgentScope,
   ) => void
-  deleteAgent: (name: string, scope: RaccoonAgentScope) => void
-  saveRule: (scope: RaccoonAgentScope, originalName: string, name: string, content: string) => void
-  toggleRule: (scope: RaccoonAgentScope, name: string, enabled: boolean) => void
-  deleteRule: (scope: RaccoonAgentScope, name: string) => void
-  saveCommand: (scope: RaccoonAgentScope, originalName: string, command: RaccoonManagedCommandInput) => void
-  deleteCommand: (scope: RaccoonAgentScope, name: string) => void
+  deleteAgent: (requestID: string, name: string, scope: RaccoonAgentScope) => void
+  saveRule: (requestID: string, scope: RaccoonAgentScope, originalName: string, name: string, content: string) => void
+  toggleRule: (requestID: string, scope: RaccoonAgentScope, name: string, enabled: boolean) => void
+  deleteRule: (requestID: string, scope: RaccoonAgentScope, name: string) => void
+  saveCommand: (requestID: string, scope: RaccoonAgentScope, originalName: string, command: RaccoonManagedCommandInput) => void
+  deleteCommand: (requestID: string, scope: RaccoonAgentScope, name: string) => void
   connectProvider: (input: {
     providerID: string
     methodIndex?: number
@@ -190,7 +196,9 @@ function normalizeState(state: RaccoonState): RaccoonState {
 
 export function SessionProvider(props: { children: ReactNode }) {
   const vscode = useVSCode()
-  const [state, setState] = useState<RaccoonState>(() => normalizeState(vscode.getState<RaccoonState>() ?? initialState))
+  const [state, setState] = useState<RaccoonState>(() =>
+    normalizeState(vscode.getState<RaccoonState>() ?? initialState),
+  )
   const [questions, setQuestions] = useState<RaccoonQuestionRequest[]>([])
   const [questionErrors, setQuestionErrors] = useState<Set<string>>(() => new Set())
   const [permissions, setPermissions] = useState<RaccoonPermissionRequest[]>([])
@@ -208,6 +216,9 @@ export function SessionProvider(props: { children: ReactNode }) {
   const permissionsRef = useRef(permissions)
   const autoApproveRef = useRef(autoApproveSessions)
   const settingsInlineRef = useRef(settingsInline)
+  const settingsSaveRequests = useRef(
+    new Map<string, (result: { success: boolean; error?: string }) => void>(),
+  )
 
   useEffect(() => {
     stateRef.current = state
@@ -260,7 +271,10 @@ export function SessionProvider(props: { children: ReactNode }) {
             next.busy = true
           }
           if (current.subAgentView) {
-            next.subAgentView = { ...current.subAgentView, messages: applyPartUpdates(current.subAgentView.messages, updates) }
+            next.subAgentView = {
+              ...current.subAgentView,
+              messages: applyPartUpdates(current.subAgentView.messages, updates),
+            }
           }
           vscode.setState(next)
           return next
@@ -272,7 +286,9 @@ export function SessionProvider(props: { children: ReactNode }) {
           const sessions = current.sessions.map((item) => (item.id === message.session.id ? message.session : item))
           const next = {
             ...current,
-            sessions: sessions.some((item) => item.id === message.session.id) ? sessions : [message.session, ...sessions],
+            sessions: sessions.some((item) => item.id === message.session.id)
+              ? sessions
+              : [message.session, ...sessions],
             activeSession: current.activeSessionID === message.session.id ? message.session : current.activeSession,
             loading: false,
             busy: false,
@@ -373,7 +389,9 @@ export function SessionProvider(props: { children: ReactNode }) {
                   ...(message.scope
                     ? {
                         [message.scope]: Object.fromEntries(
-                          Object.entries(current.skillMarketplace.installed[message.scope]).filter(([id]) => id !== message.id),
+                          Object.entries(current.skillMarketplace.installed[message.scope]).filter(
+                            ([id]) => id !== message.id,
+                          ),
                         ),
                       }
                     : {}),
@@ -398,6 +416,11 @@ export function SessionProvider(props: { children: ReactNode }) {
           next.delete(message.question.id)
           return next
         })
+        return
+      }
+      if (message.type === "settingsSaveResult") {
+        settingsSaveRequests.current.get(message.requestID)?.({ success: message.success, error: message.error })
+        settingsSaveRequests.current.delete(message.requestID)
         return
       }
       if (message.type === "questionResolved") {
@@ -491,7 +514,11 @@ export function SessionProvider(props: { children: ReactNode }) {
           // Preserve busy state across full refreshes — showSubAgent from
           // refreshSubAgent doesn't carry busy, but the sub-agent may still
           // be working (e.g., a message.removed triggered the refresh).
-          const next = { ...current, view: "subagent" as const, subAgentView: { ...message.view, busy: current.subAgentView?.busy } }
+          const next = {
+            ...current,
+            view: "subagent" as const,
+            subAgentView: { ...message.view, busy: current.subAgentView?.busy },
+          }
           vscode.setState(next)
           return next
         })
@@ -541,12 +568,18 @@ export function SessionProvider(props: { children: ReactNode }) {
         // the server default for the "raccoon" provider.
         if (message.error) return
         const current = stateRef.current
-        const raccoonModels = current.models.filter((model) => model.providerID === "raccoon" && model.enabled && model.connected)
+        const raccoonModels = current.models.filter(
+          (model) => model.providerID === "raccoon" && model.enabled && model.connected,
+        )
         if (raccoonModels.length === 0) return
         const defaultModelID = current.defaults?.["raccoon"]
         const preferred = raccoonModels.find((model) => model.modelID === defaultModelID) ?? raccoonModels[0]
         if (!preferred) return
-        if (current.defaultModel?.providerID === preferred.providerID && current.defaultModel?.modelID === preferred.modelID) return
+        if (
+          current.defaultModel?.providerID === preferred.providerID &&
+          current.defaultModel?.modelID === preferred.modelID
+        )
+          return
         const model = { providerID: preferred.providerID, modelID: preferred.modelID }
         setState((state) => {
           const next = { ...state, selectedModel: model, defaultModel: model }
@@ -575,13 +608,13 @@ export function SessionProvider(props: { children: ReactNode }) {
     )
     const conversationSelection = state.activeSessionID ? sessionModels[state.activeSessionID] : undefined
     const conversationModel = conversationSelection
-      ? models.find(
+      ? (models.find(
           (model) =>
             model.providerID === conversationSelection.providerID && model.modelID === conversationSelection.modelID,
-        ) ?? selectedModel
+        ) ?? selectedModel)
       : selectedModel
     const conversationVariant = state.activeSessionID
-      ? sessionVariants[state.activeSessionID] ?? (conversationModel?.variants?.includes("none") ? "none" : undefined)
+      ? (sessionVariants[state.activeSessionID] ?? (conversationModel?.variants?.includes("none") ? "none" : undefined))
       : undefined
     const activeSession = state.activeSession ?? sessions.find((session) => session.id === state.activeSessionID)
     const latestUserMessage = [...messages].reverse().find((message) => message.role === "user")
@@ -621,7 +654,17 @@ export function SessionProvider(props: { children: ReactNode }) {
       autoApprovePermissions: !!state.activeSessionID && autoApproveSessions.has(state.activeSessionID),
       settingsInline,
     }
-  }, [questionErrors, questions, permissions, permissionErrors, autoApproveSessions, sessionModels, sessionVariants, state, settingsInline])
+  }, [
+    questionErrors,
+    questions,
+    permissions,
+    permissionErrors,
+    autoApproveSessions,
+    sessionModels,
+    sessionVariants,
+    state,
+    settingsInline,
+  ])
 
   const sessionConfig = useMemo<SessionConfigContextValue>(() => {
     return {
@@ -707,7 +750,11 @@ export function SessionProvider(props: { children: ReactNode }) {
       },
       runSlashCommand: (name) => vscode.postMessage({ type: "runSlashCommand", name }),
       setMode: (mode) => {
-        setState((current) => ({ ...current, mode, selectedModel: current.modeModels?.[mode] ?? current.defaultModel ?? current.selectedModel }))
+        setState((current) => ({
+          ...current,
+          mode,
+          selectedModel: current.modeModels?.[mode] ?? current.defaultModel ?? current.selectedModel,
+        }))
         vscode.postMessage({ type: "setMode", mode })
       },
       setPluginLanguage: (language) => {
@@ -747,6 +794,12 @@ export function SessionProvider(props: { children: ReactNode }) {
         })
         vscode.postMessage({ type: "setModeModel", mode, model })
       },
+      saveSettings: (settings) =>
+        new Promise((resolve) => {
+          const requestID = crypto.randomUUID()
+          settingsSaveRequests.current.set(requestID, resolve)
+          vscode.postMessage({ type: "saveSettings", requestID, settings })
+        }),
       setModelEnabled: (model, enabled) => {
         setState((current) => ({
           ...current,
@@ -761,7 +814,9 @@ export function SessionProvider(props: { children: ReactNode }) {
           ...current,
           models: current.models.map((model) => (model.providerID === providerID ? { ...model, enabled } : model)),
           providers: current.providers.map((provider) =>
-            provider.id === providerID ? { ...provider, enabledModelCount: enabled ? provider.modelCount : 0 } : provider,
+            provider.id === providerID
+              ? { ...provider, enabledModelCount: enabled ? provider.modelCount : 0 }
+              : provider,
           ),
         }))
         vscode.postMessage({ type: "setProviderEnabled", providerID, enabled })
@@ -770,15 +825,18 @@ export function SessionProvider(props: { children: ReactNode }) {
       cancelRaccoonLogin: () => vscode.postMessage({ type: "cancelRaccoonLogin" }),
       logoutRaccoon: () => vscode.postMessage({ type: "logoutRaccoon" }),
       configureProvider: (providerID, apiKey) => vscode.postMessage({ type: "configureProvider", providerID, apiKey }),
-      configureAgent: (name, agent, scope) => vscode.postMessage({ type: "configureAgent", name, agent, scope }),
-      deleteAgent: (name, scope) => vscode.postMessage({ type: "deleteAgent", name, scope }),
-      saveRule: (scope, originalName, name, content) =>
-        vscode.postMessage({ type: "saveRule", scope, originalName, name, content }),
-      toggleRule: (scope, name, enabled) => vscode.postMessage({ type: "toggleRule", scope, name, enabled }),
-      deleteRule: (scope, name) => vscode.postMessage({ type: "deleteRule", scope, name }),
-      saveCommand: (scope, originalName, command) =>
-        vscode.postMessage({ type: "saveCommand", scope, originalName, command }),
-      deleteCommand: (scope, name) => vscode.postMessage({ type: "deleteCommand", scope, name }),
+      configureAgent: (requestID, original, agent, scope) =>
+        vscode.postMessage({ type: "configureAgent", requestID, original, agent, scope }),
+      deleteAgent: (requestID, name, scope) => vscode.postMessage({ type: "deleteAgent", requestID, name, scope }),
+      saveRule: (requestID, scope, originalName, name, content) =>
+        vscode.postMessage({ type: "saveRule", requestID, scope, originalName, name, content }),
+      toggleRule: (requestID, scope, name, enabled) =>
+        vscode.postMessage({ type: "toggleRule", requestID, scope, name, enabled }),
+      deleteRule: (requestID, scope, name) => vscode.postMessage({ type: "deleteRule", requestID, scope, name }),
+      saveCommand: (requestID, scope, originalName, command) =>
+        vscode.postMessage({ type: "saveCommand", requestID, scope, originalName, command }),
+      deleteCommand: (requestID, scope, name) =>
+        vscode.postMessage({ type: "deleteCommand", requestID, scope, name }),
       connectProvider: (input) => vscode.postMessage({ type: "connectProvider", ...input }),
       cancelProviderConnect: (providerID) => vscode.postMessage({ type: "cancelProviderConnect", providerID }),
       disconnectProvider: (providerID) => vscode.postMessage({ type: "disconnectProvider", providerID }),
@@ -807,7 +865,8 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({
           type: "questionReply",
           requestID,
-          sessionID: questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
+          sessionID:
+            questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
           answers,
         })
       },
@@ -821,7 +880,8 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({
           type: "questionReject",
           requestID,
-          sessionID: questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
+          sessionID:
+            questionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
         })
       },
       replyToPermission: (requestID, reply) => {
@@ -834,7 +894,8 @@ export function SessionProvider(props: { children: ReactNode }) {
         vscode.postMessage({
           type: "permissionReply",
           requestID,
-          sessionID: permissionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
+          sessionID:
+            permissionsRef.current.find((item) => item.id === requestID)?.sessionID ?? stateRef.current.activeSessionID,
           reply,
         })
       },
