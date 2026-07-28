@@ -1,4 +1,4 @@
-import type { FilePartInput, OpencodeClient } from "@opencode-ai/sdk/v2/client"
+import type { FilePartInput, OpencodeClient, Session } from "@opencode-ai/sdk/v2/client"
 import type {
   ChatMode,
   ExtensionToWebview,
@@ -11,7 +11,8 @@ import { uiSlashCommands } from "../config/commands.js"
 import { contextMentionAttachments } from "../editor/context-mentions.js"
 import { exportMarkdown } from "../message/export-markdown.js"
 import { ascendingID } from "../message/ids.js"
-import { mapMessage, mapSession, mapSubSession, responseText, sortMessages, sortSessions } from "../message/mapping.js"
+import { contextInspectorSnapshot } from "../message/context-inspector.js"
+import { mapMessage, mapSession, mapSessionV2, mapSubSession, responseText, sortMessages, sortSessions } from "../message/mapping.js"
 import type { ModelSelection } from "./model-state.js"
 import type { RaccoonProviderConfig } from "../config/provider-config.js"
 import type { RaccoonStreamScheduler } from "../stream/stream-scheduler.js"
@@ -58,6 +59,9 @@ export class RaccoonSessionController {
   // Monotonic token for loadMessages: any newer load invalidates in-flight
   // older ones so a slow/stale response can't overwrite fresher state.
   private loadGeneration = 0
+  private historyGeneration = 0
+  private olderMessagesGeneration = 0
+  private historyIndex?: RaccoonState["sessions"]
 
   constructor(private readonly deps: SessionControllerDeps) {}
 
@@ -70,7 +74,19 @@ export class RaccoonSessionController {
         },
         { throwOnError: true },
       )
-      this.deps.setState({ ...this.deps.getState(), mode, activeSessionID: session.data.id, messages: [] })
+      this.olderMessagesGeneration++
+      this.deps.setState({
+        ...this.deps.getState(),
+        mode,
+        activeSessionID: session.data.id,
+        messages: [],
+        messageHistorySessionID: session.data.id,
+        messageCursor: undefined,
+        messagesLoadingOlder: false,
+        messagesOlderError: false,
+        messagesComplete: false,
+        messagesLoadedOlder: false,
+      })
       this.pendingOptimisticMessages.clear()
       await this.refresh()
     })
@@ -82,7 +98,7 @@ export class RaccoonSessionController {
       const client = await this.deps.client()
       await this.deps.loadModels(client)
       const response = await client.session.list(
-        { directory: this.deps.directory(), limit: 50 },
+        { directory: this.deps.directory(), roots: true, limit: 50 },
         { throwOnError: true },
       )
       const sessions = sortSessions(response.data.map((session) => mapSession(session)))
@@ -105,7 +121,21 @@ export class RaccoonSessionController {
   async selectSession(sessionID: string) {
     await this.deps.ensureEventStream()
     this.pendingOptimisticMessages.clear()
-    this.deps.setState({ ...this.deps.getState(), activeSessionID: sessionID, loading: true, busy: true, error: undefined })
+    this.olderMessagesGeneration++
+    this.deps.setState({
+      ...this.deps.getState(),
+      activeSessionID: sessionID,
+      messages: [],
+      messageHistorySessionID: sessionID,
+      messageCursor: undefined,
+      messagesLoadingOlder: false,
+      messagesOlderError: false,
+      messagesComplete: false,
+      messagesLoadedOlder: false,
+      loading: true,
+      busy: true,
+      error: undefined,
+    })
     this.deps.post()
     await this.loadMessages(sessionID)
   }
@@ -117,13 +147,14 @@ export class RaccoonSessionController {
   }
 
   async deleteSession(sessionID: string) {
+    const wasActive = this.deps.getState().activeSessionID === sessionID
     await (await this.deps.client()).session.delete({ sessionID }, { throwOnError: true })
     this.deps.removeSession(sessionID)
     this.deps.post()
-    if (this.deps.getState().activeSessionID !== sessionID) return
+    if (!wasActive) return
     const next = this.deps.getState().sessions[0]?.id
     if (next) {
-      await this.loadMessages(next)
+      await this.selectSession(next)
       return
     }
     this.deps.setState({
@@ -131,6 +162,12 @@ export class RaccoonSessionController {
       activeSessionID: undefined,
       activeSession: undefined,
       messages: [],
+      messageHistorySessionID: undefined,
+      messageCursor: undefined,
+      messagesLoadingOlder: false,
+      messagesOlderError: false,
+      messagesComplete: true,
+      messagesLoadedOlder: false,
       loading: false,
       busy: false,
     })
@@ -237,12 +274,17 @@ export class RaccoonSessionController {
     const messages = response.data
       .flatMap((message) => mapMessage(message))
       .filter((message) => message.text.trim() || message.parts.length > 0)
+    const responseCursor = nextMessageCursor(response)
+    const state = this.deps.getState()
+    const sameHistory = state.activeSessionID === sessionID && state.messageHistorySessionID === sessionID
     const merged = sortMessages([
-      ...(this.deps.getState().activeSessionID === sessionID
-        ? this.deps
-            .getState()
-            .messages.filter((message) => this.pendingOptimisticMessages.has(message.id) && !messages.some((item) => item.id === message.id))
-        : []),
+      ...(sameHistory
+        ? state.messages.filter((message) => !messages.some((item) => item.id === message.id))
+        : state.activeSessionID === sessionID
+          ? state.messages.filter(
+              (message) => this.pendingOptimisticMessages.has(message.id) && !messages.some((item) => item.id === message.id),
+            )
+          : []),
       ...messages,
     ])
     messages.forEach((message) => this.pendingOptimisticMessages.delete(message.id))
@@ -260,12 +302,24 @@ export class RaccoonSessionController {
     const subSessions = await this.loadSubSessions(merged, status.data)
     // Re-check after loadSubSessions' await: a newer load may have started meanwhile.
     if (generation !== this.loadGeneration) return
+    const current = this.deps.getState()
+    const currentHistory = current.activeSessionID === sessionID && current.messageHistorySessionID === sessionID
+    const finalMessages = sortMessages([
+      ...(currentHistory ? current.messages.filter((message) => !merged.some((item) => item.id === message.id)) : []),
+      ...merged,
+    ])
     this.deps.setState({
-      ...this.deps.getState(),
+      ...current,
       activeSessionID: sessionID,
-      sessions: sortSessions(this.deps.getState().sessions.map((session) => (session.id === sessionID ? mapSession(info.data) : session))),
+      sessions: sortSessions(current.sessions.map((session) => (session.id === sessionID ? mapSession(info.data) : session))),
       activeSession: mapSession(info.data),
-      messages: merged,
+      messages: finalMessages,
+      messageHistorySessionID: sessionID,
+      messageCursor: currentHistory && current.messagesLoadedOlder ? current.messageCursor : responseCursor,
+      messagesLoadingOlder: currentHistory ? current.messagesLoadingOlder : false,
+      messagesOlderError: currentHistory ? current.messagesOlderError : false,
+      messagesComplete: currentHistory && current.messagesLoadedOlder ? current.messagesComplete : !responseCursor,
+      messagesLoadedOlder: currentHistory ? (current.messagesLoadedOlder ?? false) : false,
       subSessions,
       loading: sessionStatus !== "idle",
       busy: sessionStatus !== "idle",
@@ -273,6 +327,180 @@ export class RaccoonSessionController {
     })
     this.deps.post()
     await this.recoverPendingQuestions(sessionID)
+  }
+
+  async loadOlderMessages(sessionID: string) {
+    const state = this.deps.getState()
+    if (
+      state.activeSessionID !== sessionID ||
+      state.messageHistorySessionID !== sessionID ||
+      state.messagesLoadingOlder ||
+      state.messagesComplete ||
+      !state.messageCursor
+    )
+      return
+    const cursor = state.messageCursor
+    const generation = ++this.olderMessagesGeneration
+    this.deps.setState({ ...state, messagesLoadingOlder: true, messagesOlderError: false })
+    this.deps.post()
+    try {
+      const response = await (await this.deps.client()).session.messages(
+        {
+          sessionID,
+          directory: this.deps.directory(),
+          limit: 200,
+          before: cursor,
+        },
+        { throwOnError: true },
+      )
+      if (this.deps.getState().activeSessionID !== sessionID || generation !== this.olderMessagesGeneration) return
+      const older = response.data
+        .flatMap((message) => mapMessage(message))
+        .filter((message) => message.text.trim() || message.parts.length > 0)
+      const current = this.deps.getState()
+      const messages = sortMessages([
+        ...older.filter((message) => !current.messages.some((item) => item.id === message.id)),
+        ...current.messages,
+      ])
+      const nextCursor = nextMessageCursor(response)
+      this.deps.setState({
+        ...current,
+        messages,
+        messageCursor: nextCursor,
+        messagesLoadingOlder: false,
+        messagesOlderError: false,
+        messagesComplete: !nextCursor,
+        messagesLoadedOlder: true,
+      })
+      this.deps.post()
+    } catch (error) {
+      if (this.deps.getState().activeSessionID !== sessionID || generation !== this.olderMessagesGeneration) return
+      this.deps.setState({ ...this.deps.getState(), messagesLoadingOlder: false, messagesOlderError: true })
+      this.deps.report(error)
+      this.deps.post()
+    }
+  }
+
+  async requestContextInspector(
+    message: Extract<WebviewToExtension, { type: "requestContextInspector" }>,
+    source: RaccoonWebviewSource,
+  ) {
+    try {
+      const client = await this.deps.client()
+      const [session, messages] = await Promise.all([
+        client.session.get(
+          { sessionID: message.sessionID, directory: this.deps.directory() },
+          { throwOnError: true },
+        ),
+        client.session.messages(
+          { sessionID: message.sessionID, directory: this.deps.directory(), limit: 200 },
+          { throwOnError: true },
+        ),
+      ])
+      this.deps.webviewHost.post(source, {
+        type: "contextInspectorResult",
+        requestID: message.requestID,
+        sessionID: message.sessionID,
+        snapshot: contextInspectorSnapshot(session.data, messages.data, !!nextMessageCursor(messages)),
+      } satisfies ExtensionToWebview)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      this.deps.log(`context inspector failed (${message.sessionID}): ${detail}`)
+      this.deps.webviewHost.post(source, {
+        type: "contextInspectorResult",
+        requestID: message.requestID,
+        sessionID: message.sessionID,
+        error: detail,
+      } satisfies ExtensionToWebview)
+    }
+  }
+
+  async loadHistory(query = "", force = false) {
+    const normalized = query.trim()
+    const state = this.deps.getState()
+    if (!force && state.historyQuery === normalized && state.historySessions) return
+    const generation = ++this.historyGeneration
+    this.deps.setState({
+      ...state,
+      historyQuery: normalized,
+      historySessions: state.historyQuery === normalized ? state.historySessions : [],
+      historyLoading: true,
+      historyCursor: undefined,
+      historyComplete: false,
+    })
+    this.deps.post()
+    try {
+      if (force || !this.historyIndex) this.historyIndex = await this.loadHistoryIndex(generation)
+      if (generation !== this.historyGeneration) return
+      this.publishHistory(normalized, 50)
+    } catch (error) {
+      if (generation !== this.historyGeneration) return
+      this.deps.setState({ ...this.deps.getState(), historyLoading: false })
+      this.deps.report(error)
+      this.deps.post()
+    }
+  }
+
+  async loadMoreHistory() {
+    const state = this.deps.getState()
+    if (state.historyLoading || state.historyComplete || !state.historyCursor) return
+    this.publishHistory(state.historyQuery ?? "", Number(state.historyCursor) + 50)
+  }
+
+  upsertHistorySession(session: Session) {
+    if (!this.historyIndex) return
+    if (session.parentID || session.time.archived) {
+      this.removeHistorySession(session.id)
+      return
+    }
+    this.historyIndex = sortSessions([
+      mapSession(session),
+      ...this.historyIndex.filter((item) => item.id !== session.id),
+    ])
+  }
+
+  removeHistorySession(sessionID: string) {
+    if (!this.historyIndex) return
+    this.historyIndex = this.historyIndex.filter((session) => session.id !== sessionID)
+  }
+
+  private async loadHistoryIndex(generation: number) {
+    const sessions: RaccoonState["sessions"] = []
+    const client = await this.deps.client()
+    const limit = 5_000
+    let cursor: string | undefined
+    for (;;) {
+      const response = await client.v2.session.list(
+        {
+          directory: this.deps.directory(),
+          limit,
+          ...(cursor ? { cursor } : { order: "desc" as const }),
+        },
+        { throwOnError: true },
+      )
+      if (generation !== this.historyGeneration) return []
+      sessions.push(
+        ...response.data.data
+          .filter((session) => !session.parentID && !session.time.archived)
+          .map(mapSessionV2),
+      )
+      if (response.data.data.length < limit || !response.data.cursor.next) return sortSessions(sessions)
+      cursor = response.data.cursor.next
+    }
+  }
+
+  private publishHistory(query: string, limit: number) {
+    const needle = query.toLowerCase()
+    const matches = (this.historyIndex ?? []).filter((session) => !needle || session.title.toLowerCase().includes(needle))
+    const count = Math.min(limit, matches.length)
+    this.deps.setState({
+      ...this.deps.getState(),
+      historySessions: matches.slice(0, count),
+      historyCursor: count < matches.length ? String(count) : undefined,
+      historyLoading: false,
+      historyComplete: count >= matches.length,
+    })
+    this.deps.post()
   }
 
   async recoverPendingQuestions(sessionID = this.deps.getState().activeSessionID) {
@@ -538,8 +766,10 @@ export class RaccoonSessionController {
     }
   }
 
-  openHistory() {
+  async openHistory() {
+    const loading = this.loadHistory("", true)
     this.deps.webviewHost.post("chat", { type: "showHistory" } satisfies ExtensionToWebview)
+    await loading
   }
 
   async openSubAgent(sessionID: string, title: string | undefined) {
@@ -727,7 +957,7 @@ export class RaccoonSessionController {
 
   private async refreshSessionList() {
     const response = await (await this.deps.client()).session.list(
-      { directory: this.deps.directory(), limit: 50 },
+      { directory: this.deps.directory(), roots: true, limit: 50 },
       { throwOnError: true },
     )
     const sessions = sortSessions(response.data.map((session) => mapSession(session)))
@@ -738,4 +968,8 @@ export class RaccoonSessionController {
     })
     this.deps.post()
   }
+}
+
+function nextMessageCursor(response: { response?: Response }) {
+  return response.response?.headers.get("x-next-cursor") ?? undefined
 }

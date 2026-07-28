@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
-import type { RaccoonState } from "@opencode-ai/raccoon-webview"
+import type { ExtensionToWebview, RaccoonState } from "@opencode-ai/raccoon-webview"
 import { RaccoonSessionController } from "./session-controller"
 
 type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void }
@@ -20,9 +20,9 @@ function sessionInfo(id: string) {
   return { id, title: id, agent: "build", time: { updated: 1, created: 1 } }
 }
 
-function userMessage(sessionID: string, id: string, text: string) {
+function userMessage(sessionID: string, id: string, text: string, created = 1) {
   return {
-    info: { id, sessionID, role: "user", time: { created: 1 } },
+    info: { id, sessionID, role: "user", time: { created } },
     parts: [{ id: `${id}-p`, sessionID, messageID: id, type: "text", text }],
   }
 }
@@ -31,14 +31,14 @@ function userMessage(sessionID: string, id: string, text: string) {
 // so tests can force stale/fresh response ordering. get/status/question resolve
 // synchronously; only messages is deferred (Promise.all blocks on it).
 function makeController() {
-  const messagesQueue: { sessionID: string; deferred: Deferred<{ data: unknown[] }> }[] = []
+  const messagesQueue: { sessionID: string; before?: string; deferred: Deferred<{ data: unknown[]; response?: Response }> }[] = []
   const client = {
     session: {
       get: async ({ sessionID }: { sessionID: string }) => ({ data: sessionInfo(sessionID) }),
       status: async () => ({ data: {} as Record<string, { type: string }> }),
-      messages: ({ sessionID }: { sessionID: string }) => {
-        const deferred = defer<{ data: unknown[] }>()
-        messagesQueue.push({ sessionID, deferred })
+      messages: ({ sessionID, before }: { sessionID: string; before?: string }) => {
+        const deferred = defer<{ data: unknown[]; response?: Response }>()
+        messagesQueue.push({ sessionID, before, deferred })
         return deferred.promise
       },
     },
@@ -66,8 +66,11 @@ function makeController() {
   } as never)
 
   // Resolve the Nth session.messages call (0-indexed) with the given messages.
-  const resolveMessages = (index: number, messages: unknown[]) => {
-    messagesQueue[index].deferred.resolve({ data: messages })
+  const resolveMessages = (index: number, messages: unknown[], cursor?: string) => {
+    messagesQueue[index].deferred.resolve({
+      data: messages,
+      response: new Response(null, { headers: cursor ? { "x-next-cursor": cursor } : undefined }),
+    })
   }
   return { controller, resolveMessages, getState: () => state, messagesQueue }
 }
@@ -172,6 +175,183 @@ describe("RaccoonSessionController loadMessages generation", () => {
 
     resolveMessages(1, [userMessage("root", "msg-root-2", "still root")])
     await reply
+  })
+
+  test("loads older messages with the cursor and preserves them across refreshes", async () => {
+    const { controller, resolveMessages, getState, messagesQueue } = makeController()
+
+    const initial = controller.loadMessages("A")
+    await tick()
+    resolveMessages(0, [userMessage("A", "msg-new", "new", 2)], "older-page")
+    await initial
+    expect(getState().messageCursor).toBe("older-page")
+
+    const older = controller.loadOlderMessages("A")
+    await tick()
+    expect(messagesQueue[1]?.before).toBe("older-page")
+    resolveMessages(1, [userMessage("A", "msg-old", "old", 1)])
+    await older
+    expect(getState().messages.map((message) => message.id)).toEqual(["msg-old", "msg-new"])
+    expect(getState().messagesComplete).toBe(true)
+
+    const refresh = controller.loadMessages("A")
+    await tick()
+    resolveMessages(2, [userMessage("A", "msg-new", "newer", 2)])
+    await refresh
+    expect(getState().messages.map((message) => message.id)).toEqual(["msg-old", "msg-new"])
+    expect(getState().messages.find((message) => message.id === "msg-new")?.text).toBe("newer")
+  })
+
+  test("finishes an older page when the latest page refreshes concurrently", async () => {
+    const { controller, resolveMessages, getState } = makeController()
+
+    const initial = controller.loadMessages("A")
+    await tick()
+    resolveMessages(0, [userMessage("A", "msg-new", "new", 2)], "older-page")
+    await initial
+
+    const older = controller.loadOlderMessages("A")
+    await tick()
+    const refresh = controller.loadMessages("A")
+    await tick()
+    resolveMessages(2, [userMessage("A", "msg-newer", "newer", 3)], "refreshed-page")
+    await refresh
+    expect(getState().messagesLoadingOlder).toBe(true)
+
+    resolveMessages(1, [userMessage("A", "msg-old", "old", 1)])
+    await older
+    expect(getState().messagesLoadingOlder).toBe(false)
+    expect(getState().messages.map((message) => message.id)).toEqual(["msg-old", "msg-new", "msg-newer"])
+  })
+})
+
+describe("RaccoonSessionController context inspector", () => {
+  test("posts a source-scoped snapshot without changing state", async () => {
+    const posts: Array<{ source: string; message: ExtensionToWebview }> = []
+    const state = { sessions: [], messages: [] } as unknown as RaccoonState
+    const client = {
+      session: {
+        get: async () => ({ data: sessionInfo("A") }),
+        messages: async () => ({ data: [userMessage("A", "msg-a", "hello")] }),
+      },
+    } as unknown as OpencodeClient
+    const controller = new RaccoonSessionController({
+      client: async () => client,
+      directory: () => "/workspace",
+      getState: () => state,
+      setState: () => {
+        throw new Error("context inspector must not update state")
+      },
+      log: () => {},
+      webviewHost: {
+        post: (source: string, message: ExtensionToWebview) => posts.push({ source, message }),
+      },
+    } as never)
+
+    await controller.requestContextInspector(
+      { type: "requestContextInspector", requestID: "request-1", sessionID: "A" },
+      "settings",
+    )
+
+    expect(posts).toHaveLength(1)
+    expect(posts[0].source).toBe("settings")
+    expect(posts[0].message.type).toBe("contextInspectorResult")
+    if (posts[0].message.type !== "contextInspectorResult") throw new Error("unexpected message")
+    expect(posts[0].message.requestID).toBe("request-1")
+    expect(posts[0].message.sessionID).toBe("A")
+    expect(posts[0].message.snapshot?.messages[0].id).toBe("msg-a")
+  })
+
+  test("returns request-scoped errors", async () => {
+    const posts: ExtensionToWebview[] = []
+    const client = {
+      session: {
+        get: async () => {
+          throw new Error("not found")
+        },
+        messages: async () => ({ data: [] }),
+      },
+    } as unknown as OpencodeClient
+    const controller = new RaccoonSessionController({
+      client: async () => client,
+      directory: () => "/workspace",
+      getState: () => ({ sessions: [], messages: [] }),
+      log: () => {},
+      webviewHost: { post: (_source: string, message: ExtensionToWebview) => posts.push(message) },
+    } as never)
+
+    await controller.requestContextInspector(
+      { type: "requestContextInspector", requestID: "request-error", sessionID: "missing" },
+      "chat",
+    )
+
+    expect(posts).toEqual([
+      {
+        type: "contextInspectorResult",
+        requestID: "request-error",
+        sessionID: "missing",
+        error: "not found",
+      },
+    ])
+  })
+})
+
+describe("RaccoonSessionController history", () => {
+  test("searches titles and appends cursor pages without child sessions", async () => {
+    const requests: Array<{ limit?: number; cursor?: string; order?: string }> = []
+    const sessions = [
+      ...Array.from({ length: 51 }, (_, index) => ({
+        id: `root-${index}`,
+        title: `Needle ${index}`,
+        time: { created: 51 - index, updated: 100 - index },
+      })),
+      { id: "child", parentID: "root-0", title: "Needle child", time: { created: 52, updated: 101 } },
+      { id: "other", title: "Other", time: { created: 53, updated: 102 } },
+      ...Array.from({ length: 4_947 }, (_, index) => ({
+        id: `child-extra-${index}`,
+        parentID: "root-0",
+        title: `Child extra ${index}`,
+        time: { created: 54 + index, updated: 54 + index },
+      })),
+    ]
+    let state = { sessions: [], messages: [] } as unknown as RaccoonState
+    const client = {
+      v2: {
+        session: {
+          list: async (input: { limit?: number; cursor?: string; order?: string }) => {
+            requests.push(input)
+            return {
+              data: requests.length === 1 ? { data: sessions, cursor: { next: "next-page" } } : { data: [], cursor: {} },
+            }
+          },
+        },
+      },
+    } as unknown as OpencodeClient
+    const controller = new RaccoonSessionController({
+      client: async () => client,
+      directory: () => "/workspace",
+      getState: () => state,
+      setState: (next: RaccoonState) => {
+        state = next
+      },
+      post: () => {},
+      report: () => {},
+    } as never)
+
+    await controller.loadHistory(" needle ", true)
+    expect(requests).toEqual([
+      { directory: "/workspace", limit: 5_000, order: "desc" },
+      { directory: "/workspace", limit: 5_000, cursor: "next-page" },
+    ])
+    expect(state.historySessions).toHaveLength(50)
+    expect(state.historySessions?.[0]?.id).toBe("root-0")
+    expect(state.historyCursor).toBe("50")
+
+    await controller.loadMoreHistory()
+    expect(requests).toHaveLength(2)
+    expect(state.historySessions).toHaveLength(51)
+    expect(state.historySessions?.at(-1)?.id).toBe("root-50")
+    expect(state.historyComplete).toBe(true)
   })
 })
 

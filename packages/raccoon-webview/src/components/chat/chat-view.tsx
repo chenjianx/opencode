@@ -1,16 +1,18 @@
 import { useState } from "react"
-import { ArrowDownIcon, ArrowUpIcon, BrainIcon, BroomIcon, DatabaseIcon } from "@phosphor-icons/react"
+import { ArrowDownIcon, ArrowUpIcon, BrainIcon, BroomIcon, DatabaseIcon, MagnifyingGlassIcon } from "@phosphor-icons/react"
 import { MessageList } from "./message-list/message-list"
 import { PromptInput } from "./prompt/prompt-input"
 import { Popover } from "../ui/popover"
 import { sessionUsage, contextTokens, contextBreakdown, formatTokens, formatCost } from "./message-list/message-list-format"
 import { useLanguage } from "../../context/language"
 import { useSession } from "../../context/session"
+import { ContextInspector } from "./context-inspector"
 
 export function ChatView() {
   const language = useLanguage()
   const session = useSession()
   const [usageOpen, setUsageOpen] = useState(false)
+  const [inspectorOpen, setInspectorOpen] = useState(false)
 
   const activeSession = session.state.sessions.find((item) => item.id === session.state.activeSessionID) ?? session.activeSession
   const isDefaultTitle = (value?: string) =>
@@ -144,12 +146,26 @@ export function ChatView() {
                       <span className="session-context-pct">{contextPct}%</span>
                     </div>
                   ) : null}
+                  <button
+                    type="button"
+                    className="context-inspector-open"
+                    onClick={() => {
+                      setUsageOpen(false)
+                      setInspectorOpen(true)
+                    }}
+                  >
+                    <MagnifyingGlassIcon size={13} weight="bold" aria-hidden />
+                    {language.t("contextInspector.open")}
+                  </button>
                 </>
               )}
             </Popover>
           </div>
         ) : null}
       </div>
+      {inspectorOpen && session.state.activeSessionID ? (
+        <ContextInspector sessionID={session.state.activeSessionID} onClose={() => setInspectorOpen(false)} />
+      ) : null}
       <MessageList />
       <PromptInput />
     </section>

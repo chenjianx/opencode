@@ -13,6 +13,13 @@ type MessageRouterDeps = {
   createSession: (mode: ChatMode) => Promise<void>
   refresh: () => Promise<void>
   openHistory: () => Promise<void>
+  searchSessions: (query: string) => Promise<void>
+  loadMoreSessions: () => Promise<void>
+  loadOlderMessages: (sessionID: string) => Promise<void>
+  requestContextInspector: (
+    message: Extract<WebviewToExtension, { type: "requestContextInspector" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
   openSettings: () => Promise<void>
   closeSettings: () => void
   selectSession: (sessionID: string) => Promise<void>
@@ -146,6 +153,22 @@ export class RaccoonMessageRouter {
     }
     if (message.type === "openHistory") {
       await this.deps.openHistory()
+      return
+    }
+    if (message.type === "searchSessions") {
+      await this.deps.searchSessions(message.query)
+      return
+    }
+    if (message.type === "loadMoreSessions") {
+      await this.deps.loadMoreSessions()
+      return
+    }
+    if (message.type === "loadOlderMessages") {
+      await this.deps.loadOlderMessages(message.sessionID)
+      return
+    }
+    if (message.type === "requestContextInspector") {
+      await this.deps.requestContextInspector(message, source)
       return
     }
     if (message.type === "openSettings") {

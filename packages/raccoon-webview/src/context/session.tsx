@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 import type {
   ChatMode,
   RaccoonCommand,
+  RaccoonContextInspectorSnapshot,
   RaccoonAgentScope,
   RaccoonAgentConfigInput,
   RaccoonFileAttachment,
@@ -75,6 +76,13 @@ type SessionActionsContextValue = {
   closeSubAgent: () => void
   createSession: () => void
   openHistory: () => void
+  searchSessions: (query: string) => void
+  loadMoreSessions: () => void
+  loadOlderMessages: () => void
+  requestContextInspector: (sessionID: string) => Promise<{
+    snapshot?: RaccoonContextInspectorSnapshot
+    error?: string
+  }>
   openSettings: () => void
   refresh: () => void
   selectSession: (sessionID: string) => void
@@ -219,6 +227,9 @@ export function SessionProvider(props: { children: ReactNode }) {
   const settingsSaveRequests = useRef(
     new Map<string, (result: { success: boolean; error?: string }) => void>(),
   )
+  const contextInspectorRequests = useRef(
+    new Map<string, (result: { snapshot?: RaccoonContextInspectorSnapshot; error?: string }) => void>(),
+  )
 
   useEffect(() => {
     stateRef.current = state
@@ -245,12 +256,12 @@ export function SessionProvider(props: { children: ReactNode }) {
       if (message.type === "state") {
         const incoming = normalizeState(message.state)
         setState((current) => {
-          // postState() always forces view: "chat". Stay in the sub-agent view if the
-          // user opened one — it is driven by dedicated showSubAgent/closeSubAgent messages.
-          // Likewise stay in inline settings (JetBrains) across refreshes; it is driven by
-          // dedicated showSettings/showChat messages, not by state frames.
+          // postState() always forces view: "chat". Preserve views driven by dedicated
+          // navigation messages instead of letting background state frames close them.
           const next =
-            current.view === "subagent"
+            current.view === "history"
+              ? { ...incoming, view: "history" as const }
+              : current.view === "subagent"
               ? { ...incoming, view: "subagent" as const, subAgentView: current.subAgentView }
               : settingsInlineRef.current && current.view === "settings"
                 ? { ...incoming, view: "settings" as const }
@@ -421,6 +432,14 @@ export function SessionProvider(props: { children: ReactNode }) {
       if (message.type === "settingsSaveResult") {
         settingsSaveRequests.current.get(message.requestID)?.({ success: message.success, error: message.error })
         settingsSaveRequests.current.delete(message.requestID)
+        return
+      }
+      if (message.type === "contextInspectorResult") {
+        contextInspectorRequests.current.get(message.requestID)?.({
+          snapshot: message.snapshot,
+          error: message.error,
+        })
+        contextInspectorRequests.current.delete(message.requestID)
         return
       }
       if (message.type === "questionResolved") {
@@ -729,6 +748,19 @@ export function SessionProvider(props: { children: ReactNode }) {
       },
       createSession: () => vscode.postMessage({ type: "createSession", mode: stateRef.current.mode }),
       openHistory: () => vscode.postMessage({ type: "openHistory" }),
+      searchSessions: (query) => vscode.postMessage({ type: "searchSessions", query }),
+      loadMoreSessions: () => vscode.postMessage({ type: "loadMoreSessions" }),
+      loadOlderMessages: () => {
+        const sessionID = stateRef.current.activeSessionID
+        if (!sessionID) return
+        vscode.postMessage({ type: "loadOlderMessages", sessionID })
+      },
+      requestContextInspector: (sessionID) =>
+        new Promise((resolve) => {
+          const requestID = crypto.randomUUID()
+          contextInspectorRequests.current.set(requestID, resolve)
+          vscode.postMessage({ type: "requestContextInspector", requestID, sessionID })
+        }),
       openSettings: () => vscode.postMessage({ type: "openSettings" }),
       refresh: () => vscode.postMessage({ type: "refresh" }),
       selectSession: (sessionID) => vscode.postMessage({ type: "selectSession", sessionID }),

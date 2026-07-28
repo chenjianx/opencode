@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { DotsThreeVerticalIcon, PencilIcon, TrashIcon, DownloadIcon } from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
@@ -11,43 +11,21 @@ function sessionTitle(title: string, untitled: string) {
   return title
 }
 
-function fuzzyMatch(value: string, query: string) {
-  let index = 0
-  for (const char of query) {
-    index = value.indexOf(char, index)
-    if (index === -1) return false
-    index += 1
-  }
-  return true
-}
-
 export function HistoryView(props: { onClose: () => void }) {
   const language = useLanguage()
   const session = useSession()
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState(session.state.historyQuery ?? "")
   const [menuSessionID, setMenuSessionID] = useState<string | undefined>()
   const [menuPosition, setMenuPosition] = useState<{ left: number; top: number }>()
   const [renameSessionID, setRenameSessionID] = useState<string | undefined>()
   const [renameTitle, setRenameTitle] = useState("")
-  const rootSessions = useMemo(() => session.sessions.filter((item) => !item.parentID), [session.sessions])
-  const filteredSessions = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return rootSessions
-    return rootSessions.filter((item) => {
-      const title = sessionTitle(item.title, language.t("history.untitled")).toLowerCase()
-      const agent = (item.agent ?? language.t("history.defaultAgent")).toLowerCase()
-      const id = item.id.toLowerCase()
-      return (
-        title.includes(needle) ||
-        agent.includes(needle) ||
-        id.includes(needle) ||
-        fuzzyMatch(title, needle) ||
-        fuzzyMatch(agent, needle) ||
-        fuzzyMatch(id, needle)
-      )
-    })
-  }, [language, query, rootSessions])
-  const menuSession = rootSessions.find((item) => item.id === menuSessionID)
+  const historySessions = session.state.historySessions ?? []
+  const menuSession = historySessions.find((item) => item.id === menuSessionID)
+
+  useEffect(() => {
+    const timer = setTimeout(() => session.searchSessions(query), 150)
+    return () => clearTimeout(timer)
+  }, [query, session.searchSessions])
 
   const openMenu = (sessionID: string, event: { clientX: number; clientY: number }) => {
     setMenuSessionID(sessionID)
@@ -86,7 +64,7 @@ export function HistoryView(props: { onClose: () => void }) {
               {language.t("history.title")}
             </div>
             <div className="mt-0.5 text-[12px] text-[var(--color-muted)]">
-              {language.t("history.sessions", { count: filteredSessions.length })}
+              {language.t("history.sessions", { count: historySessions.length })}
             </div>
           </div>
           <Button className="shrink-0" onClick={props.onClose} aria-label={language.t("common.back")}>
@@ -102,11 +80,13 @@ export function HistoryView(props: { onClose: () => void }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto py-2">
-        {rootSessions.length === 0 ? <div className="px-1 py-3 text-[12px] text-[var(--color-muted)]">{language.t("history.empty")}</div> : null}
-        {filteredSessions.length === 0 && rootSessions.length > 0 ? (
+        {!session.state.historyLoading && historySessions.length === 0 && !query.trim() ? (
+          <div className="px-1 py-3 text-[12px] text-[var(--color-muted)]">{language.t("history.empty")}</div>
+        ) : null}
+        {!session.state.historyLoading && historySessions.length === 0 && query.trim() ? (
           <div className="px-1 py-3 text-[12px] text-[var(--color-muted)]">{language.t("history.searchEmpty")}</div>
         ) : null}
-        {filteredSessions.map((item) => (
+        {historySessions.map((item) => (
           <div
             className="group flex w-full min-w-0 items-start gap-2 rounded-[6px] px-3 py-2 text-left text-[var(--color-foreground)] hover:bg-[var(--color-hover)]"
             key={item.id}
@@ -147,6 +127,14 @@ export function HistoryView(props: { onClose: () => void }) {
             </button>
           </div>
         ))}
+        {session.state.historyLoading ? (
+          <div className="px-3 py-2 text-center text-[12px] text-[var(--color-muted)]">{language.t("history.loading")}</div>
+        ) : null}
+        {!session.state.historyLoading && !session.state.historyComplete && session.state.historyCursor ? (
+          <div className="px-3 py-2 text-center">
+            <Button onClick={session.loadMoreSessions}>{language.t("history.loadMore")}</Button>
+          </div>
+        ) : null}
       </div>
       {menuSession && menuPosition
         ? createPortal(

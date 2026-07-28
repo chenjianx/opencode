@@ -1,4 +1,4 @@
-import type { Message, Part, Provider, Session } from "@opencode-ai/sdk/v2/client"
+import type { Message, Part, Provider, Session, SessionV2Info } from "@opencode-ai/sdk/v2/client"
 import type {
   RaccoonMessage,
   RaccoonMessagePart,
@@ -46,6 +46,17 @@ export function sortParts(parts: RaccoonMessagePart[]) {
 }
 
 export function mapSession(session: Session): RaccoonSession {
+  return {
+    id: session.id,
+    title: session.title,
+    parentID: session.parentID,
+    agent: session.agent,
+    updatedAt: session.time.updated,
+    revert: session.revert,
+  }
+}
+
+export function mapSessionV2(session: SessionV2Info): RaccoonSession {
   return {
     id: session.id,
     title: session.title,

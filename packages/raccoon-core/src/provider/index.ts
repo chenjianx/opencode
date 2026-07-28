@@ -11,7 +11,7 @@ import type {
 import { MarketplaceService } from "../services/marketplace/index.js"
 import type { McpStatus } from "../services/marketplace/index.js"
 import { SkillMarketplaceService } from "../services/skill-marketplace/index.js"
-import { mapPart, messageText } from "./message/mapping.js"
+import { mapPart, mapSession, messageText } from "./message/mapping.js"
 import { createPrompt } from "./editor/editor-prompt.js"
 import {
   removePart as removeSessionPart,
@@ -212,6 +212,10 @@ export class RaccoonProvider {
       createSession: (mode) => this.createSession(mode),
       refresh: () => this.refresh(),
       openHistory: () => this.openHistory(),
+      searchSessions: (query) => this.sessions.loadHistory(query),
+      loadMoreSessions: () => this.sessions.loadMoreHistory(),
+      loadOlderMessages: (sessionID) => this.sessions.loadOlderMessages(sessionID),
+      requestContextInspector: (message, source) => this.sessions.requestContextInspector(message, source),
       openSettings: () => this.openSettings(),
       closeSettings: () => this.webviewHost.closeSettings(),
       selectSession: (sessionID) => this.selectSession(sessionID),
@@ -402,8 +406,7 @@ export class RaccoonProvider {
   }
 
   async openHistory() {
-    await this.refresh()
-    this.sessions.openHistory()
+    await this.sessions.openHistory()
   }
 
   async openSettings() {
@@ -622,11 +625,18 @@ export class RaccoonProvider {
   }
 
   private upsertSession(session: Session) {
+    this.sessions.upsertHistorySession(session)
     const next = upsertSessionState(this.state.sessions, this.state.activeSessionID, this.state.activeSession, session)
-    this.state = { ...this.state, sessions: next.sessions, activeSession: next.activeSession }
+    this.state = {
+      ...this.state,
+      sessions: next.sessions,
+      historySessions: this.state.historySessions?.map((item) => (item.id === session.id ? mapSession(session) : item)),
+      activeSession: next.activeSession,
+    }
   }
 
   private removeSession(sessionID: string) {
+    this.sessions.removeHistorySession(sessionID)
     const next = removeSessionState(
       this.state.sessions,
       this.state.activeSessionID,
@@ -634,7 +644,11 @@ export class RaccoonProvider {
       this.state.messages,
       sessionID,
     )
-    this.state = { ...this.state, ...next }
+    this.state = {
+      ...this.state,
+      ...next,
+      historySessions: this.state.historySessions?.filter((session) => session.id !== sessionID),
+    }
   }
 
   private upsertPart(part: Part) {

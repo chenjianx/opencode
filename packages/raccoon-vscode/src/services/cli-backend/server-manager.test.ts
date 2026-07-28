@@ -138,6 +138,60 @@ describe("RaccoonServerManager", () => {
     expect(spawned).toBe(false)
   })
 
+  test("rejects an unavailable configured server", async () => {
+    serverUrl = "http://127.0.0.1:16384"
+    const manager = new RaccoonServerManager(
+      { extensionPath: "/extension" } as never,
+      createOutput().channel as never,
+      {
+        delay: async () => {},
+        existsSync: () => false,
+        fetch: async () => {
+          throw new TypeError("fetch failed")
+        },
+        getConfig: (key) => {
+          if (key === "serverUrl") return serverUrl
+          if (key === "opencodeCommand") return opencodeCommand
+          return undefined
+        },
+        spawn: () => createChild() as never,
+        workspaceDirectory: () => "/workspace",
+      },
+    )
+
+    await expect(manager.getServer()).rejects.toThrow(
+      "Configured Raccoon server is unavailable at http://127.0.0.1:16384: Timed out waiting for Raccoon server",
+    )
+  })
+
+  test("waits for a configured server to become ready", async () => {
+    serverUrl = "http://127.0.0.1:16384"
+    let attempts = 0
+    const manager = new RaccoonServerManager(
+      { extensionPath: "/extension" } as never,
+      createOutput().channel as never,
+      {
+        delay: async () => {},
+        existsSync: () => false,
+        fetch: async () => {
+          attempts++
+          if (attempts < 3) throw new TypeError("fetch failed")
+          return { ok: true } as Response
+        },
+        getConfig: (key) => {
+          if (key === "serverUrl") return serverUrl
+          if (key === "opencodeCommand") return opencodeCommand
+          return undefined
+        },
+        spawn: () => createChild() as never,
+        workspaceDirectory: () => "/workspace",
+      },
+    )
+
+    await expect(manager.getServer()).resolves.toEqual({ url: "http://127.0.0.1:16384" })
+    expect(attempts).toBe(3)
+  })
+
   test("starts managed server with local auth headers", async () => {
     serverUrl = ""
     const output = createOutput()

@@ -25,6 +25,7 @@ export function MessageList(
   // at the top; the sub-agent viewer opts into sticky-bottom via `follow`, but only
   // sticks once the user is actually at the bottom (followBottomRef flips on scroll).
   const followBottomRef = useRef(!readonly)
+  const historyAnchorRef = useRef<{ sessionID: string; height: number; top: number } | undefined>(undefined)
   const [showScrollBottom, setShowScrollBottom] = useState(false)
 
   const updateScrollButton = () => {
@@ -33,6 +34,19 @@ export function MessageList(
     const atBottom = root.scrollHeight - root.scrollTop - root.clientHeight < 48
     followBottomRef.current = atBottom
     setShowScrollBottom(!atBottom)
+    if (
+      readonly ||
+      props.messages ||
+      root.scrollTop >= 200 ||
+      session.state.messagesLoadingOlder ||
+      session.state.messagesComplete ||
+      !session.state.messageCursor
+    )
+      return
+    const sessionID = session.state.activeSessionID
+    if (!sessionID) return
+    historyAnchorRef.current = { sessionID, height: root.scrollHeight, top: root.scrollTop }
+    session.loadOlderMessages()
   }
 
   useLayoutEffect(() => {
@@ -42,6 +56,20 @@ export function MessageList(
     if (readonly && !follow) return
     const root = rootRef.current
     if (!root) return
+    if (historyAnchorRef.current?.sessionID !== session.state.activeSessionID) {
+      historyAnchorRef.current = undefined
+      followBottomRef.current = true
+    }
+    if (historyAnchorRef.current && !session.state.messagesLoadingOlder) {
+      if (session.state.messagesOlderError) {
+        historyAnchorRef.current = undefined
+        return
+      }
+      root.scrollTop = historyAnchorRef.current.top + root.scrollHeight - historyAnchorRef.current.height
+      historyAnchorRef.current = undefined
+      updateScrollButton()
+      return
+    }
     if (!followBottomRef.current) {
       updateScrollButton()
       return
@@ -49,7 +77,17 @@ export function MessageList(
     root.scrollTo({ top: root.scrollHeight, behavior: "auto" })
     setShowScrollBottom(false)
     followBottomRef.current = true
-  }, [readonly, follow, props.messages, session.messages, session.state.loading, busy])
+  }, [
+    readonly,
+    follow,
+    props.messages,
+    session.messages,
+    session.state.activeSessionID,
+    session.state.loading,
+    session.state.messagesLoadingOlder,
+    session.state.messagesOlderError,
+    busy,
+  ])
 
   const scrollToBottom = () => {
     const root = rootRef.current
@@ -75,6 +113,9 @@ export function MessageList(
   return (
     <div className="message-list-shell">
       <div className="message-list" ref={rootRef} onScroll={updateScrollButton}>
+        {!readonly && session.state.messagesLoadingOlder ? (
+          <div className="message-shell text-center text-[12px] text-[var(--color-muted)]">{language.t("message.loadingEarlier")}</div>
+        ) : null}
         {!readonly && session.state.error ? <div className="message-shell error">{session.state.error}</div> : null}
         {!readonly && messageTurns.length === 0 && !session.state.loading && !session.state.error ? (
           <WelcomeEmpty />

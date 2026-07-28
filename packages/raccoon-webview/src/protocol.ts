@@ -208,6 +208,36 @@ export type RaccoonMessage = {
   cost?: number
 }
 
+export type RaccoonContextBreakdownKey = "system" | "user" | "assistant" | "tool" | "other"
+
+export type RaccoonContextInspectorSnapshot = {
+  session: {
+    id: string
+    title: string
+    createdAt: number
+    updatedAt: number
+    cost: number
+  }
+  model?: {
+    providerID: string
+    modelID: string
+  }
+  usage?: RaccoonMessageTokens
+  breakdown: Array<{
+    key: RaccoonContextBreakdownKey
+    tokens: number
+    percent: number
+  }>
+  systemPrompt?: string
+  messages: Array<{
+    id: string
+    role: string
+    createdAt: number
+    raw: string
+  }>
+  truncated: boolean
+}
+
 export type RaccoonSubSessionTool = {
   id: string
   tool: string
@@ -459,7 +489,18 @@ export type RaccoonState = {
   activeSessionID?: string
   activeSession?: RaccoonSession
   sessions: RaccoonSession[]
+  historySessions?: RaccoonSession[]
+  historyQuery?: string
+  historyCursor?: string
+  historyLoading?: boolean
+  historyComplete?: boolean
   messages: RaccoonMessage[]
+  messageHistorySessionID?: string
+  messageCursor?: string
+  messagesLoadingOlder?: boolean
+  messagesOlderError?: boolean
+  messagesComplete?: boolean
+  messagesLoadedOlder?: boolean
   subSessions?: Record<string, RaccoonSubSession>
   subAgentView?: RaccoonSubAgentView
   agents: RaccoonAgent[]
@@ -519,6 +560,10 @@ export type WebviewToExtension =
   | { type: "refresh" }
   | { type: "createSession"; mode: ChatMode }
   | { type: "openHistory" }
+  | { type: "searchSessions"; query: string }
+  | { type: "loadMoreSessions" }
+  | { type: "loadOlderMessages"; sessionID: string }
+  | { type: "requestContextInspector"; requestID: string; sessionID: string }
   | { type: "openSettings" }
   | { type: "closeSettings" }
   | { type: "selectSession"; sessionID: string }
@@ -653,6 +698,13 @@ export type ExtensionToWebview =
   | { type: "showHistory" }
   | { type: "showSettings" }
   | { type: "showChat" }
+  | {
+      type: "contextInspectorResult"
+      requestID: string
+      sessionID: string
+      snapshot?: RaccoonContextInspectorSnapshot
+      error?: string
+    }
   | { type: "showSubAgent"; view: RaccoonSubAgentView }
   | { type: "subAgentMessageUpdated"; message: RaccoonMessage }
   | { type: "subAgentBusyChanged"; busy: boolean }

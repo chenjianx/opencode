@@ -6,6 +6,7 @@ import * as vscode from "vscode"
 
 type ServerProcess = Pick<ChildProcess, "kill" | "on" | "once" | "stderr" | "stdout">
 type ServerManagerDeps = {
+  delay?: (ms: number) => Promise<void>
   existsSync: typeof existsSync
   fetch: typeof fetch
   getConfig: (key: "opencodeCommand" | "serverUrl") => string | undefined
@@ -104,7 +105,18 @@ export class RaccoonServerManager implements vscode.Disposable {
     // debugging via launch.json; packaged builds leave it unset and fall back
     // to spawning bin/raccoon below.
     const configured = this.deps.getConfig("serverUrl")?.trim() || process.env.RACCOON_SERVER_URL?.trim()
-    if (configured) return { url: configured.replace(/\/+$/, "") }
+    if (configured) {
+      const url = configured.replace(/\/+$/, "")
+      try {
+        await this.wait(url, undefined, 50)
+      } catch (error) {
+        throw new ServerStartupError(
+          `Configured Raccoon server is unavailable at ${url}: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      }
+      this.output.appendLine(`connected to configured Raccoon server at ${url}`)
+      return { url }
+    }
 
     const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
     const binary = this.binaryPath()
@@ -178,9 +190,9 @@ export class RaccoonServerManager implements vscode.Disposable {
     return { url, headers, port, process: child }
   }
 
-  private async wait(url: string, headers?: Record<string, string>) {
-    for (let attempt = 0; attempt < 150; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 200))
+  private async wait(url: string, headers?: Record<string, string>, attempts = 150) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      await (this.deps.delay ?? delay)(200)
       try {
         const response = await this.deps.fetch(`${url}/global/health`, {
           headers,
