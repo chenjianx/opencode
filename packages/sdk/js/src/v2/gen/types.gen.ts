@@ -8600,7 +8600,6 @@ export type McpAuthStartResponse = McpAuthStartResponses[keyof McpAuthStartRespo
 export type McpAuthCallbackData = {
   body?: {
     code: string
-    iss?: string
   }
   path: {
     name: string
