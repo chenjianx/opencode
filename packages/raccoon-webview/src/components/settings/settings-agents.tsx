@@ -17,6 +17,7 @@ import { SettingsDialog } from "./settings-dialog"
 import { PermissionEditor, PermissionRuleset } from "./permission-editor"
 import { mergePermissionPatch, type PermissionPatch } from "./permission-utils"
 import { clampParam, downloadJson, formatModelString, NAME_RE, parseModelString, titleCase, uniqueName } from "./utils"
+import { agentDisplayDescription } from "../../agent-description"
 
 type ModelSelection = { providerID: string; modelID: string }
 type AgentIdentity = { name: string; scope: RaccoonAgentScope }
@@ -385,7 +386,7 @@ export function SettingsAgents(props: {
               >
                 <span className="settings-agent-list-main">
                   <span className="settings-agent-list-name">{titleCase(agent.name)}</span>
-                  <span className="settings-agent-list-description">{agent.description || agent.name}</span>
+                  <span className="settings-agent-list-description">{agentDisplayDescription(agent, language.t) || agent.name}</span>
                 </span>
                 <span className="settings-agent-list-tags">
                   <span>{agent.mode}</span>

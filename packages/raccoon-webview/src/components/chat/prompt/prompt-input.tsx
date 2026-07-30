@@ -18,6 +18,7 @@ import { modeLabel, requestContext, slashQuery } from "./prompt-input-utils"
 import { usePromptAttachments } from "./use-prompt-attachments"
 import { PromptCommandList, PromptMentionList, PromptModePicker } from "./prompt-popovers"
 import { ReasoningPicker } from "../../ui/reasoning-picker"
+import { agentDisplayDescription } from "../../../agent-description"
 
 function PromptDragOverlay(props: { active: boolean }) {
   if (!props.active) return null
@@ -89,7 +90,7 @@ export function PromptInput() {
     .map((agent) => ({
       value: agent.name,
       label: modeLabel(agent.name),
-      description: agent.description,
+      description: agentDisplayDescription(agent, t),
     }))
   const currentMode = modeOptions.find((mode) => mode.value === session.state.mode) ?? {
     value: session.state.mode,

@@ -815,7 +815,7 @@ export class RaccoonProvider {
     }
   }
 
-  private async fetchMcpMarketplace(_force: boolean | undefined, source: RaccoonWebviewSource) {
+  private async fetchMcpMarketplace(force: boolean | undefined, source: RaccoonWebviewSource) {
     this.state = {
       ...this.state,
       mcpMarketplace: {
@@ -828,7 +828,7 @@ export class RaccoonProvider {
     }
     this.post()
     try {
-      const data = await this.marketplace.fetchData(await this.client(), this.directory())
+      const data = await this.marketplace.fetchData(await this.client(), this.directory(), force)
       this.state = {
         ...this.state,
         mcpMarketplace: {

@@ -592,10 +592,11 @@ function normalizeRaccoonResponse(response: Response) {
 
   function normalizeLine(line: string) {
     if (!line.startsWith("data:")) return line
-    const data = line.slice(5).trimStart()
-    if (!data || data === "[DONE]") return line
+      const data = line.slice(5).trimStart()
+      if (!data || data === "[DONE]") return line
+      console.error("[raccoon-auth-plugin] response data", data)
 
-    try {
+      try {
       const json = JSON.parse(data) as {
         data?: {
         choices?: Array<{
@@ -674,9 +675,10 @@ function normalizeRaccoonResponse(response: Response) {
   const body = new ReadableStream<Uint8Array>({
     async pull(ctrl) {
       const part = await reader.read()
-      if (part.done) {
-        const normalized = pending ? normalizeLine(pending) : ""
-        if (normalized) ctrl.enqueue(encoder.encode(normalized))
+        if (part.done) {
+          console.error("[raccoon-auth-plugin] response stream done")
+          const normalized = pending ? normalizeLine(pending) : ""
+          if (normalized) ctrl.enqueue(encoder.encode(normalized))
         ctrl.close()
         return
       }
@@ -805,7 +807,7 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
         // picker the user can't actually call.
         const current = await getAccess(() => Promise.resolve(ctx.auth), _input, baseUrl).catch(() => undefined)
         if (!current) return {}
-        const serverModels = await fetchServerProfileModels(loginBaseUrl, current.access, current.accountId).catch(
+        const serverModels = await fetchServerProfileModels(loginBaseUrl, current.access, current.orgCode).catch(
           () => undefined,
         )
 
@@ -827,16 +829,34 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
 
             const headers = new Headers(init?.headers)
             headers.set("authorization", `Bearer ${current.access}`)
-            if (current.accountId) headers.set("x-org-code", current.accountId)
+            if (current.orgCode) headers.set("x-org-code", current.orgCode)
 
-            const request = rewriteRaccoonRequest(current.enterpriseUrl, current.accountId, requestInput, {
+            const request = rewriteRaccoonRequest(current.enterpriseUrl, current.orgCode, requestInput, {
               ...init,
               headers,
             })
             const requestBody =
               typeof request.init?.body === "string" ? (JSON.parse(request.init.body) as RaccoonRequestBody) : undefined
             const baseInit = request.init ?? {}
+            console.error("[raccoon-auth-plugin] request", {
+              url: request.url.toString(),
+              orgCode: current.orgCode,
+              body: requestBody ? summarizeRequestBody(requestBody) : undefined,
+            })
             const response = await fetch(request.url, baseInit)
+            if (!response.headers.get("content-type")?.includes("text/event-stream")) {
+              void response
+                .clone()
+                .text()
+                .then((body) => {
+                  console.error("[raccoon-auth-plugin] response body", {
+                    status: response.status,
+                    url: request.url.toString(),
+                    body,
+                  })
+                })
+                .catch(() => undefined)
+            }
             if (response.status === 400 && requestBody) await probeInvalidArguments(request.url, baseInit, requestBody)
             return normalizeRaccoonResponse(response)
           },

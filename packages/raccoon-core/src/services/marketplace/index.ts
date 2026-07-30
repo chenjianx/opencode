@@ -29,12 +29,12 @@ export class MarketplaceService {
   // Load the catalog, serving a fresh successful fetch from cache. A cached result that only
   // carries the reference baseline (i.e. the remote fetch failed) is not cached, so the next
   // open retries the network.
-  private async getCatalog(): Promise<LoadCatalogResult> {
+  private async getCatalog(force?: boolean): Promise<LoadCatalogResult> {
     const now = Date.now()
-    if (this.catalogCache && now - this.catalogCache.fetchedAt < MarketplaceService.CATALOG_TTL_MS) {
+    if (!force && this.catalogCache && now - this.catalogCache.fetchedAt < MarketplaceService.CATALOG_TTL_MS) {
       return this.catalogCache.result
     }
-    if (this.catalogInflight) return this.catalogInflight
+    if (!force && this.catalogInflight) return this.catalogInflight
     this.catalogInflight = loadCatalog()
       .then((result) => {
         // Only cache a full remote load; keep retrying while we're stuck on the baseline.
@@ -47,9 +47,9 @@ export class MarketplaceService {
     return this.catalogInflight
   }
 
-  async fetchData(client: OpencodeClient, directory: string): Promise<MarketplaceDataResponse> {
+  async fetchData(client: OpencodeClient, directory: string, force?: boolean): Promise<MarketplaceDataResponse> {
     const [catalog, installed] = await Promise.all([
-      this.getCatalog(),
+      this.getCatalog(force),
       this.installer.detect(client, directory),
     ])
     return { items: catalog.items, installed, errors: catalog.errors }

@@ -131,6 +131,13 @@ export const dict = {
   "settings.models.modes.title": "Per-mode models",
   "settings.models.build.title": "Build model",
   "settings.models.plan.title": "Plan model",
+  "agent.description.ask": "Get answers and explanations without making changes to the codebase.",
+  "agent.description.build": "The default agent. Executes tools based on configured permissions.",
+  "agent.description.explore":
+    "Fast agent specialized for exploring codebases. Use it to find files, search code, or answer codebase questions.",
+  "agent.description.general": "General-purpose agent for complex research and multi-step tasks.",
+  "agent.description.plan": "Plan mode. Disallows all edit tools.",
+  "agent.description.fallback": "Built-in agent.",
   "settings.agents.title": "Agents",
   "settings.agents.empty": "No configurable agents found.",
   "settings.agents.new": "New agent",

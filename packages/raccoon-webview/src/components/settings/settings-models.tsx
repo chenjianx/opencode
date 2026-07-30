@@ -3,6 +3,7 @@ import { useLanguage } from "../../context/language"
 import { ModelPicker } from "../ui/model-picker"
 import { SettingsRow } from "./settings-common"
 import { titleCase } from "./utils"
+import { agentDisplayDescription } from "../../agent-description"
 
 type ModelSelection = { providerID: string; modelID: string }
 
@@ -53,11 +54,12 @@ export function SettingsModels(props: {
           const status = props.modeModels[agent.name]
             ? language.t("settings.models.current", { model: labelOf(configured, language.t("settings.models.notSet")) })
             : language.t("settings.models.usesDefault")
+          const description = agentDisplayDescription(agent, language.t)
           return (
             <SettingsRow
               key={agent.name}
               title={language.t("settings.models.modeModel", { mode: titleCase(agent.name) })}
-              description={agent.description ? `${agent.description} ${status}` : status}
+              description={description ? `${description} ${status}` : status}
             >
               <ModelPicker
                 value={props.modeModels[agent.name]}
