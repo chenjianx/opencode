@@ -21,6 +21,7 @@ export function MessageList(
   const busy = props.busy ?? false
   const messageTurns = turns(props.messages ?? session.visibleMessages)
   const rootRef = useRef<HTMLDivElement>(null)
+  const activeSessionRef = useRef(session.state.activeSessionID)
   // Normal chat starts pinned to the bottom (newest message). Read-only views start
   // at the top; the sub-agent viewer opts into sticky-bottom via `follow`, but only
   // sticks once the user is actually at the bottom (followBottomRef flips on scroll).
@@ -56,7 +57,8 @@ export function MessageList(
     if (readonly && !follow) return
     const root = rootRef.current
     if (!root) return
-    if (historyAnchorRef.current?.sessionID !== session.state.activeSessionID) {
+    if (activeSessionRef.current !== session.state.activeSessionID) {
+      activeSessionRef.current = session.state.activeSessionID
       historyAnchorRef.current = undefined
       followBottomRef.current = true
     }
