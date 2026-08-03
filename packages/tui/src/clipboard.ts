@@ -28,7 +28,7 @@ function writeOsc52(text: string) {
 
 export async function read() {
   if (platform() === "darwin") {
-    const file = path.join(tmpdir(), "opencode-clipboard.png")
+    const file = path.join(tmpdir(), "raccoon-clipboard.png") // raccoon_change - rename clipboard temp file
     try {
       await exec("osascript", [
         "-e",
