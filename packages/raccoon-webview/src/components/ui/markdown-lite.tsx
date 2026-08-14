@@ -6,8 +6,8 @@ import { bundledLanguages, codeToTokens, type BundledLanguage, type ThemedToken 
 import { useLanguage } from "../../context/language"
 
 const FILE_PATH_UNIX_RE =
-  /^((?:\/|\.\.?\/)?(?:[a-zA-Z0-9_@-][a-zA-Z0-9_@./-]*\/)*[a-zA-Z0-9_@.-]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?)?$/
-const FILE_PATH_WIN_RE = /^((?:[a-zA-Z]:[/\\]|\\\\)(?:[^\\/]+[/\\])*[^\\/]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?)?$/
+  /^((?:\/|\.\.?\/)?(?:[a-zA-Z0-9_@-][a-zA-Z0-9_@./-]*\/)*[a-zA-Z0-9_@.-]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?|:(\d+)-\d+)?$/
+const FILE_PATH_WIN_RE = /^((?:[a-zA-Z]:[/\\]|\\\\)(?:[^\\/]+[/\\])*[^\\/]+\.[a-zA-Z0-9]+)(?::(\d+)(?::(\d+))?|:(\d+)-\d+)?$/
 const SCHEME_RE = /^[a-zA-Z][a-zA-Z0-9+.-]*:/
 const MAX_HIGHLIGHT_LENGTH = 50_000
 const highlightCache = new Map<string, ThemedToken[][]>()
@@ -18,14 +18,63 @@ type FileReference = {
   column?: number
 }
 
-function parseFileReference(value: string): FileReference | undefined {
+export function parseFileReference(value: string): FileReference | undefined {
   const match = FILE_PATH_UNIX_RE.exec(value) ?? FILE_PATH_WIN_RE.exec(value)
   if (!match?.[1]) return
   return {
     filePath: match[1],
-    line: match[2] ? Number.parseInt(match[2], 10) : undefined,
+    line: match[2] ? Number.parseInt(match[2], 10) : match[4] ? Number.parseInt(match[4], 10) : undefined,
     column: match[3] ? Number.parseInt(match[3], 10) : undefined,
   }
+}
+
+type MarkdownNode = {
+  type: string
+  value?: string
+  url?: string
+  children?: MarkdownNode[]
+}
+
+type MarkdownRoot = MarkdownNode & { children: MarkdownNode[] }
+
+function fileReferenceHref(reference: FileReference) {
+  return `${reference.filePath}${reference.line ? `:${reference.line}` : ""}`
+}
+
+function splitBareFileReferences(node: MarkdownNode) {
+  if (node.type === "link" || node.type === "linkReference") return
+  if (!node.children) return
+
+  node.children = node.children.flatMap((child) => {
+    if (child.type !== "text" || !child.value) {
+      splitBareFileReferences(child)
+      return [child]
+    }
+
+    const children: MarkdownNode[] = []
+    let last = 0
+    for (const match of child.value.matchAll(/\S+/g)) {
+      const token = match[0]
+      const start = match.index ?? 0
+      const leading = token.match(/^[([{<"'`]+/)?.[0] ?? ""
+      const trailing = token.match(/[)\]}>，。！？；：,.'!?;:]+$/)?.[0] ?? ""
+      const candidate = token.slice(leading.length, token.length - trailing.length || undefined)
+      const reference = parseFileReference(candidate)
+      if (!reference) continue
+
+      const candidateStart = start + leading.length
+      if (candidateStart > last) children.push({ type: "text", value: child.value.slice(last, candidateStart) })
+      children.push({ type: "link", url: fileReferenceHref(reference), children: [{ type: "text", value: candidate }] })
+      last = candidateStart + candidate.length
+    }
+    if (last === 0) return [child]
+    if (last < child.value.length) children.push({ type: "text", value: child.value.slice(last) })
+    return children
+  })
+}
+
+function remarkBareFileReferences() {
+  return (tree: MarkdownRoot) => splitBareFileReferences(tree)
 }
 
 function fileReferenceFromHref(href: string | undefined): FileReference | undefined {
@@ -247,7 +296,7 @@ export function MarkdownLite(props: {
 }) {
   return (
     <div className="prose max-w-none text-[12px] leading-[17px] text-[var(--color-foreground)]" data-component="markdown-lite">
-      <ReactMarkdown components={components(props.onOpenFile, props.streaming)} remarkPlugins={[remarkGfm]} skipHtml>
+      <ReactMarkdown components={components(props.onOpenFile, props.streaming)} remarkPlugins={[remarkGfm, remarkBareFileReferences]} skipHtml>
         {props.text}
       </ReactMarkdown>
     </div>

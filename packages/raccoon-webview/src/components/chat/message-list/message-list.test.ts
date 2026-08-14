@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import { diffFiles } from "./message-list-diff"
 import { sessionUsage } from "./message-list-format"
+import { parseFileReference } from "../../ui/markdown-lite"
 import type { RaccoonMessage, RaccoonMessagePart } from "../../../protocol"
 
 describe("diffFiles", () => {
@@ -70,6 +71,16 @@ describe("sessionUsage", () => {
       cacheWrite: 4,
       total: 212,
       cost: 0.03,
+    })
+  })
+})
+
+describe("parseFileReference", () => {
+  test("accepts a line range and opens it at the first line", () => {
+    expect(parseFileReference("box_agent/tools/todo_tool.py:223-227")).toEqual({
+      filePath: "box_agent/tools/todo_tool.py",
+      line: 223,
+      column: undefined,
     })
   })
 })
