@@ -14,11 +14,13 @@ describe("RaccoonStreamScheduler", () => {
     const scheduler = new RaccoonStreamScheduler((message) => sent.push(message))
 
     scheduler.push({
+      sessionID: "root",
       messageID: "msg_1",
       part: textPart("prt_1"),
       delta: { type: "text-delta", textDelta: "hello " },
     })
     scheduler.push({
+      sessionID: "root",
       messageID: "msg_1",
       part: textPart("prt_1"),
       delta: { type: "text-delta", textDelta: "world" },
@@ -28,6 +30,7 @@ describe("RaccoonStreamScheduler", () => {
     expect(sent).toEqual([
       {
         type: "partUpdated",
+        sessionID: "root",
         messageID: "msg_1",
         part: textPart("prt_1", "hello world"),
         delta: { type: "text-delta", textDelta: "hello world" },
@@ -40,11 +43,13 @@ describe("RaccoonStreamScheduler", () => {
     const scheduler = new RaccoonStreamScheduler((message) => sent.push(message))
 
     scheduler.push({
+      sessionID: "root",
       messageID: "msg_1",
       part: textPart("prt_1"),
       delta: { type: "text-delta", textDelta: "partial" },
     })
     scheduler.push({
+      sessionID: "root",
       messageID: "msg_1",
       part: textPart("prt_1", "complete"),
     })
@@ -53,14 +58,55 @@ describe("RaccoonStreamScheduler", () => {
     expect(sent).toEqual([
       {
         type: "partUpdated",
+        sessionID: "root",
         messageID: "msg_1",
         part: textPart("prt_1", "partial"),
         delta: { type: "text-delta", textDelta: "partial" },
       },
       {
         type: "partUpdated",
+        sessionID: "root",
         messageID: "msg_1",
         part: textPart("prt_1", "complete"),
+      },
+    ])
+  })
+
+  test("keeps identical message and part IDs separate across sessions", () => {
+    const sent: ExtensionToWebview[] = []
+    const scheduler = new RaccoonStreamScheduler((message) => sent.push(message))
+
+    scheduler.push({
+      sessionID: "child-a",
+      messageID: "msg_1",
+      part: textPart("prt_1"),
+      delta: { type: "text-delta", textDelta: "A" },
+    })
+    scheduler.push({
+      sessionID: "child-b",
+      messageID: "msg_1",
+      part: textPart("prt_1"),
+      delta: { type: "text-delta", textDelta: "B" },
+    })
+    scheduler.flush()
+
+    expect(sent).toEqual([
+      {
+        type: "partsUpdated",
+        updates: [
+          {
+            sessionID: "child-a",
+            messageID: "msg_1",
+            part: textPart("prt_1", "A"),
+            delta: { type: "text-delta", textDelta: "A" },
+          },
+          {
+            sessionID: "child-b",
+            messageID: "msg_1",
+            part: textPart("prt_1", "B"),
+            delta: { type: "text-delta", textDelta: "B" },
+          },
+        ],
       },
     ])
   })

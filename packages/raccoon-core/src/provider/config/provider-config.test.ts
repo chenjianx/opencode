@@ -23,6 +23,125 @@ function model(providerID: string, modelID: string, enabled = true): RaccoonMode
 }
 
 describe("RaccoonProviderConfig", () => {
+  test("forwards phone credentials through the Raccoon authorization flow", async () => {
+    let authorizeInput: unknown
+    let callbackInput: unknown
+    let refreshed = false
+    const posted: unknown[] = []
+    const client = {
+      provider: {
+        auth: async () => ({ data: { raccoon: [{ type: "oauth", label: "Raccoon sign-in" }] } }),
+        oauth: {
+          authorize: async (input: unknown) => {
+            authorizeInput = input
+            return { data: { url: "https://xiaohuanxiong.com", method: "auto", instructions: "" } }
+          },
+          callback: async (input: unknown) => {
+            callbackInput = input
+          },
+        },
+      },
+      instance: { dispose: async () => {} },
+    }
+    const config = new RaccoonProviderConfig({
+      client: async () => client as never,
+      directory: () => "/workspace",
+      getState: () => ({}) as never,
+      setState: () => {},
+      post: () => {},
+      refresh: async () => {
+        refreshed = true
+      },
+      withLoading: async (run) => await run(),
+      webviewHost: {
+        post: (_source: unknown, message: unknown) => posted.push(message),
+      } as never,
+    })
+
+    await config.loginRaccoon(
+      {
+        type: "loginRaccoon",
+        method: "phone",
+        serverUrl: "https://xiaohuanxiong.com/",
+        nationCode: "852",
+        phone: "61234567",
+        password: "secret",
+      },
+      "chat",
+    )
+
+    expect(authorizeInput).toEqual({
+      providerID: "raccoon",
+      directory: "/workspace",
+      method: 0,
+      inputs: {
+        loginMethod: "phone",
+        serverUrl: "https://xiaohuanxiong.com/",
+        nationCode: "852",
+        phone: "61234567",
+        password: "secret",
+      },
+    })
+    expect(callbackInput).toEqual({ providerID: "raccoon", directory: "/workspace", method: 0 })
+    expect(refreshed).toBe(true)
+    expect(posted).toEqual([{ type: "raccoonLoginFinished" }])
+  })
+
+  test("aborts the active Raccoon authorization request when login is cancelled", async () => {
+    let signal: AbortSignal | undefined
+    let started = () => {}
+    const waiting = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const client = {
+      provider: {
+        auth: async () => ({ data: { raccoon: [{ type: "oauth", label: "Raccoon sign-in" }] } }),
+        oauth: {
+          authorize: async (_input: unknown, options: { signal?: AbortSignal }) => {
+            signal = options.signal
+            started()
+            return await new Promise((_, reject) => {
+              options.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")))
+            })
+          },
+        },
+      },
+    }
+    const config = new RaccoonProviderConfig({
+      client: async () => client as never,
+      directory: () => "/workspace",
+      getState: () => ({}) as never,
+      setState: () => {},
+      post: () => {},
+      refresh: async () => {},
+      withLoading: async (run) => await run(),
+      webviewHost: {
+        post: () => {},
+        postRaccoonLoginFinished: () => {},
+      } as never,
+    })
+
+    const login = config.loginRaccoon(
+      {
+        type: "loginRaccoon",
+        method: "phone",
+        serverUrl: "https://xiaohuanxiong.com",
+        nationCode: "86",
+        phone: "13800138000",
+        password: "secret",
+      },
+      "chat",
+    )
+    await waiting
+    config.cancelRaccoonLogin()
+    await Promise.race([
+      login,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Login request did not abort")), 100)),
+    ])
+
+    expect(signal?.aborted).toBe(true)
+  })
+
   test("prefers the saved selected model before config defaults", () => {
     const config = new RaccoonProviderConfig({
       client: async () => {

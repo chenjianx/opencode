@@ -3,18 +3,21 @@ import type { OpencodeClient } from "@opencode-ai/sdk/v2/client"
 import type { ExtensionToWebview, RaccoonState } from "@opencode-ai/raccoon-webview"
 import { RaccoonSessionController } from "./session-controller"
 
-type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void }
+type Deferred<T> = { promise: Promise<T>; resolve: (value: T) => void; reject: (error: unknown) => void }
 function defer<T>(): Deferred<T> {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((r) => {
+  let reject!: (error: unknown) => void
+  const promise = new Promise<T>((r, fail) => {
     resolve = r
+    reject = fail
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
 }
 
 // Yield to the microtask/macrotask queue so pending loadMessages calls advance
 // past their `await client()` and enqueue their session.messages request.
 const tick = () => new Promise((resolve) => setTimeout(resolve, 0))
+const refreshTick = () => new Promise((resolve) => setTimeout(resolve, 140))
 
 function sessionInfo(id: string) {
   return { id, title: id, agent: "build", time: { updated: 1, created: 1 } }
@@ -73,6 +76,36 @@ function makeController() {
     })
   }
   return { controller, resolveMessages, getState: () => state, messagesQueue }
+}
+
+function makeSubAgentController(
+  status: Record<string, { type: string }> = {},
+  state = { sessions: [], messages: [] } as RaccoonState,
+) {
+  const messagesQueue: { sessionID: string; deferred: Deferred<{ data: unknown[] }> }[] = []
+  const posts: ExtensionToWebview[] = []
+  const client = {
+    session: {
+      status: async () => ({ data: status }),
+      messages: ({ sessionID }: { sessionID: string }) => {
+        const deferred = defer<{ data: unknown[] }>()
+        messagesQueue.push({ sessionID, deferred })
+        return deferred.promise
+      },
+    },
+  } as unknown as OpencodeClient
+  const controller = new RaccoonSessionController({
+    client: async () => client,
+    directory: () => "/workspace",
+    getState: () => state,
+    log: () => {},
+    webviewHost: { post: (_source: string, message: ExtensionToWebview) => posts.push(message) },
+  } as never)
+  const resolveMessages = (index: number, sessionID: string, id: string, text: string) => {
+    messagesQueue[index].deferred.resolve({ data: [userMessage(sessionID, id, text)] })
+  }
+  const rejectMessages = (index: number, error: unknown) => messagesQueue[index].deferred.reject(error)
+  return { controller, messagesQueue, posts, rejectMessages, resolveMessages }
 }
 
 function makeSendController(sessionStatus: "idle" | "busy" = "idle") {
@@ -222,6 +255,176 @@ describe("RaccoonSessionController loadMessages generation", () => {
     await older
     expect(getState().messagesLoadingOlder).toBe(false)
     expect(getState().messages.map((message) => message.id)).toEqual(["msg-old", "msg-new", "msg-newer"])
+  })
+})
+
+describe("RaccoonSessionController subagent navigation", () => {
+  test("tracks only descendants of the active session", () => {
+    const { controller } = makeSubAgentController({}, {
+      activeSessionID: "root-a",
+      sessions: [
+        { id: "root-a", title: "A", updatedAt: 1 },
+        { id: "child-a", title: "child A", parentID: "root-a", updatedAt: 1 },
+        { id: "root-b", title: "B", updatedAt: 1 },
+      ],
+      messages: [],
+    } as RaccoonState)
+
+    expect(controller.isTrackedSubAgent("child-a")).toBeTrue()
+    expect(controller.isTrackedSubAgent("root-b")).toBeFalse()
+  })
+
+  test("initializes the open subagent busy state from session status", async () => {
+    const { controller, posts, resolveMessages } = makeSubAgentController({ A: { type: "busy" } })
+
+    const open = controller.openSubAgent("A", "A")
+    await tick()
+    resolveMessages(0, "A", "msg-a", "A")
+    await open
+
+    expect(posts.at(-1)).toMatchObject({
+      type: "showSubAgent",
+      view: { sessionID: "A", loading: false, busy: true },
+    })
+  })
+
+  test("replays stream updates after the snapshot that was loading", async () => {
+    const { controller, posts, resolveMessages } = makeSubAgentController()
+
+    const open = controller.openSubAgent("A", "A")
+    await tick()
+    controller.postSubAgentEvent("A", {
+      type: "partUpdated",
+      sessionID: "A",
+      messageID: "msg-a",
+      part: { id: "msg-a-p", type: "text", text: "live" },
+    })
+    resolveMessages(0, "A", "msg-a", "")
+    await open
+
+    expect(posts.slice(-2)).toEqual([
+      {
+        type: "showSubAgent",
+        view: {
+          sessionID: "A",
+          title: "A",
+          messages: [
+            {
+              id: "msg-a",
+              role: "user",
+              text: "",
+              parts: [{ id: "msg-a-p", type: "text", text: "" }],
+              createdAt: 1,
+            },
+          ],
+          loading: false,
+          busy: false,
+        },
+      },
+      {
+        type: "partUpdated",
+        sessionID: "A",
+        messageID: "msg-a",
+        part: { id: "msg-a-p", type: "text", text: "live" },
+      },
+    ])
+  })
+
+  test("replays tracked stream updates that arrived before the subagent opened", async () => {
+    const { controller, posts, resolveMessages } = makeSubAgentController()
+
+    controller.postSubAgentEvent("A", {
+      type: "partUpdated",
+      sessionID: "A",
+      messageID: "msg-a",
+      part: { id: "msg-a-p", type: "text", text: "already live" },
+    })
+    const open = controller.openSubAgent("A", "A")
+    await tick()
+    resolveMessages(0, "A", "msg-a", "")
+    await open
+
+    expect(posts.at(-1)).toEqual({
+      type: "partUpdated",
+      sessionID: "A",
+      messageID: "msg-a",
+      part: { id: "msg-a-p", type: "text", text: "already live" },
+    })
+  })
+
+  test("replays buffered events and permits retry after a refresh failure", async () => {
+    const { controller, messagesQueue, posts, rejectMessages, resolveMessages } = makeSubAgentController()
+
+    const open = controller.openSubAgent("A", "A")
+    await tick()
+    resolveMessages(0, "A", "msg-a", "A")
+    await open
+
+    controller.scheduleSubAgentRefresh("A")
+    await refreshTick()
+    controller.postSubAgentEvent("A", { type: "subAgentBusyChanged", sessionID: "A", busy: true })
+    rejectMessages(1, new Error("refresh failed"))
+    await tick()
+
+    expect(posts.at(-1)).toEqual({ type: "subAgentBusyChanged", sessionID: "A", busy: true })
+
+    controller.scheduleSubAgentRefresh("A")
+    await refreshTick()
+    expect(messagesQueue.map((item) => item.sessionID)).toEqual(["A", "A", "A"])
+    resolveMessages(2, "A", "msg-a", "A")
+  })
+
+  test("discards an earlier request after reopening the same subagent", async () => {
+    const { controller, messagesQueue, posts, resolveMessages } = makeSubAgentController()
+
+    const firstA = controller.openSubAgent("A", "first A")
+    await tick()
+    const openB = controller.openSubAgent("B", "B")
+    await tick()
+    const secondA = controller.openSubAgent("A", "second A")
+    await tick()
+
+    expect(messagesQueue.map((item) => item.sessionID)).toEqual(["A", "B", "A"])
+    resolveMessages(2, "A", "msg-new-a", "new A")
+    await secondA
+    resolveMessages(0, "A", "msg-old-a", "old A")
+    await firstA
+    resolveMessages(1, "B", "msg-b", "B")
+    await openB
+
+    expect(
+      posts
+        .filter((message) => message.type === "showSubAgent" && !message.view.loading)
+        .map((message) => (message.type === "showSubAgent" ? message.view.messages.map((item) => item.id) : [])),
+    ).toEqual([["msg-new-a"]])
+  })
+
+  test("reschedules a pending refresh for the newly opened subagent", async () => {
+    const { controller, messagesQueue, resolveMessages } = makeSubAgentController()
+
+    const openA = controller.openSubAgent("A", "A")
+    await tick()
+    resolveMessages(0, "A", "msg-a", "A")
+    await openA
+
+    controller.scheduleSubAgentRefresh("A")
+    await refreshTick()
+    const openB = controller.openSubAgent("B", "B")
+    await tick()
+    controller.scheduleSubAgentRefresh("B")
+    await refreshTick()
+    resolveMessages(1, "A", "msg-refresh-a", "refresh A")
+    await tick()
+    await refreshTick()
+    resolveMessages(2, "B", "msg-b", "B")
+    await openB
+    await refreshTick()
+    if (messagesQueue[3]) {
+      resolveMessages(3, "B", "msg-refresh-b", "refresh B")
+      await tick()
+    }
+
+    expect(messagesQueue.map((item) => item.sessionID)).toEqual(["A", "A", "B", "B"])
   })
 })
 

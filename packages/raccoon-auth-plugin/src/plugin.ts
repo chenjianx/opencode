@@ -2,9 +2,11 @@ import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 import type { Model, Provider } from "@opencode-ai/sdk/v2"
 import open from "open"
 import { createServer, type Server } from "node:http"
+import { loginWithPhone } from "./password-login"
 
 const DEFAULT_BASE_URL = "https://xiaohuanxiong.com"
 const CALLBACK_TIMEOUT_MS = 5 * 60 * 1000
+const AUTH_REQUEST_TIMEOUT_MS = 30_000
 const DEFAULT_CONTEXT_LENGTH = 64_000
 const DEFAULT_INPUT_LENGTH = 60_000
 const STANDARD_MODELS = new Set(["raccoon-chat", "raccoon-completion", "raccoon-pro-chat", "raccoon-pro-completion"])
@@ -235,6 +237,8 @@ async function refreshAccessToken(baseUrl: string, refreshToken: string) {
 async function fetchUserInfo(baseUrl: string, access: string) {
   const response = await fetch(`${baseUrl}/api/plugin/auth/v1/user_info`, {
     headers: { Authorization: `Bearer ${access}` },
+    redirect: "error",
+    signal: AbortSignal.timeout(AUTH_REQUEST_TIMEOUT_MS),
   })
   const json = (await response.json().catch(() => ({}))) as UserInfoResponse
   if (!response.ok) throw new Error(`Failed to fetch user info: ${response.status}`)
@@ -885,6 +889,33 @@ export async function RaccoonAuthPlugin(_input: PluginInput): Promise<Hooks> {
           ],
           async authorize(inputs = {}) {
             const loginBaseUrl = normalizeUrl(inputs.serverUrl || baseUrl)
+            if (inputs.loginMethod === "phone") {
+              const tokens = await loginWithPhone({
+                baseUrl: loginBaseUrl,
+                nationCode: inputs.nationCode ?? "",
+                phone: inputs.phone ?? "",
+                password: inputs.password ?? "",
+              })
+              const user = await fetchUserInfo(loginBaseUrl, tokens.access).catch(() => undefined)
+              const expires = parseJwtExp(tokens.access)
+              return {
+                url: loginBaseUrl,
+                instructions: "Phone sign-in completed.",
+                method: "auto" as const,
+                async callback() {
+                  return {
+                    type: "success" as const,
+                    provider: "raccoon",
+                    refresh: tokens.refresh,
+                    access: tokens.access,
+                    expires: expires ? expires * 1000 : Date.now() + 60 * 60 * 1000,
+                    accountId: accountIdFromUser(user),
+                    enterpriseUrl: loginBaseUrl,
+                  }
+                },
+              }
+            }
+
             const state = randomString(32)
             const callbackServer = startCallbackServer()
             const callbackPromise = new Promise<{

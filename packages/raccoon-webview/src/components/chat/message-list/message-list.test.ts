@@ -1,8 +1,30 @@
 import { describe, expect, test } from "bun:test"
 import { diffFiles } from "./message-list-diff"
 import { sessionUsage } from "./message-list-format"
+import { visibleParts } from "./message-list-model"
 import { parseFileReference } from "../../ui/markdown-lite"
 import type { RaccoonMessage, RaccoonMessagePart } from "../../../protocol"
+
+const message = (parts: RaccoonMessagePart[]) =>
+  ({
+    id: "msg_1",
+    role: "assistant",
+    text: "",
+    parts,
+    createdAt: 1,
+  }) satisfies RaccoonMessage
+
+describe("visibleParts", () => {
+  test("hides patch metadata", () => {
+    expect(visibleParts(message([{ id: "prt_1", type: "patch", title: "patch" }]))).toEqual([])
+  })
+
+  test("keeps apply_patch tool calls visible", () => {
+    const part = { id: "prt_1", type: "tool", tool: "apply_patch" } satisfies RaccoonMessagePart
+
+    expect(visibleParts(message([part]))).toEqual([part])
+  })
+})
 
 describe("diffFiles", () => {
   test("uses the first parsed patch file when the path does not match exactly", () => {

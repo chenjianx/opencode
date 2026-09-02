@@ -1,4 +1,4 @@
-import type { RaccoonMessage, RaccoonMessagePart, RaccoonPartUpdate } from "../protocol"
+import type { RaccoonMessage, RaccoonMessagePart, RaccoonPartUpdate, RaccoonSubAgentView } from "../protocol"
 
 export function messageText(parts: RaccoonMessagePart[]) {
   return parts
@@ -34,10 +34,17 @@ function applyPartUpdate(message: RaccoonMessage, update: RaccoonPartUpdate) {
   }
 }
 
-export function applyPartUpdates(messages: RaccoonMessage[], updates: RaccoonPartUpdate[]) {
+export function applyPartUpdates(messages: RaccoonMessage[], updates: RaccoonPartUpdate[], sessionID: string | undefined) {
   if (updates.length === 0) return messages
-  return updates.reduce((next, update) => {
+  return updates.filter((update) => update.sessionID === sessionID).reduce((next, update) => {
     if (!next.some((message) => message.id === update.messageID)) return next
     return next.map((message) => (message.id === update.messageID ? applyPartUpdate(message, update) : message))
   }, messages)
+}
+
+export function mergeSubAgentView(current: RaccoonSubAgentView | undefined, incoming: RaccoonSubAgentView) {
+  return {
+    ...incoming,
+    busy: incoming.busy ?? (current?.sessionID === incoming.sessionID ? current.busy : undefined),
+  }
 }

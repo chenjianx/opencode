@@ -21,10 +21,15 @@ type VSCodeContextValue = {
 
 const VSCodeContext = createContext<VSCodeContextValue | undefined>(undefined)
 
+export function messageForMockLog(message: WebviewToExtension) {
+  if (message.type !== "loginRaccoon" || message.method !== "phone") return message
+  return { ...message, phone: "[redacted]", password: "[redacted]" }
+}
+
 function getVSCodeAPI() {
   if (typeof acquireVsCodeApi === "function") return acquireVsCodeApi()
   return {
-    postMessage: (message: WebviewToExtension) => console.log("[Raccoon] Mock postMessage", message),
+    postMessage: (message: WebviewToExtension) => console.log("[Raccoon] Mock postMessage", messageForMockLog(message)),
     getState: () => undefined,
     setState: () => {},
   }

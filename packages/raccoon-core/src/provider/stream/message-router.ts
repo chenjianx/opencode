@@ -42,7 +42,10 @@ type MessageRouterDeps = {
   ) => Promise<void>
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => Promise<void>
   setProviderEnabled: (providerID: string, enabled: boolean) => Promise<void>
-  loginRaccoon: (serverUrl: string | undefined, source: RaccoonWebviewSource) => Promise<void>
+  loginRaccoon: (
+    message: Extract<WebviewToExtension, { type: "loginRaccoon" }>,
+    source: RaccoonWebviewSource,
+  ) => Promise<void>
   cancelRaccoonLogin: () => void
   logoutRaccoon: () => Promise<void>
   configureProvider: (providerID: string, apiKey: string) => Promise<void>
@@ -248,7 +251,7 @@ export class RaccoonMessageRouter {
       return
     }
     if (message.type === "loginRaccoon") {
-      await this.deps.loginRaccoon(message.serverUrl, source)
+      await this.deps.loginRaccoon(message, source)
       return
     }
     if (message.type === "cancelRaccoonLogin") {

@@ -5,6 +5,7 @@ import type {
   RaccoonFileSearchItem,
   RaccoonMessage,
   RaccoonPluginLanguage,
+  RaccoonPartUpdate,
   RaccoonState,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
@@ -57,6 +58,16 @@ function normalizePluginLanguage(value: string | undefined): RaccoonPluginLangua
   return "en"
 }
 
+type StreamUpdateMessage = Extract<ExtensionToWebview, { type: "partUpdated" | "partsUpdated" }>
+
+function streamUpdateMessage(updates: RaccoonPartUpdate[]): StreamUpdateMessage | undefined {
+  if (updates.length === 0) return
+  if (updates.length > 1) return { type: "partsUpdated", updates }
+  const update = updates[0]
+  if (!update) return
+  return { type: "partUpdated", ...update }
+}
+
 // Subsequence fuzzy match used to filter open editor tabs against the mention query.
 // Empty query matches everything so all open tabs are pinned when the popover first opens.
 function fuzzyMatch(query: string, target: string): boolean {
@@ -80,7 +91,7 @@ export class RaccoonProvider {
   private unsubscribeState?: () => void
   private readonly autocompleteConfigListener: Disposable
   private readonly pendingPartDeltas = new Map<string, string>()
-  private readonly streams = new RaccoonStreamScheduler((message) => this.webviewHost.post("chat", message))
+  private readonly streams = new RaccoonStreamScheduler((message) => this.postStreamMessage(message))
   private readonly webviewHost: WebviewTransport
   private readonly eventStream: RaccoonEventStream
   private readonly eventHandler: RaccoonEventHandler
@@ -187,17 +198,21 @@ export class RaccoonProvider {
       upsertPart: (part) => this.upsertPart(part),
       removePart: (messageID, partID) => this.removePart(messageID, partID),
       pushPartUpdate: (part) => this.pushPartUpdate(part),
-      pushPartDelta: (messageID, partID, field, delta) => this.pushPartDelta(messageID, partID, field, delta),
-      pushSubAgentPartDelta: (messageID, partID, field, delta) =>
-        this.pushSubAgentPartDelta(messageID, partID, field, delta),
+      pushPartDelta: (sessionID, messageID, partID, field, delta) =>
+        this.pushPartDelta(sessionID, messageID, partID, field, delta),
+      pushSubAgentPartDelta: (sessionID, messageID, partID, field, delta) =>
+        this.pushSubAgentPartDelta(sessionID, messageID, partID, field, delta),
       upsertSubAgentMessage: (message) => this.upsertSubAgentMessage(message),
       flushStreams: () => this.streams.flush(),
       stopPromptRefresh: (sessionID) => this.sessions.stopPromptRefresh(sessionID),
       clearPromptRefresh: (sessionID) => this.sessions.clearPromptRefresh(sessionID),
       scheduleEventRefresh: () => this.scheduleEventRefresh(),
       scheduleSubAgentRefresh: (sessionID) => this.sessions.scheduleSubAgentRefresh(sessionID),
+      isTrackedSubAgent: (sessionID) => this.sessions.isTrackedSubAgent(sessionID),
+      completeTrackedSubAgent: (sessionID) => this.sessions.completeTrackedSubAgent(sessionID),
       refreshMcpInstalled: () => this.refreshMcpInstalled(),
       postMessage: (message) => this.webviewHost.post("chat", message),
+      postSubAgentEvent: (sessionID, message) => this.sessions.postSubAgentEvent(sessionID, message),
       onReauthRequired: () => this.handleReauthRequired(),
     })
     this.eventStream = new RaccoonEventStream(
@@ -235,7 +250,7 @@ export class RaccoonProvider {
       saveSettings: (message, source) => this.saveSettings(message, source),
       setModelEnabled: (model, enabled) => this.config.setModelEnabled(model, enabled),
       setProviderEnabled: (providerID, enabled) => this.config.setProviderEnabled(providerID, enabled),
-      loginRaccoon: (serverUrl, source) => this.config.loginRaccoon(serverUrl, source),
+      loginRaccoon: (message, source) => this.config.loginRaccoon(message, source),
       cancelRaccoonLogin: () => this.config.cancelRaccoonLogin(),
       logoutRaccoon: () => this.logoutRaccoon(),
       configureProvider: (providerID, apiKey) => this.config.configureProvider(providerID, apiKey),
@@ -693,15 +708,34 @@ export class RaccoonProvider {
 
   private pushPartUpdate(part: Part) {
     this.streams.push({
+      sessionID: part.sessionID,
       messageID: part.messageID,
       part: mapPart(part),
     })
   }
 
-  private pushPartDelta(messageID: string, partID: string, field: string, delta: string) {
+  private postStreamMessage(message: ExtensionToWebview) {
+    if (message.type !== "partUpdated" && message.type !== "partsUpdated") {
+      this.webviewHost.post("chat", message)
+      return
+    }
+    const updates = message.type === "partUpdated" ? [message] : message.updates
+    const main = streamUpdateMessage(updates.filter((update) => update.sessionID === this.state.activeSessionID))
+    if (main) this.webviewHost.post("chat", main)
+    const subAgentSessionIDs = new Set(
+      updates.map((update) => update.sessionID).filter((sessionID) => this.sessions.isTrackedSubAgent(sessionID)),
+    )
+    subAgentSessionIDs.forEach((sessionID) => {
+      const subAgent = streamUpdateMessage(updates.filter((update) => update.sessionID === sessionID))
+      if (subAgent) this.sessions.postSubAgentEvent(sessionID, subAgent)
+    })
+  }
+
+  private pushPartDelta(sessionID: string, messageID: string, partID: string, field: string, delta: string) {
     this.appendPartDelta(messageID, partID, field, delta)
     if (field !== "text") return
     this.streams.push({
+      sessionID,
       messageID,
       part: { id: partID, type: "text", text: "" },
       delta: {
@@ -711,9 +745,10 @@ export class RaccoonProvider {
     })
   }
 
-  private pushSubAgentPartDelta(messageID: string, partID: string, field: string, delta: string) {
+  private pushSubAgentPartDelta(sessionID: string, messageID: string, partID: string, field: string, delta: string) {
     if (field !== "text") return
     this.streams.push({
+      sessionID,
       messageID,
       part: { id: partID, type: "text", text: "" },
       delta: {
@@ -733,7 +768,11 @@ export class RaccoonProvider {
       createdAt: message.time.created,
       ...(message.role === "assistant" ? { tokens: message.tokens, cost: message.cost } : {}),
     }
-    this.webviewHost.post("chat", { type: "subAgentMessageUpdated", message: mapped } satisfies ExtensionToWebview)
+    this.sessions.postSubAgentEvent(message.sessionID, {
+      type: "subAgentMessageUpdated",
+      sessionID: message.sessionID,
+      message: mapped,
+    } satisfies ExtensionToWebview)
   }
 
   private hasMessage(messageID: string) {

@@ -110,6 +110,12 @@ export type RaccoonProviderAuthMethod = {
   >
 }
 
+export type RaccoonPhoneCountryCode = "86" | "852" | "853" | "81"
+
+export type RaccoonLoginInput =
+  | { method: "browser"; serverUrl?: string }
+  | { method: "phone"; serverUrl?: string; nationCode: RaccoonPhoneCountryCode; phone: string; password: string }
+
 export type RaccoonCustomProvider = {
   providerID: string
   name: string
@@ -463,6 +469,7 @@ export type RaccoonPartDelta = {
 }
 
 export type RaccoonPartUpdate = {
+  sessionID: string
   messageID: string
   part: RaccoonMessagePart
   delta?: RaccoonPartDelta
@@ -592,7 +599,7 @@ export type WebviewToExtension =
     }
   | { type: "setModelEnabled"; model: { providerID: string; modelID: string }; enabled: boolean }
   | { type: "setProviderEnabled"; providerID: string; enabled: boolean }
-  | { type: "loginRaccoon"; serverUrl?: string }
+  | ({ type: "loginRaccoon" } & RaccoonLoginInput)
   | { type: "cancelRaccoonLogin" }
   | { type: "logoutRaccoon" }
   | { type: "configureProvider"; providerID: string; apiKey: string }
@@ -706,8 +713,8 @@ export type ExtensionToWebview =
       error?: string
     }
   | { type: "showSubAgent"; view: RaccoonSubAgentView }
-  | { type: "subAgentMessageUpdated"; message: RaccoonMessage }
-  | { type: "subAgentBusyChanged"; busy: boolean }
+  | { type: "subAgentMessageUpdated"; sessionID: string; message: RaccoonMessage }
+  | { type: "subAgentBusyChanged"; sessionID: string; busy: boolean }
   | { type: "closeSubAgent" }
   | {
       type: "customProviderModelsFetched"

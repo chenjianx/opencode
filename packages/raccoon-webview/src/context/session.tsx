@@ -8,6 +8,7 @@ import type {
   RaccoonFileAttachment,
   RaccoonManagedCommand,
   RaccoonManagedCommandInput,
+  RaccoonLoginInput,
   RaccoonMessage,
   RaccoonModel,
   RaccoonPluginLanguage,
@@ -21,7 +22,7 @@ import type {
   WebviewToExtension,
 } from "../protocol"
 import { useVSCode } from "./vscode"
-import { applyPartUpdates } from "./session-parts"
+import { applyPartUpdates, mergeSubAgentView } from "./session-parts"
 
 const initialState: RaccoonState = {
   sessions: [],
@@ -105,7 +106,7 @@ type SessionActionsContextValue = {
   }>
   setModelEnabled: (model: { providerID: string; modelID: string }, enabled: boolean) => void
   setProviderEnabled: (providerID: string, enabled: boolean) => void
-  loginRaccoon: (serverUrl?: string) => void
+  loginRaccoon: (input: RaccoonLoginInput) => void
   cancelRaccoonLogin: () => void
   logoutRaccoon: () => void
   configureProvider: (providerID: string, apiKey: string) => void
@@ -274,7 +275,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       if (message.type === "partUpdated" || message.type === "partsUpdated") {
         const updates = message.type === "partUpdated" ? [message] : message.updates
         setState((current) => {
-          const next = { ...current, messages: applyPartUpdates(current.messages, updates) }
+          const next = { ...current, messages: applyPartUpdates(current.messages, updates, current.activeSessionID) }
           // Don't flip an idle session back to busy — background part updates
           // (e.g. compaction.prune) arrive after session.idle.
           if (current.busy) {
@@ -284,7 +285,7 @@ export function SessionProvider(props: { children: ReactNode }) {
           if (current.subAgentView) {
             next.subAgentView = {
               ...current.subAgentView,
-              messages: applyPartUpdates(current.subAgentView.messages, updates),
+              messages: applyPartUpdates(current.subAgentView.messages, updates, current.subAgentView.sessionID),
             }
           }
           vscode.setState(next)
@@ -536,7 +537,7 @@ export function SessionProvider(props: { children: ReactNode }) {
           const next = {
             ...current,
             view: "subagent" as const,
-            subAgentView: { ...message.view, busy: current.subAgentView?.busy },
+            subAgentView: mergeSubAgentView(current.subAgentView, message.view),
           }
           vscode.setState(next)
           return next
@@ -545,7 +546,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       }
       if (message.type === "subAgentMessageUpdated") {
         setState((current) => {
-          if (!current.subAgentView) return current
+          if (!current.subAgentView || current.subAgentView.sessionID !== message.sessionID) return current
           const messages = current.subAgentView.messages
           const existing = messages.find((m) => m.id === message.message.id)
           // Preserve parts/text from streaming when the message already exists;
@@ -563,7 +564,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       }
       if (message.type === "subAgentBusyChanged") {
         setState((current) => {
-          if (!current.subAgentView) return current
+          if (!current.subAgentView || current.subAgentView.sessionID !== message.sessionID) return current
           const next = { ...current, subAgentView: { ...current.subAgentView, busy: message.busy } }
           vscode.setState(next)
           return next
@@ -853,7 +854,7 @@ export function SessionProvider(props: { children: ReactNode }) {
         }))
         vscode.postMessage({ type: "setProviderEnabled", providerID, enabled })
       },
-      loginRaccoon: (serverUrl) => vscode.postMessage({ type: "loginRaccoon", serverUrl }),
+      loginRaccoon: (input) => vscode.postMessage({ type: "loginRaccoon", ...input }),
       cancelRaccoonLogin: () => vscode.postMessage({ type: "cancelRaccoonLogin" }),
       logoutRaccoon: () => vscode.postMessage({ type: "logoutRaccoon" }),
       configureProvider: (providerID, apiKey) => vscode.postMessage({ type: "configureProvider", providerID, apiKey }),

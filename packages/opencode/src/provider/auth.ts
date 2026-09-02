@@ -198,6 +198,7 @@ const layer: Layer.Layer<Service, never, Auth.Service | Plugin.Service> = Layer.
       const result = yield* Effect.promise(() =>
         match.method === "code" ? match.callback(input.code!) : match.callback(),
       )
+      if (pending.get(input.providerID) !== match) return // raccoon_change - ignore callbacks superseded by a newer authorization
       if (!result || result.type !== "success") return yield* new OauthCallbackFailed({})
 
       if ("key" in result) {

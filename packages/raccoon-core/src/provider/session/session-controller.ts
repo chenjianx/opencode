@@ -4,6 +4,7 @@ import type {
   ExtensionToWebview,
   RaccoonMessagePart,
   RaccoonState,
+  RaccoonSubAgentView,
   RaccoonSubSession,
   WebviewToExtension,
 } from "@opencode-ai/raccoon-webview"
@@ -44,6 +45,12 @@ type SessionControllerDeps = {
   webviewHost: WebviewTransport
 }
 
+type SubAgentLoad = {
+  sessionID: string
+  generation: number
+  events: ExtensionToWebview[]
+}
+
 export class RaccoonSessionController {
   private eventRefreshTimer?: ReturnType<typeof setTimeout>
   private promptRefreshTimer?: ReturnType<typeof setTimeout>
@@ -51,6 +58,9 @@ export class RaccoonSessionController {
   private refreshingFromEvent = false
   private refreshingSubAgent = false
   private subAgentRefreshPending = false
+  private subAgentViewGeneration = 0
+  private subAgentLoad?: SubAgentLoad
+  private readonly subAgentEvents = new Map<string, ExtensionToWebview[]>()
   private openSubAgentSessionID?: string
   private openSubAgentTitle?: string
   private readonly pendingOptimisticMessages = new Set<string>()
@@ -782,28 +792,22 @@ export class RaccoonSessionController {
     // The child session keeps emitting events while the parent task runs; we track
     // the open sub-agent here so the event handler can drive incremental refreshes
     // (see scheduleSubAgentRefresh), giving the view a streaming-like update.
+    const generation = ++this.subAgentViewGeneration
     this.openSubAgentSessionID = sessionID
     this.openSubAgentTitle = title
     this.clearSubAgentRefresh()
+    const load = this.beginSubAgentLoad(sessionID, generation)
     this.deps.webviewHost.post("chat", {
       type: "showSubAgent",
       view: { sessionID, title, messages: [], loading: true },
     } satisfies ExtensionToWebview)
     try {
-      const messages = await this.fetchSubAgentMessages(sessionID)
-      if (this.openSubAgentSessionID !== sessionID) return
-      this.deps.webviewHost.post("chat", {
-        type: "showSubAgent",
-        view: { sessionID, title, messages, loading: false },
-      } satisfies ExtensionToWebview)
+      const view = await this.fetchSubAgentView(sessionID)
+      this.completeSubAgentLoad(load, { sessionID, title, ...view, loading: false })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       this.deps.log(`open sub-agent failed (${sessionID}): ${message}`)
-      if (this.openSubAgentSessionID !== sessionID) return
-      this.deps.webviewHost.post("chat", {
-        type: "showSubAgent",
-        view: { sessionID, title, messages: [], loading: false, error: message },
-      } satisfies ExtensionToWebview)
+      this.completeSubAgentLoad(load, { sessionID, title, messages: [], loading: false, error: message })
     }
   }
 
@@ -819,45 +823,133 @@ export class RaccoonSessionController {
     }, 120)
   }
 
+  isOpenSubAgent(sessionID: string) {
+    return this.openSubAgentSessionID === sessionID
+  }
+
+  isTrackedSubAgent(sessionID: string) {
+    if (this.isOpenSubAgent(sessionID)) return true
+    const state = this.deps.getState()
+    const activeSessionID = state.activeSessionID
+    if (!activeSessionID) return false
+    if (state.subSessions?.[sessionID]) return true
+    if (
+      state.messages.some((message) =>
+        message.parts.some((part) => part.tool === "task" && part.metadata?.sessionId === sessionID),
+      )
+    )
+      return true
+    if (
+      Object.values(state.subSessions ?? {}).some((subSession) =>
+        subSession.tools.some((tool) => tool.sessionID === sessionID),
+      )
+    )
+      return true
+
+    const sessions = new Map(state.sessions.map((session) => [session.id, session]))
+    const seen = new Set<string>()
+    let current = sessions.get(sessionID)
+    while (current?.parentID && !seen.has(current.id)) {
+      if (current.parentID === activeSessionID) return true
+      seen.add(current.id)
+      current = sessions.get(current.parentID)
+    }
+    return false
+  }
+
+  postSubAgentEvent(sessionID: string, message: ExtensionToWebview) {
+    const events = this.subAgentEvents.get(sessionID) ?? []
+    events.push(message)
+    this.subAgentEvents.set(sessionID, events)
+    if (!this.isOpenSubAgent(sessionID)) return
+    if (this.subAgentLoad?.sessionID === sessionID && this.subAgentLoad.generation === this.subAgentViewGeneration) {
+      this.subAgentLoad.events.push(message)
+      return
+    }
+    this.deps.webviewHost.post("chat", message)
+  }
+
+  completeTrackedSubAgent(sessionID: string) {
+    if (!this.isOpenSubAgent(sessionID)) this.subAgentEvents.delete(sessionID)
+  }
+
+  private isCurrentSubAgent(sessionID: string, generation: number) {
+    return this.openSubAgentSessionID === sessionID && this.subAgentViewGeneration === generation
+  }
+
   // When refreshSubAgent is called while one is already running, set a pending
   // flag so the in-flight refresh can re-schedule one more fetch in its finally.
   private async refreshSubAgent(sessionID: string) {
-    if (this.refreshingSubAgent || this.openSubAgentSessionID !== sessionID) {
-      if (this.refreshingSubAgent && this.openSubAgentSessionID === sessionID) this.subAgentRefreshPending = true
+    if (this.refreshingSubAgent || this.subAgentLoad || this.openSubAgentSessionID !== sessionID) {
+      if ((this.refreshingSubAgent || this.subAgentLoad) && this.openSubAgentSessionID === sessionID)
+        this.subAgentRefreshPending = true
       return
     }
+    const generation = this.subAgentViewGeneration
     this.refreshingSubAgent = true
+    const load = this.beginSubAgentLoad(sessionID, generation)
     try {
-      const messages = await this.fetchSubAgentMessages(sessionID)
-      if (this.openSubAgentSessionID !== sessionID) return
-      this.deps.webviewHost.post("chat", {
-        type: "showSubAgent",
-        view: { sessionID, title: this.openSubAgentTitle, messages, loading: false },
-      } satisfies ExtensionToWebview)
+      const view = await this.fetchSubAgentView(sessionID)
+      this.completeSubAgentLoad(load, { sessionID, title: this.openSubAgentTitle, ...view, loading: false })
     } catch (error) {
       // Transient refresh failures must not clobber the rendered view; the next
       // event (or the final idle event) will retry the fetch.
       this.deps.log(`refresh sub-agent failed (${sessionID}): ${error instanceof Error ? error.message : String(error)}`)
+      this.failSubAgentLoad(load)
     } finally {
       this.refreshingSubAgent = false
-      if (this.subAgentRefreshPending && this.openSubAgentSessionID === sessionID) {
-        this.subAgentRefreshPending = false
-        this.scheduleSubAgentRefresh(sessionID)
-      }
+      const pendingSessionID = this.subAgentRefreshPending ? this.openSubAgentSessionID : undefined
+      this.subAgentRefreshPending = false
+      if (pendingSessionID) this.scheduleSubAgentRefresh(pendingSessionID)
     }
   }
 
-  private async fetchSubAgentMessages(sessionID: string) {
+  private async fetchSubAgentView(sessionID: string) {
     const client = await this.deps.client()
-    const response = await client.session.messages(
-      { sessionID, directory: this.deps.directory(), limit: 200 },
-      { throwOnError: true },
-    )
-    return sortMessages(
-      response.data
-        .flatMap((message) => mapMessage(message))
-        .filter((message) => message.text.trim() || message.parts.length > 0),
-    )
+    const [response, status] = await Promise.all([
+      client.session.messages(
+        { sessionID, directory: this.deps.directory(), limit: 200 },
+        { throwOnError: true },
+      ),
+      client.session.status({ directory: this.deps.directory() }, { throwOnError: true }),
+    ])
+    return {
+      messages: sortMessages(
+        response.data
+          .flatMap((message) => mapMessage(message))
+          .filter((message) => message.text.trim() || message.parts.length > 0),
+      ),
+      busy: (status.data[sessionID]?.type ?? "idle") !== "idle",
+    }
+  }
+
+  private beginSubAgentLoad(sessionID: string, generation: number) {
+    const load = { sessionID, generation, events: [...(this.subAgentEvents.get(sessionID) ?? [])] } satisfies SubAgentLoad
+    this.subAgentLoad = load
+    return load
+  }
+
+  private completeSubAgentLoad(load: SubAgentLoad, view: RaccoonSubAgentView) {
+    if (!this.isCurrentSubAgent(load.sessionID, load.generation) || this.subAgentLoad !== load) return
+    this.subAgentLoad = undefined
+    this.deps.webviewHost.post("chat", { type: "showSubAgent", view } satisfies ExtensionToWebview)
+    load.events.forEach((message) => this.deps.webviewHost.post("chat", message))
+    const latestBusy = load.events.filter((message) => message.type === "subAgentBusyChanged").at(-1)
+    if ((latestBusy?.busy ?? view.busy) === false) this.subAgentEvents.delete(load.sessionID)
+    this.reschedulePendingSubAgentRefresh(load.sessionID)
+  }
+
+  private failSubAgentLoad(load: SubAgentLoad) {
+    if (!this.isCurrentSubAgent(load.sessionID, load.generation) || this.subAgentLoad !== load) return
+    this.subAgentLoad = undefined
+    load.events.forEach((message) => this.deps.webviewHost.post("chat", message))
+    this.reschedulePendingSubAgentRefresh(load.sessionID)
+  }
+
+  private reschedulePendingSubAgentRefresh(sessionID: string) {
+    if (!this.subAgentRefreshPending) return
+    this.subAgentRefreshPending = false
+    this.scheduleSubAgentRefresh(sessionID)
   }
 
   private clearSubAgentRefresh() {
@@ -867,6 +959,8 @@ export class RaccoonSessionController {
   }
 
   closeSubAgent() {
+    this.subAgentViewGeneration++
+    this.subAgentLoad = undefined
     this.openSubAgentSessionID = undefined
     this.openSubAgentTitle = undefined
     this.clearSubAgentRefresh()

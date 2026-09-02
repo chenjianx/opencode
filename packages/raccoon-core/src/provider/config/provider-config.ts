@@ -52,6 +52,7 @@ export class RaccoonProviderConfig {
   private providerAuthMethods: Record<string, RaccoonProviderAuthMethod[]> = {}
   private pluginLanguageMode: RaccoonPluginLanguageMode
   private readonly raccoonLoginTokens = new ActionTokenStore()
+  private raccoonLoginAbort?: AbortController
   private readonly providerConnectTokens = new ActionTokenStore()
   private readonly modelState: ModelStateStore
 
@@ -510,7 +511,10 @@ export class RaccoonProviderConfig {
     }
   }
 
-  async loginRaccoon(serverUrl: string | undefined, source: RaccoonWebviewSource) {
+  async loginRaccoon(message: Extract<WebviewToExtension, { type: "loginRaccoon" }>, source: RaccoonWebviewSource) {
+    this.raccoonLoginAbort?.abort()
+    const abort = new AbortController()
+    this.raccoonLoginAbort = abort
     const token = this.raccoonLoginTokens.issue()
     await this.deps
       .withLoading(async () => {
@@ -525,9 +529,20 @@ export class RaccoonProviderConfig {
             providerID: "raccoon",
             directory: this.deps.directory(),
             method: index,
-            inputs: serverUrl ? { serverUrl } : undefined,
+            inputs:
+              message.method === "phone"
+                ? {
+                    loginMethod: "phone",
+                    ...(message.serverUrl ? { serverUrl: message.serverUrl } : {}),
+                    nationCode: message.nationCode,
+                    phone: message.phone,
+                    password: message.password,
+                  }
+                : message.serverUrl
+                  ? { serverUrl: message.serverUrl }
+                  : undefined,
           },
-          { throwOnError: true },
+          { throwOnError: true, signal: abort.signal },
         )
         if (!this.raccoonLoginTokens.isCurrent(undefined, token)) return
         if (!authorization.data) throw new Error("Raccoon did not return an authorization URL")
@@ -546,7 +561,7 @@ export class RaccoonProviderConfig {
               method: index,
               code,
             },
-            { throwOnError: true },
+            { throwOnError: true, signal: abort.signal },
           )
         } else {
           await client.provider.oauth.callback(
@@ -555,7 +570,7 @@ export class RaccoonProviderConfig {
               directory: this.deps.directory(),
               method: index,
             },
-            { throwOnError: true },
+            { throwOnError: true, signal: abort.signal },
           )
         }
         if (!this.raccoonLoginTokens.isCurrent(undefined, token)) return
@@ -576,10 +591,15 @@ export class RaccoonProviderConfig {
         } satisfies ExtensionToWebview)
         throw error
       })
+      .finally(() => {
+        if (this.raccoonLoginAbort === abort) this.raccoonLoginAbort = undefined
+      })
   }
 
   cancelRaccoonLogin() {
     this.raccoonLoginTokens.cancel()
+    this.raccoonLoginAbort?.abort()
+    this.raccoonLoginAbort = undefined
     this.deps.setState({ ...this.deps.getState(), loading: false, busy: false })
     this.deps.post()
     this.deps.webviewHost.postRaccoonLoginFinished()

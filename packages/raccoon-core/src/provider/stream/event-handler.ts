@@ -42,16 +42,19 @@ type EventHandlerDeps = {
   upsertPart: (part: Part) => void
   removePart: (messageID: string, partID: string) => void
   pushPartUpdate: (part: Part) => void
-  pushPartDelta: (messageID: string, partID: string, field: string, delta: string) => void
-  pushSubAgentPartDelta: (messageID: string, partID: string, field: string, delta: string) => void
+  pushPartDelta: (sessionID: string, messageID: string, partID: string, field: string, delta: string) => void
+  pushSubAgentPartDelta: (sessionID: string, messageID: string, partID: string, field: string, delta: string) => void
   upsertSubAgentMessage: (message: Message) => void
   flushStreams: () => void
   stopPromptRefresh: (sessionID: string) => void
   clearPromptRefresh: (sessionID: string) => void
   scheduleEventRefresh: () => void
   scheduleSubAgentRefresh: (sessionID: string) => void
+  isTrackedSubAgent: (sessionID: string) => boolean
+  completeTrackedSubAgent: (sessionID: string) => void
   refreshMcpInstalled: () => void
   postMessage: (message: ExtensionToWebview) => void
+  postSubAgentEvent: (sessionID: string, message: ExtensionToWebview) => void
   onReauthRequired: () => void
 }
 
@@ -94,6 +97,7 @@ export class RaccoonEventHandler {
     const sessionID = eventSessionID(event)
     const isChildSession = sessionID && sessionID !== this.deps.getState().activeSessionID
     if (isChildSession) {
+      if (!this.deps.isTrackedSubAgent(sessionID)) return
       if (event.type === "question.asked") {
         this.deps.postMessage({
           type: "questionRequest",
@@ -142,22 +146,32 @@ export class RaccoonEventHandler {
         return
       }
       if (event.type === "message.part.delta") {
-        this.deps.pushSubAgentPartDelta(event.properties.messageID, event.properties.partID, event.properties.field, event.properties.delta)
+        this.deps.pushSubAgentPartDelta(sessionID, event.properties.messageID, event.properties.partID, event.properties.field, event.properties.delta)
         return
       }
       // session.status drives the busy indicator without a full refresh —
       // streaming events handle content, session.idle triggers final reconciliation.
       if (event.type === "session.status") {
-        this.deps.postMessage({ type: "subAgentBusyChanged", busy: event.properties.status.type !== "idle" })
+        if (event.properties.status.type === "idle") this.deps.flushStreams()
+        this.deps.postSubAgentEvent(sessionID, {
+          type: "subAgentBusyChanged",
+          sessionID,
+          busy: event.properties.status.type !== "idle",
+        })
+        if (event.properties.status.type === "idle") this.deps.completeTrackedSubAgent(sessionID)
         return
       }
       if (event.type === "session.idle") {
-        this.deps.postMessage({ type: "subAgentBusyChanged", busy: false })
+        this.deps.flushStreams()
+        this.deps.postSubAgentEvent(sessionID, { type: "subAgentBusyChanged", sessionID, busy: false })
+        this.deps.completeTrackedSubAgent(sessionID)
         this.deps.scheduleSubAgentRefresh(sessionID)
         return
       }
       if (event.type === "session.error") {
-        this.deps.postMessage({ type: "subAgentBusyChanged", busy: false })
+        this.deps.flushStreams()
+        this.deps.postSubAgentEvent(sessionID, { type: "subAgentBusyChanged", sessionID, busy: false })
+        this.deps.completeTrackedSubAgent(sessionID)
         this.deps.scheduleSubAgentRefresh(sessionID)
         return
       }
@@ -188,7 +202,7 @@ export class RaccoonEventHandler {
     }
     if (event.type === "message.part.delta") {
       this.deps.stopPromptRefresh(event.properties.sessionID)
-      this.deps.pushPartDelta(event.properties.messageID, event.properties.partID, event.properties.field, event.properties.delta)
+      this.deps.pushPartDelta(event.properties.sessionID, event.properties.messageID, event.properties.partID, event.properties.field, event.properties.delta)
       this.setBusy(true)
       return
     }

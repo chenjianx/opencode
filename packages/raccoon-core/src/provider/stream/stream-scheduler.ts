@@ -3,7 +3,7 @@ import type { ExtensionToWebview, RaccoonPartUpdate } from "@opencode-ai/raccoon
 const   FLUSH_MS = 16
 
 function key(update: RaccoonPartUpdate) {
-  return `${update.messageID}:${update.part.id}`
+  return `${update.sessionID}:${update.messageID}:${update.part.id}`
 }
 
 function appendText(part: RaccoonPartUpdate["part"], text: string) {
@@ -52,7 +52,13 @@ export class RaccoonStreamScheduler {
     if (updates.length === 1) {
       const update = updates[0]
       if (!update) return
-      this.send({ type: "partUpdated", messageID: update.messageID, part: update.part, ...(update.delta ? { delta: update.delta } : {}) })
+      this.send({
+        type: "partUpdated",
+        sessionID: update.sessionID,
+        messageID: update.messageID,
+        part: update.part,
+        ...(update.delta ? { delta: update.delta } : {}),
+      })
       return
     }
     this.send({ type: "partsUpdated", updates })

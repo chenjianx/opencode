@@ -22,7 +22,7 @@ const popularProviders = [
 
 // 展示国外供应商的「热门供应商」发现入口。
 // 隐藏时将此开关改回 true 即可只保留自定义添加入口。
-const HIDE_FOREIGN_PROVIDERS = false
+const HIDE_FOREIGN_PROVIDERS = true
 
 // raccoon (login) and opencode (free models) get their own pinned cards at the
 // top, so they are excluded from the dynamic connected/popular sections.
@@ -567,7 +567,10 @@ export function SettingsProviders() {
                 onClick={() => {
                   setRaccoonLoggingIn(true)
                   setRaccoonLoginError(undefined)
-                  actions.loginRaccoon(raccoonServerUrl.trim() || RACCOON_LOGIN_URL)
+                  actions.loginRaccoon({
+                    method: "browser",
+                    serverUrl: raccoonServerUrl.trim() || RACCOON_LOGIN_URL,
+                  })
                 }}
               >
                 {raccoonLoggingIn ? language.t("settings.providers.raccoon.waiting") : language.t("settings.providers.raccoon.openBrowser")}

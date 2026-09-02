@@ -2,8 +2,9 @@ import { describe, expect, test } from "bun:test"
 import type { ExtensionToWebview, RaccoonState } from "@opencode-ai/raccoon-webview"
 import { RaccoonEventHandler } from "./event-handler"
 
-function createHandler() {
+function createHandler(trackedSubAgentSessionID = "child") {
   const messages: ExtensionToWebview[] = []
+  const routedSubAgentSessions: string[] = []
   const states: RaccoonState[] = []
   const handler = new RaccoonEventHandler({
     directory: () => "/workspace",
@@ -17,21 +18,124 @@ function createHandler() {
     hasMessage: () => false,
     upsertPart: () => {},
     removePart: () => {},
-    pushPartUpdate: () => {},
+    pushPartUpdate: (part) => routedSubAgentSessions.push(part.sessionID),
     pushPartDelta: () => {},
     pushSubAgentPartDelta: () => {},
-    upsertSubAgentMessage: () => {},
+    upsertSubAgentMessage: (message) => routedSubAgentSessions.push(message.sessionID),
     flushStreams: () => {},
     stopPromptRefresh: () => {},
     clearPromptRefresh: () => {},
     scheduleEventRefresh: () => {},
     scheduleSubAgentRefresh: () => {},
+    isTrackedSubAgent: (sessionID: string) => sessionID === trackedSubAgentSessionID,
+    completeTrackedSubAgent: () => {},
     refreshMcpInstalled: () => {},
     postMessage: (message: ExtensionToWebview) => messages.push(message),
+    postSubAgentEvent: (_sessionID: string, message: ExtensionToWebview) => messages.push(message),
     onReauthRequired: () => {},
   } as never)
-  return { handler, messages, states }
+  return { handler, messages, routedSubAgentSessions, states }
 }
+
+describe("RaccoonEventHandler child session streaming", () => {
+  test("ignores questions from a session outside the active session tree", () => {
+    const { handler, messages, states } = createHandler("child-a")
+
+    handler.handleGlobal({
+      type: "event",
+      directory: "/workspace",
+      payload: {
+        type: "question.asked",
+        properties: {
+          id: "question-b",
+          sessionID: "child-b",
+          questions: [],
+        },
+      },
+    } as never)
+
+    expect(messages).toEqual([])
+    expect(states).toEqual([])
+  })
+
+  test("ignores message and part updates outside the active session tree", () => {
+    const { handler, routedSubAgentSessions } = createHandler("child-a")
+
+    handler.handleGlobal({
+      type: "event",
+      directory: "/workspace",
+      payload: {
+        type: "message.updated",
+        properties: {
+          sessionID: "child-b",
+          info: {
+            id: "msg-child-b",
+            sessionID: "child-b",
+            role: "assistant",
+            time: { created: 1 },
+            tokens: {},
+            cost: 0,
+          },
+        },
+      },
+    } as never)
+    handler.handleGlobal({
+      type: "event",
+      directory: "/workspace",
+      payload: {
+        type: "message.part.updated",
+        properties: {
+          sessionID: "child-b",
+          part: {
+            id: "prt-child-b",
+            sessionID: "child-b",
+            messageID: "msg-child-b",
+            type: "text",
+            text: "from child b",
+          },
+        },
+      },
+    } as never)
+
+    expect(routedSubAgentSessions).toEqual([])
+  })
+
+  test("ignores busy changes outside the active session tree", () => {
+    const { handler, messages } = createHandler("child-a")
+
+    handler.handleGlobal({
+      type: "event",
+      directory: "/workspace",
+      payload: {
+        type: "session.status",
+        properties: {
+          sessionID: "child-b",
+          status: { type: "busy" },
+        },
+      },
+    } as never)
+
+    expect(messages).toEqual([])
+  })
+
+  test("identifies the session for tracked subagent busy changes", () => {
+    const { handler, messages } = createHandler("child-a")
+
+    handler.handleGlobal({
+      type: "event",
+      directory: "/workspace",
+      payload: {
+        type: "session.status",
+        properties: {
+          sessionID: "child-a",
+          status: { type: "busy" },
+        },
+      },
+    } as never)
+
+    expect(messages).toEqual([{ type: "subAgentBusyChanged", sessionID: "child-a", busy: true }])
+  })
+})
 
 describe("RaccoonEventHandler child session permissions", () => {
   test("forwards child permission requests to the webview", () => {
@@ -105,6 +209,6 @@ describe("RaccoonEventHandler session.error", () => {
       },
     } as never)
 
-    expect(messages).toContainEqual({ type: "subAgentBusyChanged", busy: false })
+    expect(messages).toContainEqual({ type: "subAgentBusyChanged", sessionID: "child", busy: false })
   })
 })
