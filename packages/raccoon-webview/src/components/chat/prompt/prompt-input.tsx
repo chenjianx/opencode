@@ -83,8 +83,8 @@ export function PromptInput() {
     usePromptAttachments((attachment) =>
       session.openImage({ url: attachment.url, filename: attachment.filename, mime: attachment.mime }),
     )
-  const minTextareaHeight = 76
-  const maxTextareaHeight = 220
+  const minTextareaHeight = 54
+  const maxTextareaHeight = 180
   const modeOptions = session.state.agents
     .filter((agent) => agent.mode !== "subagent" && !agent.hidden)
     .map((agent) => ({
@@ -290,9 +290,9 @@ export function PromptInput() {
   }
 
   return (
-    <div className="mt-2.5 mb-2 flex w-full flex-col border-t border-[var(--color-border)] px-0 pt-2">
+    <div className="prompt-input-shell">
       <div
-        className="prompt-composer relative flex flex-col gap-1.5 rounded-[6px] border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-background)] p-0"
+        className="prompt-composer relative flex flex-col gap-1.5 rounded-[8px] border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-background)] p-0 transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--chat-accent)] focus-within:shadow-[0_0_0_1px_color-mix(in_srgb,var(--chat-accent)_28%,transparent)]"
         {...dragHandlers}
       >
         <PromptDragOverlay active={dragging} />
@@ -319,7 +319,8 @@ export function PromptInput() {
         <PromptAttachments attachments={attachments} onOpen={openAttachment} onRemove={removeAttachment} />
         <textarea
           ref={textareaRef}
-          className="min-h-[76px] w-full resize-none rounded-[4px] border border-transparent bg-transparent px-[7px] py-1.5 text-[13px] leading-[19px] text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted)]"
+          rows={2}
+          className="min-h-[54px] w-full resize-none rounded-[4px] border border-transparent bg-transparent px-[7px] py-1.5 text-[13px] leading-[19px] text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted)]"
           style={{ height: `${minTextareaHeight}px` }}
           value={draft}
           placeholder={t("prompt.placeholder")}
@@ -445,7 +446,7 @@ export function PromptInput() {
           ) : null}
           <button
             type="button"
-            className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border border-[var(--color-border)] bg-transparent p-0 text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] disabled:cursor-default"
+            className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border border-[var(--chat-accent)] bg-[var(--chat-accent)] p-0 text-white hover:bg-[var(--chat-accent-hover)] disabled:cursor-default disabled:border-[var(--color-border)] disabled:bg-transparent disabled:text-[var(--color-muted)]"
             disabled={!busy && (!canSend || submittingCurrentSession)}
             onClick={send}
             aria-label={busy ? t("prompt.stop") : canSend ? t("prompt.send") : t("prompt.cannotSend")}

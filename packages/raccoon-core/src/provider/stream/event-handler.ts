@@ -1,5 +1,13 @@
 import type { Event, GlobalEvent, Part, Message, Session } from "@opencode-ai/sdk/v2/client"
 import type { ExtensionToWebview, RaccoonState } from "@opencode-ai/raccoon-webview"
+import { win32 } from "node:path"
+
+function sameDirectory(left: string, right: string) {
+  if (left === right) return true
+  const windows = (value: string) => /^[A-Za-z]:[\\/]/.test(value) || /^[\\/]{2}/.test(value)
+  if (!windows(left) || !windows(right)) return false
+  return win32.normalize(left).toLowerCase() === win32.normalize(right).toLowerCase()
+}
 
 function isEvent(payload: GlobalEvent["payload"]): payload is Event {
   return "properties" in payload
@@ -66,7 +74,7 @@ export class RaccoonEventHandler {
 
   handleGlobal(event: GlobalEvent) {
     if (isServerStreamEvent(event.payload)) return
-    if (event.directory && event.directory !== this.deps.directory() && event.directory !== "global") return
+    if (event.directory && event.directory !== "global" && !sameDirectory(event.directory, this.deps.directory())) return
     if (!isEvent(event.payload)) return
     this.handle(event.payload)
   }

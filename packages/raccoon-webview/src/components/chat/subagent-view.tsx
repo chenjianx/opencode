@@ -11,7 +11,7 @@ export function SubAgentView() {
   const title = view?.title?.trim() || language.t("subagent.title")
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-background)]">
+    <section className="chat-view flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-background)]">
       <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-[5px] pb-[6px] pt-[7px]">
         <Button
           variant="ghost"

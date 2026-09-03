@@ -2,7 +2,7 @@
   "name": "raccoon",
   "displayName": "%raccoon.package.displayName%",
   "description": "%raccoon.package.description%",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "raccoon",
   "license": "MIT",
   "type": "module",

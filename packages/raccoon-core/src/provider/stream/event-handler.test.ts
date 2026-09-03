@@ -2,12 +2,12 @@ import { describe, expect, test } from "bun:test"
 import type { ExtensionToWebview, RaccoonState } from "@opencode-ai/raccoon-webview"
 import { RaccoonEventHandler } from "./event-handler"
 
-function createHandler(trackedSubAgentSessionID = "child") {
+function createHandler(trackedSubAgentSessionID = "child", directory = "/workspace") {
   const messages: ExtensionToWebview[] = []
   const routedSubAgentSessions: string[] = []
   const states: RaccoonState[] = []
   const handler = new RaccoonEventHandler({
-    directory: () => "/workspace",
+    directory: () => directory,
     getState: () => ({ activeSessionID: "root" }) as RaccoonState,
     setState: (state: RaccoonState) => states.push(state),
     post: () => {},
@@ -172,6 +172,43 @@ describe("RaccoonEventHandler child session permissions", () => {
       },
     ])
     expect(states.at(-1)).toMatchObject({ loading: true, busy: true })
+  })
+})
+
+describe("RaccoonEventHandler Windows directory routing", () => {
+  test("forwards events when only Windows path casing differs", () => {
+    const { handler, messages } = createHandler("child", "d:\\Desktop")
+
+    handler.handleGlobal({
+      type: "event",
+      directory: "D:\\Desktop",
+      payload: {
+        type: "permission.asked",
+        properties: {
+          id: "perm-root",
+          sessionID: "root",
+          permission: "external_directory",
+          patterns: ["C:\\ProgramData\\MySQL\\*"],
+          metadata: {},
+          always: ["C:\\ProgramData\\MySQL\\*"],
+        },
+      },
+    } as never)
+
+    expect(messages).toEqual([
+      {
+        type: "permissionRequest",
+        permission: {
+          id: "perm-root",
+          sessionID: "root",
+          permission: "external_directory",
+          patterns: ["C:\\ProgramData\\MySQL\\*"],
+          metadata: {},
+          always: ["C:\\ProgramData\\MySQL\\*"],
+          tool: undefined,
+        },
+      },
+    ])
   })
 })
 

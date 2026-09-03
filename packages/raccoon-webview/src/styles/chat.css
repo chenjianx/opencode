@@ -809,6 +809,18 @@
     @apply overflow-hidden text-ellipsis whitespace-nowrap text-[var(--color-muted)];
   }
 
+  .tool-end {
+    @apply inline-flex shrink-0 items-center justify-end gap-2;
+  }
+
+  .tool-end [data-slot="basic-tool-tool-arg"] {
+    @apply min-w-[3em] text-right leading-[18px];
+  }
+
+  .tool-end .tool-arrow {
+    @apply inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px] leading-[18px];
+  }
+
   .tool-part.task-row {
     @apply flex w-full cursor-pointer items-center justify-between gap-2 bg-transparent px-2.5 py-1.5 text-left;
   }
@@ -821,8 +833,8 @@
     @apply flex min-w-0 flex-1 items-center;
   }
 
-  .tool-part.task-row > .tool-arrow {
-    @apply shrink-0 text-[var(--color-muted)];
+  .tool-part.task-row .tool-end {
+    @apply text-[var(--color-muted)];
   }
 
   .tool-details {
@@ -1276,6 +1288,249 @@
   [data-component="markdown-table"] th,
   [data-component="markdown-table"] td {
     @apply border-b border-[var(--color-border)] px-2 py-1 align-top;
+  }
+
+  /* Message workbench: keep the familiar user message treatment while the
+   * assistant response and tool activity read as one continuous working surface. */
+  .chat-view {
+    --chat-accent: light-dark(#7556dc, #9a7bff);
+    --chat-accent-hover: light-dark(#6847d1, #aa91ff);
+    --chat-accent-soft: color-mix(in srgb, var(--chat-accent) 9%, var(--color-background));
+  }
+
+  .chat-view .chat-header {
+    @apply min-h-10 px-2 pb-1.5 pt-2;
+    background: color-mix(in srgb, var(--color-background) 98%, var(--chat-accent));
+  }
+
+  .chat-view .session-usage-ring-fill {
+    stroke: var(--chat-accent);
+  }
+
+  .chat-view .message-list {
+    @apply px-3 pb-2 pt-2;
+  }
+
+  .chat-view .session-turn {
+    @apply gap-5 border-b border-[color-mix(in_srgb,var(--color-border)_72%,transparent)] py-3;
+  }
+
+  .chat-view .session-turn:last-of-type {
+    @apply border-b-0;
+  }
+
+  .chat-view .turn-assistant-group + .turn-assistant-group {
+    @apply -mt-1;
+  }
+
+  .chat-view .turn-assistant {
+    @apply gap-1.5 rounded-none border-0 bg-transparent px-0 py-0;
+  }
+
+  .chat-view .turn-user {
+    @apply relative;
+  }
+
+  .chat-view .user-message-actions {
+    @apply absolute right-0 top-full w-auto pt-0.5;
+  }
+
+  .chat-view .turn-role {
+    @apply text-[10px] tracking-[0.06em];
+  }
+
+  .chat-view .assistant-parts {
+    @apply gap-2 text-[13px] leading-[19px];
+  }
+
+  .chat-view .assistant-inline-questions {
+    @apply flex min-w-0 flex-col gap-2;
+  }
+
+  .chat-view .prose[data-component="markdown-lite"] {
+    @apply text-[13px] leading-[19px];
+  }
+
+  .chat-view .tool-activity {
+    @apply relative ml-1 flex min-w-0 flex-col gap-0 border-l border-[var(--color-border)] py-0.5 pl-3 pr-5;
+  }
+
+  .chat-view .tool-activity > .tool-part {
+    @apply relative rounded-none border-0 bg-transparent;
+  }
+
+  .chat-view .tool-activity > .tool-part::before {
+    position: absolute;
+    top: 11px;
+    left: -16px;
+    z-index: 1;
+    width: 7px;
+    height: 7px;
+    border: 2px solid var(--color-background);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-muted) 42%, var(--color-background));
+    box-sizing: content-box;
+    content: "";
+  }
+
+  .chat-view .tool-activity > .tool-part[data-status="completed"]::before {
+    background: var(--vscode-testing-iconPassed, #34a66f);
+  }
+
+  .chat-view .tool-activity > .tool-part[data-status="running"]::before {
+    background: var(--chat-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--chat-accent) 12%, transparent);
+  }
+
+  .chat-view .tool-activity > .tool-part[data-status="pending"]::before {
+    border-color: color-mix(in srgb, var(--color-muted) 72%, var(--color-background));
+    background: var(--color-background);
+  }
+
+  .chat-view .tool-activity > .tool-part[data-status="failed"]::before,
+  .chat-view .tool-activity > .tool-part.errored::before {
+    background: var(--color-error);
+  }
+
+  .chat-view .tool-activity > .tool-part[open] {
+    @apply my-0.5 rounded-[7px] border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_96%,var(--color-hover))];
+  }
+
+  .chat-view .tool-activity .tool-dot {
+    @apply hidden;
+  }
+
+  .chat-view .tool-activity [data-slot="basic-tool-tool-trigger-content"] {
+    @apply flex-1;
+  }
+
+  .chat-view .tool-activity [data-slot="basic-tool-tool-info"],
+  .chat-view .tool-activity [data-slot="basic-tool-tool-info-structured"],
+  .chat-view .tool-activity [data-slot="basic-tool-tool-info-main"],
+  .chat-view .tool-activity [data-slot="basic-tool-tool-subtitle"] {
+    @apply flex-1;
+  }
+
+  .chat-view .tool-activity [data-slot="basic-tool-tool-arg"] {
+    @apply shrink-0 text-[11px] font-normal;
+  }
+
+  .chat-view .tool-activity > .tool-part[data-status="running"] [data-slot="basic-tool-tool-arg"] {
+    @apply font-medium text-[var(--chat-accent)];
+  }
+
+  .chat-view .tool-activity > .tool-part[data-status="failed"] [data-slot="basic-tool-tool-arg"],
+  .chat-view .tool-activity > .tool-part.errored [data-slot="basic-tool-tool-arg"] {
+    @apply font-medium text-[var(--color-error)];
+  }
+
+  .chat-view .tool-activity .tool-part > summary,
+  .chat-view .tool-activity .tool-part.task-row {
+    @apply rounded-[4px] px-2 py-1 transition-colors hover:bg-[var(--color-hover)];
+  }
+
+  .chat-view .tool-details {
+    @apply px-2 py-1;
+  }
+
+  .chat-view .tool-details .tool-section {
+    @apply gap-1 py-1;
+  }
+
+  .chat-view .tool-details .tool-output-shell,
+  .chat-view .tool-details .tool-output-markdown,
+  .chat-view .tool-details [data-component="tool-output"] {
+    @apply rounded-[4px] border-0 bg-[color-mix(in_srgb,var(--color-button)_65%,var(--color-background))];
+  }
+
+  .chat-view .tool-details .tool-output-shell pre,
+  .chat-view .tool-details .tool-output-plain,
+  .chat-view .tool-details .tool-md-code,
+  .chat-view .tool-details .tool-markdown {
+    @apply p-2;
+  }
+
+  .chat-view .tool-activity .tool-part > summary:hover .tool-arrow,
+  .chat-view .tool-activity .tool-part.task-row:hover .tool-arrow {
+    @apply bg-[color-mix(in_srgb,var(--color-hover)_78%,var(--color-background))];
+  }
+
+  .chat-view .todo-part .tool-details {
+    @apply px-2 py-1.5;
+  }
+
+  .chat-view .todo-output {
+    @apply gap-1.5;
+  }
+
+  .chat-view .todo-section {
+    @apply gap-0;
+  }
+
+  .chat-view .todo-section-header {
+    @apply px-1 py-1 normal-case tracking-normal;
+  }
+
+  .chat-view .todo-list {
+    @apply gap-0 border-t border-[var(--color-border)];
+  }
+
+  .chat-view .todo-row {
+    @apply rounded-none border-x-0 border-t-0 bg-transparent px-1 py-1.5 text-[11px] leading-[16px] last:border-b-0;
+  }
+
+  .chat-view .todo-row.in_progress {
+    @apply bg-[color-mix(in_srgb,var(--color-background)_96%,var(--chat-accent))];
+    box-shadow: inset 2px 0 0 var(--chat-accent);
+  }
+
+  .chat-view .message-scroll-bottom {
+    @apply bottom-2 right-px h-7 w-7 shadow-none;
+  }
+
+  .chat-view .tool-activity .tool-arrow {
+    @apply transition-transform duration-150;
+  }
+
+  .chat-view .tool-activity .tool-part[open] > summary .tool-arrow {
+    @apply rotate-180;
+  }
+
+  .chat-view .working-indicator {
+    @apply py-2.5;
+  }
+
+  .chat-view .working-dot {
+    background: var(--chat-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--chat-accent) 12%, transparent);
+  }
+
+  .chat-view .prompt-input-shell {
+    @apply mb-2 mt-0 flex w-full flex-col border-t border-[var(--color-border)] px-3 pt-2.5;
+  }
+
+  .chat-view .prompt-composer {
+    box-shadow: none;
+  }
+
+  .chat-view .prompt-action-button {
+    @apply rounded-[6px];
+  }
+
+  .chat-view .prompt-send-button:not(:disabled) {
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--chat-accent) 28%, transparent);
+  }
+
+  .chat-view .user-mention,
+  .chat-view .prose[data-component="markdown-lite"] a {
+    color: var(--chat-accent) !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chat-view .tool-activity .tool-arrow,
+    .chat-view .prompt-composer {
+      transition: none;
+    }
   }
 }
 

@@ -336,7 +336,7 @@ export class RaccoonSessionController {
       error: undefined,
     })
     this.deps.post()
-    await this.recoverPendingQuestions(sessionID)
+    await Promise.all([this.recoverPendingQuestions(sessionID), this.recoverPendingPermissions(sessionID)])
   }
 
   async loadOlderMessages(sessionID: string) {
@@ -531,6 +531,30 @@ export class RaccoonSessionController {
       }
     } catch (error) {
       this.deps.log(`pending question recovery failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  async recoverPendingPermissions(sessionID = this.deps.getState().activeSessionID) {
+    if (!sessionID) return
+    try {
+      const response = await (await this.deps.client()).permission.list({ directory: this.deps.directory() })
+      for (const permission of response.data ?? []) {
+        if (permission.sessionID !== sessionID) continue
+        this.deps.webviewHost.post("chat", {
+          type: "permissionRequest",
+          permission: {
+            id: permission.id,
+            sessionID: permission.sessionID,
+            permission: permission.permission,
+            patterns: permission.patterns,
+            metadata: permission.metadata,
+            always: permission.always,
+            tool: permission.tool,
+          },
+        } satisfies ExtensionToWebview)
+      }
+    } catch (error) {
+      this.deps.log(`pending permission recovery failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

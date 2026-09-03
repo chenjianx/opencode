@@ -28,7 +28,7 @@ export function ChatView() {
   const showContext = contextLimit > 0 && contextUsed > 0
 
   return (
-    <section className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-background)]">
+    <section className="chat-view flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-background)]">
       <div className="chat-header">
         <div className="chat-title" title={title}>
           {title}

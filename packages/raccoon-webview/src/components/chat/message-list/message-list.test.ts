@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { diffFiles } from "./message-list-diff"
 import { sessionUsage } from "./message-list-format"
-import { visibleParts } from "./message-list-model"
+import { turnPartGroups, visibleParts } from "./message-list-model"
 import { parseFileReference } from "../../ui/markdown-lite"
 import type { RaccoonMessage, RaccoonMessagePart } from "../../../protocol"
 
-const message = (parts: RaccoonMessagePart[]) =>
+const message = (parts: RaccoonMessagePart[], id = "msg_1") =>
   ({
-    id: "msg_1",
+    id,
     role: "assistant",
     text: "",
     parts,
@@ -23,6 +23,66 @@ describe("visibleParts", () => {
     const part = { id: "prt_1", type: "tool", tool: "apply_patch" } satisfies RaccoonMessagePart
 
     expect(visibleParts(message([part]))).toEqual([part])
+  })
+})
+
+describe("turnPartGroups", () => {
+  test("keeps consecutive tools in one activity block across assistant messages", () => {
+    const first = message([{ id: "prt_read", type: "tool", tool: "read" }], "msg_1")
+    const second = message([{ id: "prt_grep", type: "tool", tool: "grep" }], "msg_2")
+
+    expect(turnPartGroups([first, second])).toEqual([
+      {
+        type: "tools",
+        entries: [
+          { messageID: "msg_1", part: first.parts[0] },
+          { messageID: "msg_2", part: second.parts[0] },
+        ],
+      },
+    ])
+  })
+
+  test("starts a new activity block after assistant reasoning", () => {
+    const first = message([{ id: "prt_read", type: "tool", tool: "read" }], "msg_1")
+    const second = message(
+      [
+        { id: "prt_reasoning", type: "reasoning", text: "Compare the results." },
+        { id: "prt_grep", type: "tool", tool: "grep" },
+      ],
+      "msg_2",
+    )
+
+    expect(turnPartGroups([first, second])).toEqual([
+      { type: "tools", entries: [{ messageID: "msg_1", part: first.parts[0] }] },
+      { type: "part", entry: { messageID: "msg_2", part: second.parts[0] } },
+      { type: "tools", entries: [{ messageID: "msg_2", part: second.parts[1] }] },
+    ])
+  })
+
+  test("keeps an inline question at its assistant message boundary", () => {
+    const first = message([{ id: "prt_read", type: "tool", tool: "read" }], "msg_1")
+    const second = message([{ id: "prt_grep", type: "tool", tool: "grep" }], "msg_2")
+
+    expect(turnPartGroups([first, second], new Set(["msg_1"]))).toEqual([
+      { type: "tools", entries: [{ messageID: "msg_1", part: first.parts[0] }] },
+      { type: "boundary", messageID: "msg_1" },
+      { type: "tools", entries: [{ messageID: "msg_2", part: second.parts[0] }] },
+    ])
+  })
+
+  test("keeps the assistant message text when no text part exists", () => {
+    const assistant = {
+      ...message([{ id: "prt_read", type: "tool", tool: "read" }], "msg_1"),
+      text: "Fallback summary",
+    }
+
+    expect(turnPartGroups([assistant])).toEqual([
+      { type: "tools", entries: [{ messageID: "msg_1", part: assistant.parts[0] }] },
+      {
+        type: "part",
+        entry: { messageID: "msg_1", part: { id: "msg_1", type: "text", text: "Fallback summary" } },
+      },
+    ])
   })
 })
 
