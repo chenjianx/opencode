@@ -20,6 +20,7 @@ export function MessageList(
   const follow = props.follow ?? false
   const busy = props.busy ?? false
   const messageTurns = turns(props.messages ?? session.visibleMessages)
+  const activeTurnBusy = props.messages ? busy : !!session.state.busy
   const rootRef = useRef<HTMLDivElement>(null)
   const activeSessionRef = useRef(session.state.activeSessionID)
   // Normal chat starts pinned to the bottom (newest message). Read-only views start
@@ -129,6 +130,7 @@ export function MessageList(
             session={session}
             inlineQuestions={inlineQuestions}
             readonly={readonly}
+            busy={activeTurnBusy && index === messageTurns.length - 1}
           />
         ))}
         {!readonly && session.revertedMessages.length > 0 ? <RevertBar items={session.revertedMessages} /> : null}

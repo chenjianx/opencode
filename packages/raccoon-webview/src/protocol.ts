@@ -210,6 +210,10 @@ export type RaccoonMessage = {
   text: string
   parts: RaccoonMessagePart[]
   createdAt: number
+  completedAt?: number
+  agent?: string
+  providerID?: string
+  modelID?: string
   tokens?: RaccoonMessageTokens
   cost?: number
 }

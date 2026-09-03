@@ -113,33 +113,29 @@ export function mapPart(part: Part): RaccoonMessagePart {
   }
 }
 
+export function mapMessageInfo(message: Message): RaccoonMessage {
+  const base = {
+    id: message.id,
+    role: message.role,
+    text: "",
+    parts: [],
+    createdAt: message.time.created,
+  }
+  if (message.role === "user") return base
+  return {
+    ...base,
+    completedAt: message.time.completed,
+    agent: message.agent,
+    providerID: message.providerID,
+    modelID: message.modelID,
+    tokens: message.tokens,
+    cost: message.cost,
+  }
+}
+
 export function mapMessage(message: SessionMessageWithParts): RaccoonMessage[] {
-  const base = { id: message.info.id, createdAt: message.info.time.created }
-  if (message.info.role === "user") {
-    const parts = message.parts.map((part) => mapPart(part))
-    return [
-      {
-        ...base,
-        role: "user",
-        parts,
-        text: messageText(parts),
-      },
-    ]
-  }
-  if (message.info.role === "assistant") {
-    const parts = message.parts.map((part) => mapPart(part))
-    return [
-      {
-        ...base,
-        role: "assistant",
-        parts,
-        text: messageText(parts),
-        tokens: message.info.tokens,
-        cost: message.info.cost,
-      },
-    ]
-  }
-  return []
+  const parts = message.parts.map((part) => mapPart(part))
+  return [{ ...mapMessageInfo(message.info), parts, text: messageText(parts) }]
 }
 
 // Derive a compact progress view of a subagent (task) child session from its raw

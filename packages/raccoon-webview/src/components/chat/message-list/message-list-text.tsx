@@ -35,7 +35,7 @@ export function assistantCopyText(text: string) {
     .join("\n\n")
 }
 
-export function AssistantCopyButton(props: { text: string }) {
+export function AssistantSummaryFooter(props: { text: string; meta: string; entering?: boolean }) {
   const language = useLanguage()
   const [copied, setCopied] = useState(false)
   const copyText = assistantCopyText(props.text)
@@ -53,7 +53,12 @@ export function AssistantCopyButton(props: { text: string }) {
   if (!copyText) return null
 
   return (
-    <div className="assistant-summary-actions">
+    <div className={`assistant-summary-actions${props.entering ? " is-entering" : ""}`}>
+      {props.meta ? (
+        <span className="assistant-summary-meta" title={props.meta}>
+          {props.meta}
+        </span>
+      ) : null}
       <button
         type="button"
         className="assistant-summary-copy"

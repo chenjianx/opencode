@@ -3,7 +3,6 @@ import type {
   ChatMode,
   ExtensionToWebview,
   RaccoonFileSearchItem,
-  RaccoonMessage,
   RaccoonPluginLanguage,
   RaccoonPartUpdate,
   RaccoonState,
@@ -12,7 +11,7 @@ import type {
 import { MarketplaceService } from "../services/marketplace/index.js"
 import type { McpStatus } from "../services/marketplace/index.js"
 import { SkillMarketplaceService } from "../services/skill-marketplace/index.js"
-import { mapPart, mapSession, messageText } from "./message/mapping.js"
+import { mapMessageInfo, mapPart, mapSession, messageText } from "./message/mapping.js"
 import { createPrompt } from "./editor/editor-prompt.js"
 import {
   removePart as removeSessionPart,
@@ -760,14 +759,7 @@ export class RaccoonProvider {
 
   private upsertSubAgentMessage(message: Message) {
     if (message.role !== "user" && message.role !== "assistant") return
-    const mapped: RaccoonMessage = {
-      id: message.id,
-      role: message.role,
-      text: "",
-      parts: [],
-      createdAt: message.time.created,
-      ...(message.role === "assistant" ? { tokens: message.tokens, cost: message.cost } : {}),
-    }
+    const mapped = mapMessageInfo(message)
     this.sessions.postSubAgentEvent(message.sessionID, {
       type: "subAgentMessageUpdated",
       sessionID: message.sessionID,

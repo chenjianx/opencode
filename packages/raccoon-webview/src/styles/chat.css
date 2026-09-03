@@ -8,16 +8,19 @@
   }
 
   .assistant-summary-actions {
-    @apply flex w-full items-center justify-end gap-1 pt-1 opacity-0 pointer-events-none transition-opacity duration-150;
+    @apply mt-3 flex min-h-7 w-full items-center justify-between gap-2 text-[11px] leading-4 text-[var(--color-muted)];
   }
 
-  .session-turn:hover .assistant-summary-actions,
-  .session-turn:focus-within .assistant-summary-actions {
-    @apply opacity-100 pointer-events-auto;
+  .assistant-summary-actions.is-entering {
+    animation: assistant-summary-enter 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .assistant-summary-meta {
+    @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap tabular-nums;
   }
 
   .assistant-summary-copy {
-    @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-[var(--color-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)];
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] border border-[var(--color-border)] bg-transparent p-0 text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)];
   }
 
   .assistant-reasoning {
@@ -687,7 +690,7 @@
   }
 
   .user-message-row {
-    @apply flex w-full flex-col items-end gap-1;
+    @apply flex w-full flex-col items-end;
   }
 
   .user-message-row p {
@@ -695,7 +698,7 @@
   }
 
   .user-message-actions {
-    @apply flex w-full items-center justify-end gap-1 pt-1 opacity-0 pointer-events-none transition-opacity duration-150 empty:hidden;
+    @apply mr-px mt-0.5 flex w-auto items-center justify-end gap-px opacity-0 pointer-events-none transition-opacity duration-150 empty:hidden;
   }
 
   .user-message-row:hover .user-message-actions,
@@ -704,7 +707,7 @@
   }
 
   .user-message-icon-button {
-    @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-[4px] border-0 bg-transparent p-0 text-[var(--color-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[5px] border-0 bg-transparent p-0 text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)] disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .user-mention {
@@ -1312,7 +1315,7 @@
   }
 
   .chat-view .session-turn {
-    @apply gap-5 border-b border-[color-mix(in_srgb,var(--color-border)_72%,transparent)] py-3;
+    @apply gap-2 border-b border-[color-mix(in_srgb,var(--color-border)_72%,transparent)] py-3;
   }
 
   .chat-view .session-turn:last-of-type {
@@ -1328,11 +1331,7 @@
   }
 
   .chat-view .turn-user {
-    @apply relative;
-  }
-
-  .chat-view .user-message-actions {
-    @apply absolute right-0 top-full w-auto pt-0.5;
+    @apply w-full;
   }
 
   .chat-view .turn-role {
@@ -1527,10 +1526,26 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .assistant-summary-actions.is-entering {
+      animation: none;
+    }
+
     .chat-view .tool-activity .tool-arrow,
     .chat-view .prompt-composer {
       transition: none;
     }
+  }
+}
+
+@keyframes assistant-summary-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

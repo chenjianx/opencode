@@ -1,17 +1,12 @@
 import type { Message, Part, Session } from "@opencode-ai/sdk/v2/client"
 import type { RaccoonMessage, RaccoonSession } from "@opencode-ai/raccoon-webview"
-import { mapPart, mapSession, messageText, sortMessages, sortParts, sortSessions } from "../message/mapping.js"
+import { mapMessageInfo, mapPart, mapSession, messageText, sortMessages, sortParts, sortSessions } from "../message/mapping.js"
 
 export function upsertMessage(messages: RaccoonMessage[], message: Message) {
   if (message.role !== "user" && message.role !== "assistant") return messages
   const existing = messages.find((item) => item.id === message.id)
-  const next: RaccoonMessage = existing ?? {
-    id: message.id,
-    role: message.role,
-    text: "",
-    parts: [],
-    createdAt: message.time.created,
-  }
+  const mapped = mapMessageInfo(message)
+  const next: RaccoonMessage = existing ? { ...existing, ...mapped, text: existing.text, parts: existing.parts } : mapped
   return sortMessages([...messages.filter((item) => item.id !== message.id), next])
 }
 

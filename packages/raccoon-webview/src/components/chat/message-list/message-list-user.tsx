@@ -18,6 +18,7 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
   const text = props.message.parts.filter((part) => part.type === "text" && !part.synthetic).map((part) => part.text ?? "").join("\n\n").trim()
   const attachments = props.message.parts.filter((part) => part.type === "file" && part.mime?.startsWith("image/"))
   const [copied, setCopied] = useState(false)
+  const language = useLanguage()
   const session = useSession()
 
   const copy = () => {
@@ -100,14 +101,27 @@ export function UserMessage(props: { message: RaccoonMessage; disabled?: boolean
         ) : null}
       </div>
       {showActions ? (
-        <div className="user-message-actions">
+        <div className="user-message-actions" role="toolbar" aria-label={language.t("message.actions")}>
           {props.onRevert ? (
-            <button type="button" className="user-message-icon-button" onClick={props.onRevert} disabled={props.disabled} aria-label="Revert message">
+            <button
+              type="button"
+              className="user-message-icon-button"
+              onClick={props.onRevert}
+              disabled={props.disabled}
+              aria-label={language.t("message.revertAndEdit")}
+              title={language.t("message.revertAndEdit")}
+            >
               <ArrowUUpLeftIcon size={14} />
             </button>
           ) : null}
           {text ? (
-            <button type="button" className="user-message-icon-button" onClick={() => void copy()} aria-label={copied ? "Copied" : "Copy message"}>
+            <button
+              type="button"
+              className="user-message-icon-button"
+              onClick={() => void copy()}
+              aria-label={copied ? language.t("message.copied") : language.t("message.copy")}
+              title={copied ? language.t("message.copied") : language.t("message.copy")}
+            >
               {copied ? <CheckIcon size={14} weight="bold" /> : <CopyIcon size={14} weight="bold" />}
             </button>
           ) : null}

@@ -1,5 +1,12 @@
 import { useState } from "react"
-import { ArrowDownIcon, ArrowUpIcon, BrainIcon, BroomIcon, DatabaseIcon, MagnifyingGlassIcon } from "@phosphor-icons/react"
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ArrowsInLineVerticalIcon,
+  BrainIcon,
+  DatabaseIcon,
+  MagnifyingGlassIcon,
+} from "@phosphor-icons/react"
 import { MessageList } from "./message-list/message-list"
 import { PromptInput } from "./prompt/prompt-input"
 import { Popover } from "../ui/popover"
@@ -58,7 +65,7 @@ export function ChatView() {
             data-tip={language.t("message.compactSession")}
             aria-label={language.t("message.compactSession")}
           >
-            <BroomIcon className="chat-header-compact-icon" weight="bold" aria-hidden />
+            <ArrowsInLineVerticalIcon className="chat-header-compact-icon" weight="regular" aria-hidden />
           </button>
         ) : null}
         {usage.total > 0 ? (

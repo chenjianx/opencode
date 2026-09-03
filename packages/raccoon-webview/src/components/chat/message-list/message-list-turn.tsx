@@ -1,5 +1,8 @@
+import { useEffect, useRef } from "react"
 import { useSession } from "../../../context/session"
-import { AssistantCopyButton, AssistantText } from "./message-list-text"
+import { useLanguage } from "../../../context/language"
+import type { RaccoonMessage, RaccoonModel } from "../../../protocol"
+import { AssistantSummaryFooter, AssistantText } from "./message-list-text"
 import { turnPartGroups, turns, visibleParts } from "./message-list-model"
 import { ToolPart } from "./message-list-tool"
 import { UserMessage } from "./message-list-user"
@@ -13,14 +16,47 @@ function copyTarget(turn: ReturnType<typeof turns>[number]) {
     for (let j = parts.length - 1; j >= 0; j--) {
       const part = parts[j]
       if (part && part.type === "text" && part.text?.trim()) {
-        return { id: part.id, text: part.text ?? "" }
+        return { id: part.id, text: part.text ?? "", message }
       }
     }
     if (message.text?.trim()) {
-      return { id: message.id, text: message.text }
+      return { id: message.id, text: message.text, message }
     }
   }
   return undefined
+}
+
+function turnDuration(turn: ReturnType<typeof turns>[number]) {
+  const startedAt = turn.user?.createdAt ?? turn.assistant[0]?.createdAt
+  const completedAt = turn.assistant.reduce<number | undefined>((latest, message) => {
+    if (message.completedAt === undefined) return latest
+    return latest === undefined ? message.completedAt : Math.max(latest, message.completedAt)
+  }, undefined)
+  if (startedAt === undefined || completedAt === undefined || completedAt < startedAt) return
+  return completedAt - startedAt
+}
+
+function formatDuration(duration: number | undefined, t: ReturnType<typeof useLanguage>["t"]) {
+  if (duration === undefined) return ""
+  const seconds = Math.max(1, Math.round(duration / 1_000))
+  if (seconds < 60) return t("assistant.duration.seconds", { count: seconds })
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  if (minutes < 60) return t("assistant.duration.minutesSeconds", { minutes, seconds: remainingSeconds })
+  return t("assistant.duration.hoursMinutes", { hours: Math.floor(minutes / 60), minutes: minutes % 60 })
+}
+
+function assistantMeta(
+  turn: ReturnType<typeof turns>[number],
+  message: RaccoonMessage,
+  models: RaccoonModel[],
+  t: ReturnType<typeof useLanguage>["t"],
+) {
+  const agent = message.agent ? `${message.agent[0]?.toUpperCase()}${message.agent.slice(1)}` : ""
+  const model = models.find(
+    (item) => item.providerID === message.providerID && item.modelID === message.modelID,
+  )?.modelName
+  return [agent, model ?? message.modelID ?? "", formatDuration(turnDuration(turn), t)].filter(Boolean).join(" · ")
 }
 
 export function MessageTurn(props: {
@@ -28,13 +64,21 @@ export function MessageTurn(props: {
   session: ReturnType<typeof useSession>
   inlineQuestions: ReturnType<typeof useSession>["questions"]
   readonly?: boolean
+  busy?: boolean
 }) {
+  const language = useLanguage()
   const target = copyTarget(props.turn)
   const groups = turnPartGroups(
     props.turn.assistant,
     new Set(props.inlineQuestions.flatMap((request) => (request.tool?.messageID ? [request.tool.messageID] : []))),
   )
   const lastAssistantID = props.turn.assistant.at(-1)?.id
+  const busyRef = useRef(!!props.busy)
+  const footerEntering = busyRef.current && !props.busy
+
+  useEffect(() => {
+    busyRef.current = !!props.busy
+  }, [props.busy])
 
   return (
     <article className="session-turn" key={props.turn.user?.id ?? props.turn.assistant[0]?.id}>
@@ -74,7 +118,7 @@ export function MessageTurn(props: {
                   )
                 }
                 const part = group.entry.part
-                const streaming = props.session.state.busy && group.entry.messageID === lastAssistantID
+                const streaming = !!props.busy && group.entry.messageID === lastAssistantID
                 if (part.type === "text") {
                   return (
                     <AssistantText
@@ -103,9 +147,15 @@ export function MessageTurn(props: {
               })}
             </div>
           </div>
+          {!props.busy && target ? (
+            <AssistantSummaryFooter
+              text={target.text}
+              meta={assistantMeta(props.turn, target.message, props.session.models, language.t)}
+              entering={footerEntering}
+            />
+          ) : null}
         </div>
       ) : null}
-      {target ? <AssistantCopyButton text={target.text} /> : null}
     </article>
   )
 }
