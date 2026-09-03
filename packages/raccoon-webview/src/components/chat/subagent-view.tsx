@@ -1,4 +1,4 @@
-import { ArrowLeftIcon } from "@phosphor-icons/react"
+import { ArrowLeftIcon, CaretRightIcon } from "@phosphor-icons/react"
 import { MessageList } from "./message-list/message-list"
 import { Button } from "../ui"
 import { useLanguage } from "../../context/language"
@@ -9,6 +9,7 @@ export function SubAgentView() {
   const session = useSession()
   const view = session.state.subAgentView
   const title = view?.title?.trim() || language.t("subagent.title")
+  const trail = session.state.subAgentTrail ?? []
 
   return (
     <section className="chat-view flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-background)]">
@@ -23,12 +24,28 @@ export function SubAgentView() {
           {language.t("subagent.back")}
         </Button>
         <span className="h-[16px] w-px shrink-0 bg-[var(--color-border)]" />
-        <div
-          className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold leading-[18px] text-[var(--color-foreground)]"
-          title={title}
+        <nav
+          className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden whitespace-nowrap text-[13px] leading-[18px]"
+          aria-label={language.t("subagent.title")}
         >
-          {title}
-        </div>
+          {trail.slice(-1).map((item) => (
+            <span className="contents" key={item.sessionID}>
+              <span
+                className="max-w-[42%] overflow-hidden text-ellipsis text-[var(--color-muted)]"
+                title={item.title?.trim() || language.t("subagent.title")}
+              >
+                {item.title?.trim() || language.t("subagent.title")}
+              </span>
+              <CaretRightIcon className="shrink-0 text-[var(--color-muted)]" size={12} weight="bold" aria-hidden="true" />
+            </span>
+          ))}
+          <span
+            className="min-w-0 overflow-hidden text-ellipsis font-semibold text-[var(--color-foreground)]"
+            title={title}
+          >
+            {title}
+          </span>
+        </nav>
       </div>
       {view?.error ? (
         <div className="message-shell error">{view.error}</div>

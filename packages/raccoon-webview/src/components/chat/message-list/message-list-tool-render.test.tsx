@@ -1,9 +1,13 @@
-import { expect, test } from "bun:test"
+import { afterEach, expect, test } from "bun:test"
 import { renderToStaticMarkup } from "react-dom/server"
 import { LanguageProvider } from "../../../context/language"
 import { SessionProvider } from "../../../context/session"
 import { VSCodeProvider } from "../../../context/vscode"
 import { ToolPart } from "./message-list-tool"
+
+afterEach(() => {
+  Reflect.deleteProperty(globalThis, "acquireVsCodeApi")
+})
 
 test("hides a completed tool status while preserving its semantic state", () => {
   const html = renderToStaticMarkup(
@@ -44,6 +48,49 @@ test("hides a completed subagent status while preserving an icon navigation arro
   expect(html).not.toContain(">completed</span>")
   expect(html).toContain('<span class="tool-end"><span class="tool-arrow" aria-hidden="true"><svg')
   expect(html).not.toContain("›")
+})
+
+test("summarizes a completed subagent with its real tool-call count and duration", () => {
+  Object.defineProperty(globalThis, "acquireVsCodeApi", {
+    configurable: true,
+    value: () => ({
+      postMessage: () => {},
+      getState: () => ({
+        subSessions: {
+          ses_child: {
+            sessionID: "ses_child",
+            status: "idle",
+            tools: [],
+            toolcalls: 6,
+            startedAt: 1_000,
+            completedAt: 19_000,
+          },
+        },
+      }),
+      setState: () => {},
+    }),
+  })
+
+  const html = renderToStaticMarkup(
+    <VSCodeProvider>
+      <LanguageProvider>
+        <SessionProvider>
+          <ToolPart
+            part={{
+              id: "prt_task",
+              type: "tool",
+              tool: "task",
+              status: "completed",
+              input: { subagent_type: "explore", description: "Analyze project" },
+              metadata: { sessionId: "ses_child" },
+            }}
+          />
+        </SessionProvider>
+      </LanguageProvider>
+    </VSCodeProvider>,
+  )
+
+  expect(html).toContain("6 次工具调用 · 18s")
 })
 
 test("keeps task status and icon navigation arrow in one trailing alignment slot", () => {

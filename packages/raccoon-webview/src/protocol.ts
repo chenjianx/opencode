@@ -486,6 +486,8 @@ export type RaccoonSubAgentView = {
   error?: string
 }
 
+export type RaccoonSubAgentTrailItem = Pick<RaccoonSubAgentView, "sessionID" | "title">
+
 export type RaccoonState = {
   view?: RaccoonView
   serverUrl?: string
@@ -510,6 +512,7 @@ export type RaccoonState = {
   messagesLoadedOlder?: boolean
   subSessions?: Record<string, RaccoonSubSession>
   subAgentView?: RaccoonSubAgentView
+  subAgentTrail?: RaccoonSubAgentTrailItem[]
   agents: RaccoonAgent[]
   rules?: RaccoonRule[]
   models: RaccoonModel[]

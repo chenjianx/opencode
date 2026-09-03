@@ -1,7 +1,6 @@
 import { CaretDown, CaretRight } from "@phosphor-icons/react"
 import { useLanguage } from "../../../context/language"
 import { useSession } from "../../../context/session"
-import { useVSCode } from "../../../context/vscode"
 import type { RaccoonMessagePart } from "../../../protocol"
 import { MarkdownLite } from "../../ui/markdown-lite"
 import { DiffPanel, diffFiles } from "./message-list-diff"
@@ -262,6 +261,18 @@ function toolStatus(status: string | undefined, t: ReturnType<typeof useLanguage
   return undefined
 }
 
+function toolDuration(startedAt: number | undefined, completedAt: number | undefined) {
+  if (startedAt === undefined || completedAt === undefined || completedAt < startedAt) return undefined
+  const seconds = Math.max(1, Math.round((completedAt - startedAt) / 1_000))
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  if (minutes < 60) return remainingSeconds ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`
+}
+
 function ToolEnd(props: { status?: string; arrow?: "expand" | "navigate" }) {
   return (
     <span className="tool-end">
@@ -299,7 +310,6 @@ function ToolSummary(props: { info: ReturnType<typeof toolInfo>; status?: string
 export function ToolPart(props: { part: RaccoonMessagePart }) {
   const language = useLanguage()
   const session = useSession()
-  const vscode = useVSCode()
   const diffs = props.part.tool === "edit" || props.part.tool === "apply_patch" || props.part.tool === "patch" ? diffFiles(props.part) : []
   const onlyDiff = diffs.length > 0
   const lines = onlyDiff ? [] : inputLines(props.part)
@@ -324,13 +334,21 @@ export function ToolPart(props: { part: RaccoonMessagePart }) {
   // The task (subagent) tool is not expandable inline — its child conversation lives
   // in a dedicated read-only view. Render a single clickable row that opens it.
   if (props.part.tool === "task" && subSessionID) {
-    const openSubAgent = () => vscode.postMessage({ type: "openSubAgent", sessionID: subSessionID, title: info.subtitle })
+    const subSession = session.state.subSessions?.[subSessionID]
+    const duration = toolDuration(subSession?.startedAt, subSession?.completedAt)
+    const status =
+      toolStatus(props.part.status, language.t) ??
+      (toolStatusState(props.part.status) === "completed" && subSession
+        ? duration
+          ? language.t("tool.task.completed", { count: subSession.toolcalls, duration })
+          : language.t("tool.task.toolcalls", { count: subSession.toolcalls })
+        : undefined)
     return (
       <button
         type="button"
         className={`tool-part task-part task-row ${props.part.error ? "errored" : ""}`}
         data-status={toolStatusState(props.part.status)}
-        onClick={openSubAgent}
+        onClick={() => session.openSubAgent(subSessionID, info.subtitle)}
         title={language.t("tool.task.open")}
       >
         <span data-component="tool-trigger">
@@ -346,7 +364,7 @@ export function ToolPart(props: { part: RaccoonMessagePart }) {
             </span>
           </span>
         </span>
-        <ToolEnd status={toolStatus(props.part.status, language.t)} arrow="navigate" />
+        <ToolEnd status={status} arrow="navigate" />
       </button>
     )
   }

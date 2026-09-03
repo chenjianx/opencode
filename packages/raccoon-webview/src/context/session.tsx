@@ -74,6 +74,7 @@ type SessionStateContextValue = {
 type SessionActionsContextValue = {
   canSend: (text: string, files?: RaccoonFileAttachment[]) => boolean
   showChat: () => void
+  openSubAgent: (sessionID: string, title?: string) => void
   closeSubAgent: () => void
   createSession: () => void
   openHistory: () => void
@@ -263,7 +264,12 @@ export function SessionProvider(props: { children: ReactNode }) {
             current.view === "history"
               ? { ...incoming, view: "history" as const }
               : current.view === "subagent"
-              ? { ...incoming, view: "subagent" as const, subAgentView: current.subAgentView }
+              ? {
+                  ...incoming,
+                  view: "subagent" as const,
+                  subAgentView: current.subAgentView,
+                  subAgentTrail: current.subAgentTrail,
+                }
               : settingsInlineRef.current && current.view === "settings"
                 ? { ...incoming, view: "settings" as const }
                 : incoming
@@ -573,7 +579,7 @@ export function SessionProvider(props: { children: ReactNode }) {
       }
       if (message.type === "closeSubAgent") {
         setState((current) => {
-          const next = { ...current, view: "chat" as const, subAgentView: undefined }
+          const next = { ...current, view: "chat" as const, subAgentView: undefined, subAgentTrail: undefined }
           vscode.setState(next)
           return next
         })
@@ -734,14 +740,51 @@ export function SessionProvider(props: { children: ReactNode }) {
       showChat: () => {
         setSettingsInline(false)
         setState((current) => {
-          const next = { ...current, view: "chat" as const }
+          const next = { ...current, view: "chat" as const, subAgentView: undefined, subAgentTrail: undefined }
           vscode.setState(next)
           return next
         })
       },
+      openSubAgent: (sessionID, title) => {
+        const current = stateRef.current
+        const subAgentTrail =
+          current.view === "subagent" && current.subAgentView?.sessionID !== sessionID
+            ? [
+                ...(current.subAgentTrail ?? []),
+                ...(current.subAgentView
+                  ? [{ sessionID: current.subAgentView.sessionID, title: current.subAgentView.title }]
+                  : []),
+              ]
+            : current.view === "subagent"
+              ? current.subAgentTrail
+              : []
+        setState((latest) => {
+          const next = { ...latest, subAgentTrail }
+          vscode.setState(next)
+          return next
+        })
+        vscode.postMessage({ type: "openSubAgent", sessionID, title })
+      },
       closeSubAgent: () => {
+        const trail = stateRef.current.subAgentTrail ?? []
+        const parent = trail.at(-1)
+        if (parent) {
+          const subAgentTrail = trail.slice(0, -1)
+          setState((current) => {
+            const next = {
+              ...current,
+              view: "subagent" as const,
+              subAgentTrail,
+              subAgentView: { ...parent, messages: [], loading: true },
+            }
+            vscode.setState(next)
+            return next
+          })
+          vscode.postMessage({ type: "openSubAgent", sessionID: parent.sessionID, title: parent.title })
+          return
+        }
         setState((current) => {
-          const next = { ...current, view: "chat" as const, subAgentView: undefined }
+          const next = { ...current, view: "chat" as const, subAgentView: undefined, subAgentTrail: undefined }
           vscode.setState(next)
           return next
         })
