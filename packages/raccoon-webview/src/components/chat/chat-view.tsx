@@ -40,133 +40,119 @@ export function ChatView() {
         <div className="chat-title" title={title}>
           {title}
         </div>
-        {usage.total > 0 ? (
-          <span
-            className="session-usage-total-inline ui-tip ui-tip-bottom"
-            data-tip={
-              showContext
-                ? language.t("message.contextUsage", {
-                    used: formatTokens(contextUsed),
-                    limit: formatTokens(contextLimit),
-                    pct: contextPct,
-                  })
-                : language.t("message.contextLabel")
-            }
-          >
-            {showContext ? `${contextPct}%` : formatTokens(contextUsed)}
-          </span>
-        ) : null}
-        {session.state.activeSessionID ? (
-          <button
-            type="button"
-            className="chat-header-compact ui-tip ui-tip-bottom"
-            onClick={() => session.runSlashCommand("compact")}
-            disabled={session.state.busy}
-            data-tip={language.t("message.compactSession")}
-            aria-label={language.t("message.compactSession")}
-          >
-            <ArrowsInLineVerticalIcon className="chat-header-compact-icon" weight="regular" aria-hidden />
-          </button>
-        ) : null}
-        {usage.total > 0 ? (
-          <div className="chat-header-usage">
-            <Popover
-              open={usageOpen}
-              onOpenChange={setUsageOpen}
-              className="session-usage-root"
-              menuClassName="session-usage-popover"
-              portal
-              placement="bottom"
-              width={220}
-              trigger={({ toggle, open }) => (
-                <button
-                  type="button"
-                  className={`session-usage-trigger-btn ui-tip ui-tip-bottom${open ? " is-open" : ""}`}
-                  onClick={toggle}
-                  data-tip={language.t("message.usageDetails")}
-                  aria-label={language.t("message.usageDetails")}
-                >
-                  <ContextRing pct={contextPct} hot={contextPct >= 50} />
-                </button>
-              )}
-            >
-              {() => (
-                <>
-                  <div className="session-usage-detail">
-                    {breakdown.input > 0 ? (
-                      <div className="session-usage-row">
-                        <span className="session-usage-row-label">
-                          <ArrowUpIcon className="session-usage-icon" weight="bold" aria-hidden />
-                          {language.t("message.inputTokenLabel")}
-                        </span>
-                        <span className="session-usage-value">{formatTokens(breakdown.input)}</span>
-                      </div>
-                    ) : null}
-                    {breakdown.cache > 0 ? (
-                      <div className="session-usage-row">
-                        <span className="session-usage-row-label">
-                          <DatabaseIcon className="session-usage-icon" weight="bold" aria-hidden />
-                          {language.t("message.cacheTokenLabel")}
-                        </span>
-                        <span className="session-usage-value">{formatTokens(breakdown.cache)}</span>
-                      </div>
-                    ) : null}
-                    {breakdown.reasoning > 0 ? (
-                      <div className="session-usage-row">
-                        <span className="session-usage-row-label">
-                          <BrainIcon className="session-usage-icon" weight="bold" aria-hidden />
-                          {language.t("message.reasoningTokenLabel")}
-                        </span>
-                        <span className="session-usage-value">{formatTokens(breakdown.reasoning)}</span>
-                      </div>
-                    ) : null}
-                    {breakdown.output > 0 ? (
-                      <div className="session-usage-row">
-                        <span className="session-usage-row-label">
-                          <ArrowDownIcon className="session-usage-icon" weight="bold" aria-hidden />
-                          {language.t("message.outputTokenLabel")}
-                        </span>
-                        <span className="session-usage-value">{formatTokens(breakdown.output)}</span>
-                      </div>
-                    ) : null}
-                    {usage.cost > 0 ? (
-                      <div className="session-usage-row">
-                        <span className="session-usage-row-label">{language.t("message.costLabel")}</span>
-                        <span className="session-usage-value session-usage-cost">{formatCost(usage.cost)}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                  {showContext ? (
-                    <div className="session-context">
-                      <div className="session-context-head">
-                        <span className="session-context-title">{language.t("message.contextLabel")}</span>
-                        <span className="session-usage-value">
-                          {formatTokens(contextUsed)} / {formatTokens(contextLimit)}
-                        </span>
-                      </div>
-                      <div className="session-context-bar">
-                        <div
-                          className={`session-context-used${contextPct >= 50 ? " session-context-used--hot" : ""}`}
-                          style={{ width: `${contextPct}%` }}
-                        />
-                      </div>
-                      <span className="session-context-pct">{contextPct}%</span>
-                    </div>
-                  ) : null}
+        {session.state.activeSessionID || usage.total > 0 ? (
+          <div className="chat-header-context-actions">
+            {usage.total > 0 ? (
+              <Popover
+                open={usageOpen}
+                onOpenChange={setUsageOpen}
+                className="session-usage-root"
+                menuClassName="session-usage-popover"
+                portal
+                placement="bottom"
+                width={220}
+                trigger={({ toggle, open }) => (
                   <button
                     type="button"
-                    className="context-inspector-open"
-                    onClick={() => {
-                      setUsageOpen(false)
-                      setInspectorOpen(true)
-                    }}
+                    className={`session-usage-trigger-btn ui-tip ui-tip-bottom${open ? " is-open" : ""}`}
+                    onClick={toggle}
+                    data-tip={language.t("message.usageDetails")}
+                    aria-label={language.t("message.usageDetails")}
                   >
-                    <MagnifyingGlassIcon size={13} weight="bold" aria-hidden />
-                    {language.t("contextInspector.open")}
+                    <ContextRing pct={contextPct} hot={contextPct >= 50} />
                   </button>
-                </>
-              )}
-            </Popover>
+                )}
+              >
+                {() => (
+                  <>
+                    <div className="session-usage-detail">
+                      {breakdown.input > 0 ? (
+                        <div className="session-usage-row">
+                          <span className="session-usage-row-label">
+                            <ArrowUpIcon className="session-usage-icon" weight="bold" aria-hidden />
+                            {language.t("message.inputTokenLabel")}
+                          </span>
+                          <span className="session-usage-value">{formatTokens(breakdown.input)}</span>
+                        </div>
+                      ) : null}
+                      {breakdown.cache > 0 ? (
+                        <div className="session-usage-row">
+                          <span className="session-usage-row-label">
+                            <DatabaseIcon className="session-usage-icon" weight="bold" aria-hidden />
+                            {language.t("message.cacheTokenLabel")}
+                          </span>
+                          <span className="session-usage-value">{formatTokens(breakdown.cache)}</span>
+                        </div>
+                      ) : null}
+                      {breakdown.reasoning > 0 ? (
+                        <div className="session-usage-row">
+                          <span className="session-usage-row-label">
+                            <BrainIcon className="session-usage-icon" weight="bold" aria-hidden />
+                            {language.t("message.reasoningTokenLabel")}
+                          </span>
+                          <span className="session-usage-value">{formatTokens(breakdown.reasoning)}</span>
+                        </div>
+                      ) : null}
+                      {breakdown.output > 0 ? (
+                        <div className="session-usage-row">
+                          <span className="session-usage-row-label">
+                            <ArrowDownIcon className="session-usage-icon" weight="bold" aria-hidden />
+                            {language.t("message.outputTokenLabel")}
+                          </span>
+                          <span className="session-usage-value">{formatTokens(breakdown.output)}</span>
+                        </div>
+                      ) : null}
+                      {usage.cost > 0 ? (
+                        <div className="session-usage-row">
+                          <span className="session-usage-row-label">{language.t("message.costLabel")}</span>
+                          <span className="session-usage-value session-usage-cost">{formatCost(usage.cost)}</span>
+                        </div>
+                      ) : null}
+                    </div>
+                    {showContext ? (
+                      <div className="session-context">
+                        <div className="session-context-head">
+                          <span className="session-context-title">{language.t("message.contextLabel")}</span>
+                          <span className="session-usage-value">
+                            {formatTokens(contextUsed)} / {formatTokens(contextLimit)}
+                          </span>
+                        </div>
+                        <div className="session-context-bar">
+                          <div
+                            className={`session-context-used${contextPct >= 50 ? " session-context-used--hot" : ""}`}
+                            style={{ width: `${contextPct}%` }}
+                          />
+                        </div>
+                        <span className="session-context-pct">{contextPct}%</span>
+                      </div>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="context-inspector-open"
+                      onClick={() => {
+                        setUsageOpen(false)
+                        setInspectorOpen(true)
+                      }}
+                    >
+                      <MagnifyingGlassIcon size={13} weight="bold" aria-hidden />
+                      {language.t("contextInspector.open")}
+                    </button>
+                  </>
+                )}
+              </Popover>
+            ) : null}
+            {session.state.activeSessionID ? (
+              <button
+                type="button"
+                className="chat-header-compact ui-tip ui-tip-bottom"
+                onClick={() => session.runSlashCommand("compact")}
+                disabled={session.state.busy}
+                data-tip={language.t("message.compactSession")}
+                aria-label={language.t("message.compactSession")}
+              >
+                <ArrowsInLineVerticalIcon className="chat-header-compact-icon" weight="regular" aria-hidden />
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

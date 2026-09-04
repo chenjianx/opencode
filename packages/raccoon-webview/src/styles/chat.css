@@ -43,20 +43,24 @@
     @apply min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold leading-[18px] text-[var(--color-foreground)];
   }
 
-  .chat-header-usage {
-    @apply flex shrink-0 items-center gap-1;
+  .chat-header-context-actions {
+    @apply inline-flex shrink-0 items-center rounded-[6px] border border-[var(--color-border)] bg-transparent;
   }
 
   .chat-header-compact {
-    @apply inline-flex size-[22px] shrink-0 items-center justify-center rounded-[6px] border border-[var(--color-border)] bg-transparent text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover-strong)] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex size-[22px] shrink-0 items-center justify-center rounded-r-[5px] border-0 bg-transparent text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover-strong)] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .chat-header-compact:only-child {
+    @apply rounded-l-[5px];
   }
 
   .chat-header-compact-icon {
     @apply size-[15px] shrink-0;
   }
 
-  .session-usage-total-inline {
-    @apply tabular-nums text-[13px] font-medium leading-[16px] text-[var(--color-muted)];
+  .session-usage-root + .chat-header-compact {
+    border-left: 1px solid var(--color-border);
   }
 
   .session-usage-root {
@@ -64,7 +68,11 @@
   }
 
   .session-usage-trigger-btn {
-    @apply inline-flex size-[22px] items-center justify-center rounded-[6px] border border-[var(--color-border)] bg-transparent text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover-strong)];
+    @apply inline-flex size-[22px] items-center justify-center rounded-l-[5px] border-0 bg-transparent text-[var(--color-muted)] transition-colors hover:bg-[var(--color-hover-strong)];
+  }
+
+  .session-usage-root:only-child .session-usage-trigger-btn {
+    @apply rounded-r-[5px];
   }
 
   .session-usage-trigger-btn.is-open {
