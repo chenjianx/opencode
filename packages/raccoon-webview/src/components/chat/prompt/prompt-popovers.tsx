@@ -126,7 +126,7 @@ export function PromptModePicker(props: {
     <div className="relative inline-flex w-max flex-none" ref={props.containerRef}>
       <button
         type="button"
-        className="flex h-[26px] w-max items-center justify-between gap-1.5 rounded-[4px] border border-[var(--color-border)] bg-transparent px-2 text-left text-[12px] leading-none text-[var(--color-foreground)] hover:bg-[var(--color-hover)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)]"
+        className="flex h-[26px] w-max items-center justify-between gap-1.5 rounded-[4px] border-0 bg-transparent px-1.5 text-left text-[12px] leading-none text-[var(--color-foreground)] hover:bg-[var(--color-hover)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)]"
         aria-label={t("prompt.mode")}
         aria-haspopup="listbox"
         aria-expanded={props.open}
@@ -147,7 +147,7 @@ export function PromptModePicker(props: {
               <ListboxOption
                 key={mode.value}
                 selected={active}
-                className="justify-between gap-4"
+                className={`justify-between gap-4 ${active ? "!bg-[var(--chat-accent-soft)] !text-[var(--color-foreground)]" : ""}`}
                 onClick={() => props.onSelect(mode.value)}
               >
                 <span className="min-w-0">
@@ -158,7 +158,7 @@ export function PromptModePicker(props: {
                     </span>
                   ) : null}
                 </span>
-                {active ? <span className="text-[11px] text-[var(--color-muted)]">✓</span> : null}
+                {active ? <span className="text-[11px] text-[var(--chat-accent)]">✓</span> : null}
               </ListboxOption>
             )
           })}

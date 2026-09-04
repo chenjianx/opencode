@@ -35,6 +35,7 @@ export function ModelPicker(props: {
   unsetLabel?: string
   onUnset?: () => void
   disabled?: boolean
+  variant?: "default" | "composer"
 }) {
   const language = useLanguage()
   const [open, setOpen] = useState(false)
@@ -44,6 +45,7 @@ export function ModelPicker(props: {
   const maxWidth = props.maxWidth
 
   const compact = props.compact ?? false
+  const composer = props.variant === "composer"
   const filtered = props.models.filter((model) =>
     `${model.providerName} ${model.modelName} ${model.providerID} ${model.modelID}`.toLowerCase().includes(query.trim().toLowerCase()),
   )
@@ -71,8 +73,14 @@ export function ModelPicker(props: {
         setOpen(next)
         if (next) setQuery("")
       }}
-      className={compact ? "relative inline-flex w-max min-w-0 max-w-full flex-none" : "relative w-[min(190px,46vw)] min-w-[120px] max-w-full"}
-      menuClassName="overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] shadow-[var(--shadow-md)]"
+      className={
+        composer
+          ? "relative inline-flex min-w-0 max-w-[min(210px,52vw)] flex-none"
+          : compact
+            ? "relative inline-flex w-max min-w-0 max-w-full flex-none"
+            : "relative w-[min(190px,46vw)] min-w-[120px] max-w-full"
+      }
+      menuClassName={`${composer ? "prompt-model-menu " : ""}overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] shadow-[var(--shadow-md)]`}
       portal
       placement={props.placement ?? (compact ? "top" : "bottom")}
       width={350}
@@ -80,21 +88,40 @@ export function ModelPicker(props: {
         <button
           type="button"
           className={`flex items-center justify-between gap-1.5 rounded-[4px] border px-2 text-left leading-none text-[var(--color-input-foreground)] cursor-pointer hover:bg-[var(--color-hover)] focus:outline focus:outline-1 focus:outline-offset-[-1px] focus:outline-[var(--color-focus)] disabled:cursor-default disabled:opacity-55 ${
-            compact
-              ? "h-[26px] w-max max-w-full shrink-0 border-[var(--color-border)] bg-transparent text-[12px]"
-              : "min-h-[28px] border-[var(--color-border)] bg-[var(--color-input)]"
+            composer
+              ? "h-[26px] w-max max-w-full shrink-0 border-transparent bg-transparent text-[12px]"
+              : compact
+                ? "h-[26px] w-max max-w-full shrink-0 border-[var(--color-border)] bg-transparent text-[12px]"
+                : "min-h-[28px] border-[var(--color-border)] bg-[var(--color-input)]"
           }`}
           style={maxWidth ? { maxWidth, width: `min(${maxWidth}px, 100%)` } : undefined}
           aria-label={props.ariaLabel}
           aria-haspopup="listbox"
           aria-expanded={api.open}
+          title={composer && current ? `${current.providerName || current.providerID} / ${current.modelName}` : undefined}
           disabled={props.disabled || props.models.length === 0}
           onClick={api.toggle}
         >
-          <span className={compact ? "flex min-w-0 items-center gap-1.5" : "flex min-w-0 flex-col gap-px"}>
-            <span className={`whitespace-nowrap text-[12px] font-medium text-[var(--color-foreground)] ${compact ? (maxWidth ? "overflow-hidden text-ellipsis" : "max-w-none") : "overflow-hidden text-ellipsis"}`}>
-              {compact ? currentLabel : current?.modelName ?? props.placeholder}
-            </span>
+          <span
+            className={
+              composer
+                ? "flex min-w-0 items-center gap-1"
+                : compact
+                  ? "flex min-w-0 items-center gap-1.5"
+                  : "flex min-w-0 flex-col gap-px"
+            }
+          >
+            {composer && current ? (
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[12px] font-medium text-[var(--color-foreground)]">
+                {current.modelName}
+              </span>
+            ) : (
+              <span
+                className={`whitespace-nowrap text-[12px] font-medium text-[var(--color-foreground)] ${compact ? (maxWidth ? "overflow-hidden text-ellipsis" : "max-w-none") : "overflow-hidden text-ellipsis"}`}
+              >
+                {compact ? currentLabel : current?.modelName ?? props.placeholder}
+              </span>
+            )}
             {current && !compact ? (
               <span className="text-[11px] leading-tight text-[var(--color-muted)]">{current.providerID}/{current.modelID}</span>
             ) : null}
@@ -107,7 +134,7 @@ export function ModelPicker(props: {
         <div role="listbox" aria-label={props.ariaLabel}>
           <div className="border-b border-[var(--color-border)] p-2">
             <input
-              className="h-[28px] w-full rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[12px] text-[var(--color-input-foreground)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-focus)]"
+              className={`h-[28px] w-full rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[12px] text-[var(--color-input-foreground)] outline-none placeholder:text-[var(--color-muted)] ${composer ? "focus:border-[var(--chat-accent)]" : "focus:border-[var(--color-focus)]"}`}
               value={query}
               placeholder={language.t("modelPicker.search")}
               onChange={(event) => setQuery(event.currentTarget.value)}
@@ -146,7 +173,11 @@ export function ModelPicker(props: {
                     <button
                       type="button"
                       className={`flex w-full items-center gap-1.5 border-0 px-3 py-1.5 text-left text-[12px] cursor-pointer hover:bg-[var(--color-hover)] ${
-                        active ? "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]" : "bg-transparent text-[var(--color-foreground)]"
+                        active
+                          ? composer
+                            ? "bg-[var(--chat-accent-soft)] text-[var(--color-foreground)]"
+                            : "bg-[var(--vscode-list-activeSelectionBackground,var(--color-hover))] text-[var(--vscode-list-activeSelectionForeground,var(--color-foreground))]"
+                          : "bg-transparent text-[var(--color-foreground)]"
                       }`}
                       key={keyOf(model)}
                       role="option"
@@ -162,6 +193,14 @@ export function ModelPicker(props: {
                         <span className="overflow-hidden text-ellipsis font-semibold">{parts.name}</span>
                       </span>
                       <span className="shrink-0 text-[10px] text-[var(--color-muted)]">{model.providerID}</span>
+                      {composer ? (
+                        <span
+                          aria-hidden="true"
+                          className={`w-3 shrink-0 text-[11px] text-[var(--chat-accent)] ${active ? "" : "opacity-0"}`}
+                        >
+                          ✓
+                        </span>
+                      ) : null}
                     </button>
                   )
                 })}

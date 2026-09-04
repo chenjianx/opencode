@@ -587,7 +587,7 @@ export const dict = {
   "contextInspector.breakdown.other": "Other",
   "contextInspector.systemPrompt": "System prompt",
   "contextInspector.rawMessages": "Raw messages",
-  "prompt.placeholder": 'Ask a question, type "/" for commands, "@" to add context',
+  "prompt.placeholder": 'Ask a question, "/" for commands, "@" to add context',
   "prompt.mode": "Mode",
   "prompt.model": "Model",
   "prompt.send": "Send",

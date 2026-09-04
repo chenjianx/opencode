@@ -582,7 +582,7 @@ export const dict = {
   "contextInspector.breakdown.other": "其他",
   "contextInspector.systemPrompt": "System Prompt",
   "contextInspector.rawMessages": "原始消息",
-  "prompt.placeholder": '输入问题，键入 "/" 执行命令，键入 "@" 添加上下文',
+  "prompt.placeholder": '输入问题，"/" 执行命令，"@" 添加上下文',
   "prompt.mode": "模式",
   "prompt.model": "模型",
   "prompt.send": "发送",

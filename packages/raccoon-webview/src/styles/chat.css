@@ -1513,7 +1513,7 @@
   }
 
   .chat-view .prompt-input-shell {
-    @apply mb-2 mt-0 flex w-full flex-col border-t border-[var(--color-border)] px-3 pt-2.5;
+    @apply mb-2 mt-0 flex w-full flex-col px-3 pt-2.5;
   }
 
   .chat-view .prompt-composer {
@@ -1525,7 +1525,12 @@
   }
 
   .chat-view .prompt-send-button:not(:disabled) {
-    box-shadow: 0 3px 10px color-mix(in srgb, var(--chat-accent) 28%, transparent);
+    box-shadow: none;
+  }
+
+  .prompt-model-menu {
+    --chat-accent: light-dark(#7556dc, #9a7bff);
+    --chat-accent-soft: color-mix(in srgb, var(--chat-accent) 9%, var(--color-background));
   }
 
   .chat-view .user-mention,

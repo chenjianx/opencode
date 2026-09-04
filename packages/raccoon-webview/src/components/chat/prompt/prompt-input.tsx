@@ -1,5 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ArrowClockwiseIcon, ImageIcon, PaperPlaneRightIcon, PaperclipIcon, ShieldCheckIcon, ShieldSlashIcon, XIcon } from "@phosphor-icons/react"
+import {
+  ArrowClockwiseIcon,
+  ImageIcon,
+  PaperPlaneRightIcon,
+  PaperclipIcon,
+  ShieldCheckIcon,
+  ShieldSlashIcon,
+  SquareIcon,
+  XIcon,
+} from "@phosphor-icons/react"
 import { useSession } from "../../../context/session"
 import { useLanguage } from "../../../context/language"
 import type { RaccoonFileAttachment, RaccoonSlashCommand } from "../../../protocol"
@@ -292,7 +301,7 @@ export function PromptInput() {
   return (
     <div className="prompt-input-shell">
       <div
-        className="prompt-composer relative flex flex-col gap-1.5 rounded-[8px] border border-[color-mix(in_srgb,var(--color-border)_82%,var(--color-foreground))] bg-[var(--color-background)] p-0 transition-[border-color,box-shadow] duration-150 focus-within:border-[var(--chat-accent)] focus-within:shadow-[0_0_0_1px_color-mix(in_srgb,var(--chat-accent)_28%,transparent)]"
+        className="prompt-composer relative flex flex-col gap-1.5 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-0 transition-colors duration-150 focus-within:border-[color-mix(in_srgb,var(--chat-accent)_58%,var(--color-border))]"
         {...dragHandlers}
       >
         <PromptDragOverlay active={dragging} />
@@ -320,7 +329,7 @@ export function PromptInput() {
         <textarea
           ref={textareaRef}
           rows={2}
-          className="min-h-[54px] w-full resize-none rounded-[4px] border border-transparent bg-transparent px-[7px] py-1.5 text-[13px] leading-[19px] text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted)]"
+          className="min-h-[54px] w-full resize-none rounded-[4px] border border-transparent bg-transparent px-2.5 py-2 text-[13px] leading-[19px] text-[var(--color-foreground)] outline-none placeholder:text-[var(--color-muted)]"
           style={{ height: `${minTextareaHeight}px` }}
           value={draft}
           placeholder={t("prompt.placeholder")}
@@ -415,6 +424,7 @@ export function PromptInput() {
               ariaLabel={t("prompt.model")}
               placeholder="No model"
               compact
+              variant="composer"
             />
             {activeSessionID && session.conversationModel?.variants ? (
               <ReasoningPicker
@@ -427,10 +437,10 @@ export function PromptInput() {
           {session.state.activeSessionID ? (
             <button
               type="button"
-              className={`ui-tip prompt-action-button prompt-auto-approve-button absolute right-[40px] top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border p-0 transition-colors ${
+              className={`ui-tip prompt-action-button prompt-auto-approve-button absolute right-[40px] top-0 flex h-[30px] w-[30px] items-center justify-center border-0 p-0 transition-colors ${
                 session.autoApprovePermissions
-                  ? "border-[var(--color-border)] bg-[var(--color-hover-strong)] text-[var(--color-foreground)]"
-                  : "border-[var(--color-border)] bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)]"
+                  ? "bg-[var(--chat-accent-soft)] text-[var(--chat-accent)]"
+                  : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] hover:text-[var(--color-foreground)]"
               }`}
               aria-pressed={session.autoApprovePermissions}
               onClick={() => session.toggleAutoApprovePermissions()}
@@ -446,16 +456,23 @@ export function PromptInput() {
           ) : null}
           <button
             type="button"
-            className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center rounded-[999px] border border-[var(--chat-accent)] bg-[var(--chat-accent)] p-0 text-white hover:bg-[var(--chat-accent-hover)] disabled:cursor-default disabled:border-[var(--color-border)] disabled:bg-transparent disabled:text-[var(--color-muted)]"
+            className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center border-0 bg-[var(--chat-accent)] p-0 text-white transition-colors hover:bg-[var(--chat-accent-hover)] disabled:cursor-default disabled:bg-transparent disabled:text-[var(--color-muted)]"
             disabled={!busy && (!canSend || submittingCurrentSession)}
             onClick={send}
             aria-label={busy ? t("prompt.stop") : canSend ? t("prompt.send") : t("prompt.cannotSend")}
             data-tip={busy ? t("prompt.stop") : t("prompt.send")}
           >
-            {busy || submittingCurrentSession ? (
-              <ArrowClockwiseIcon className="animate-spin" size={20} weight="bold" />
+            {busy ? (
+              <SquareIcon data-prompt-action-icon="stop" size={14} weight="fill" />
+            ) : submittingCurrentSession ? (
+              <ArrowClockwiseIcon data-prompt-action-icon="loading" className="animate-spin" size={20} weight="bold" />
             ) : (
-              <PaperPlaneRightIcon className={canSend ? undefined : "opacity-55"} size={20} weight={canSend ? "fill" : "regular"} />
+              <PaperPlaneRightIcon
+                data-prompt-action-icon="send"
+                className={canSend ? undefined : "opacity-55"}
+                size={20}
+                weight={canSend ? "fill" : "regular"}
+              />
             )}
           </button>
         </div>
