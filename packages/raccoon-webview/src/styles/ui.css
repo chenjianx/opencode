@@ -18,7 +18,7 @@
 
   /* Primary/affirmative button: copied from `.question-dock-submit`. */
   .ui-button--primary {
-    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[var(--vscode-button-foreground,#ffffff)] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,light-dark(black,white))];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-solid)] font-medium text-[var(--color-brand-foreground)] hover:bg-[var(--color-brand-solid-hover)];
   }
 
   /* Ghost/transparent button: matches nav-item / dock-back styling. */

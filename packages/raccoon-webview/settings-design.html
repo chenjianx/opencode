@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Raccoon Settings</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --editor-bg: var(--vscode-editor-background, light-dark(#ffffff, #1f1f1f));
+        --foreground: var(--vscode-foreground, light-dark(#3b3b3b, #cccccc));
+        --muted: var(--vscode-descriptionForeground, light-dark(#717171, #9d9d9d));
+        --border: var(--vscode-settings-headerBorder, var(--vscode-panel-border, light-dark(#e5e5e5, #3f3f46)));
+        --side-bg: var(--vscode-sideBar-background, light-dark(#fafafa, #1b1b1f));
+        --hover: var(--vscode-settings-rowHoverBackground, var(--vscode-list-hoverBackground, light-dark(#f5f5f5, #2a2d2e)));
+        --selection: var(--vscode-list-activeSelectionBackground, light-dark(#e8e8e8, #37373d));
+        --selection-fg: var(--vscode-list-activeSelectionForeground, var(--foreground));
+        --focus: var(--vscode-focusBorder, #007fd4);
+        --input-bg: var(--vscode-settings-dropdownBackground, var(--vscode-input-background, light-dark(#ffffff, #313131)));
+        --input-fg: var(--vscode-settings-dropdownForeground, var(--vscode-input-foreground, var(--foreground)));
+        --input-border: var(--vscode-settings-dropdownBorder, var(--vscode-input-border, light-dark(#cecece, #3c3c3c)));
+        --button-bg: var(--vscode-button-background, #0e639c);
+        --button-fg: var(--vscode-button-foreground, #ffffff);
+        --button-hover: var(--vscode-button-hoverBackground, #1177bb);
+        --secondary-bg: var(--vscode-button-secondaryBackground, light-dark(#e5e5e5, #3a3d41));
+        --secondary-fg: var(--vscode-button-secondaryForeground, var(--foreground));
+        --secondary-hover: var(--vscode-button-secondaryHoverBackground, light-dark(#d7d7d7, #45494e));
+        --widget-bg: var(--vscode-editorWidget-background, light-dark(#f3f3f3, #252526));
+        --widget-border: var(--vscode-widget-border, var(--border));
+        --widget-shadow: var(--vscode-widget-shadow, rgb(0 0 0 / 28%));
+        --error: var(--vscode-errorForeground, #f14c4c);
+        --success: var(--vscode-testing-iconPassed, #3fb950);
+        --raccoon: #7556dc;
+        --raccoon-soft: color-mix(in srgb, var(--raccoon) 14%, var(--editor-bg));
+        --font: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        background: var(--editor-bg);
+        color: var(--foreground);
+        font-family: var(--font);
+        font-size: var(--vscode-font-size, 13px);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button,
+      input,
+      select {
+        color: inherit;
+        font: inherit;
+      }
+
+      button:not(:disabled),
+      select:not(:disabled) {
+        cursor: pointer;
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 1px solid var(--focus);
+        outline-offset: -1px;
+      }
+
+      svg {
+        display: block;
+      }
+
+      .settings-app {
+        display: grid;
+        width: 100%;
+        height: 100dvh;
+        min-width: 0;
+        grid-template-rows: 40px minmax(0, 1fr) auto;
+        background: var(--editor-bg);
+      }
+
+      .settings-header {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        padding: 0 8px;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in srgb, var(--editor-bg) 98%, var(--raccoon));
+      }
+
+      .settings-header h1 {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: 0;
+        overflow: hidden;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.3;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .settings-header h1 svg {
+        width: 17px;
+        height: 17px;
+        color: var(--raccoon);
+      }
+
+      .settings-shell {
+        display: grid;
+        min-width: 0;
+        min-height: 0;
+        grid-template-columns: 124px minmax(0, 1fr);
+      }
+
+      .settings-toc {
+        min-width: 0;
+        overflow: auto;
+        padding: 8px 5px 20px;
+        border-right: 1px solid var(--border);
+        background: var(--editor-bg);
+      }
+
+      .toc-item {
+        position: relative;
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        min-height: 30px;
+        grid-template-columns: 16px minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        overflow: hidden;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 20px;
+        text-align: left;
+      }
+
+      .toc-item:hover {
+        background: var(--hover);
+      }
+
+      .toc-item.active {
+        background: var(--raccoon-soft);
+        color: var(--raccoon);
+        font-weight: 600;
+      }
+
+      .toc-item.active::before {
+        position: absolute;
+        top: 6px;
+        bottom: 6px;
+        left: 0;
+        width: 2px;
+        border-radius: 0 2px 2px 0;
+        background: var(--raccoon);
+        content: "";
+      }
+
+      .toc-item svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      .toc-item span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .settings-content {
+        min-width: 0;
+        min-height: 0;
+        overflow: auto;
+        overscroll-behavior: contain;
+      }
+
+      .content-inner {
+        width: 100%;
+        height: 100%;
+        min-height: 100%;
+        margin: 0;
+        padding: 12px 16px 18px;
+      }
+
+      .narrow-section-picker {
+        display: none;
+        margin-bottom: 18px;
+      }
+
+      .narrow-section-picker label {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .page-heading {
+        margin-bottom: 20px;
+      }
+
+      .page-heading h2 {
+        margin: 0;
+        color: var(--foreground);
+        font-size: 18px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.35;
+      }
+
+      .page-heading p {
+        max-width: 620px;
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .settings-section + .settings-section {
+        margin-top: 22px;
+      }
+
+      .section-heading {
+        display: flex;
+        min-width: 0;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 7px;
+        padding: 0 1px;
+      }
+
+      .section-heading h3 {
+        margin: 0;
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .section-heading span {
+        color: var(--muted);
+        font-size: 11px;
+        text-align: right;
+      }
+
+      .settings-group {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--editor-bg);
+      }
+
+      .settings-row {
+        display: grid;
+        min-width: 0;
+        min-height: 58px;
+        grid-template-columns: 32px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 11px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .settings-row:last-child {
+        border-bottom: 0;
+      }
+
+      .settings-row:hover,
+      .settings-row:focus-within {
+        background: var(--hover);
+      }
+
+      .provider-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border-radius: 6px;
+        background: var(--secondary-bg);
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .provider-mark.raccoon-mark {
+        border: 1px solid color-mix(in srgb, var(--raccoon) 26%, transparent);
+        background: var(--raccoon-soft);
+        color: var(--raccoon);
+      }
+
+      .provider-mark svg {
+        width: 18px;
+        height: 18px;
+      }
+
+      .row-main {
+        min-width: 0;
+      }
+
+      .row-title-line {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .row-title {
+        overflow: hidden;
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .row-description {
+        margin-top: 2px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .status::before {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+        content: "";
+      }
+
+      .status.raccoon-status {
+        color: var(--raccoon);
+      }
+
+      .tag {
+        padding: 1px 5px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 15px;
+      }
+
+      .row-actions {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .button {
+        display: inline-flex;
+        min-width: 0;
+        min-height: 28px;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        background: var(--secondary-bg);
+        color: var(--secondary-fg);
+        font-size: 12px;
+        line-height: 18px;
+      }
+
+      .button:hover {
+        background: var(--secondary-hover);
+      }
+
+      .button.primary {
+        background: var(--raccoon);
+        color: #ffffff;
+      }
+
+      .button.primary:hover {
+        background: color-mix(in srgb, var(--raccoon) 88%, black);
+      }
+
+      .button.ghost {
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .button.ghost:hover {
+        background: var(--hover);
+        color: var(--foreground);
+      }
+
+      .button.danger {
+        background: transparent;
+        color: var(--error);
+      }
+
+      .button.danger:hover {
+        background: color-mix(in srgb, var(--error) 10%, transparent);
+      }
+
+      .button svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .select,
+      .input {
+        min-width: 0;
+        height: 28px;
+        padding: 2px 7px;
+        border: 1px solid var(--input-border);
+        border-radius: 5px;
+        background: var(--input-bg);
+        color: var(--input-fg);
+        font-size: 12px;
+      }
+
+      .select {
+        width: min(240px, 100%);
+      }
+
+      .setting-row {
+        display: grid;
+        min-width: 0;
+        min-height: 62px;
+        grid-template-columns: minmax(150px, 1fr) minmax(150px, 240px);
+        align-items: center;
+        gap: 20px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .setting-row:last-child {
+        border-bottom: 0;
+      }
+
+      .setting-row:hover,
+      .setting-row:focus-within {
+        background: var(--hover);
+      }
+
+      .setting-row .row-title {
+        display: block;
+      }
+
+      .setting-control {
+        display: flex;
+        min-width: 0;
+        justify-content: flex-end;
+      }
+
+      .empty-state {
+        padding: 18px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .empty-state strong {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--foreground);
+        font-weight: 500;
+      }
+
+      .savebar {
+        display: flex;
+        min-width: 0;
+        min-height: 42px;
+        align-items: center;
+        gap: 12px;
+        margin: 0 8px 8px 132px;
+        padding: 6px 7px 6px 11px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--editor-bg);
+        animation: savebar-enter 120ms ease-out both;
+      }
+
+      .savebar[hidden] {
+        display: none;
+      }
+
+      .save-status {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .save-actions {
+        display: flex;
+        margin-left: auto;
+        gap: 6px;
+      }
+
+      .dialog-layer {
+        position: fixed;
+        z-index: 20;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 14px;
+        background: rgb(0 0 0 / 24%);
+      }
+
+      .dialog-layer[hidden] {
+        display: none;
+      }
+
+      .dialog {
+        width: min(440px, calc(100vw - 28px));
+        max-height: calc(100dvh - 28px);
+        overflow: auto;
+        border: 1px solid var(--widget-border);
+        border-radius: 6px;
+        background: var(--widget-bg);
+        box-shadow: 0 6px 18px var(--widget-shadow);
+      }
+
+      .dialog-titlebar,
+      .dialog-footer {
+        display: flex;
+        min-height: 40px;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 12px;
+      }
+
+      .dialog-titlebar {
+        border-bottom: 1px solid var(--border);
+      }
+
+      .dialog-titlebar strong {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .dialog-titlebar .button {
+        width: 26px;
+        min-height: 26px;
+        margin-left: auto;
+        padding: 0;
+      }
+
+      .dialog-body {
+        display: grid;
+        gap: 12px;
+        padding: 14px 12px;
+      }
+
+      .dialog-body label {
+        display: grid;
+        gap: 5px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .dialog-body .input {
+        width: 100%;
+      }
+
+      .dialog-footer {
+        justify-content: flex-end;
+        border-top: 1px solid var(--border);
+      }
+
+      .toast {
+        position: fixed;
+        z-index: 30;
+        right: 16px;
+        bottom: 16px;
+        max-width: min(320px, calc(100vw - 32px));
+        padding: 8px 10px;
+        border: 1px solid var(--widget-border);
+        border-radius: 6px;
+        background: var(--widget-bg);
+        box-shadow: 0 3px 12px var(--widget-shadow);
+        color: var(--foreground);
+        font-size: 11px;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(4px);
+        transition: opacity 100ms ease, transform 100ms ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Provider workbench: reuse the message view's continuous surface,
+         activity timeline and composer rather than the settings card stack. */
+      .provider-workbench {
+        display: flex;
+        width: min(100%, 900px);
+        min-height: calc(100dvh - 70px);
+        flex-direction: column;
+      }
+
+      .workbench-heading {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 10px;
+        padding: 1px 0 12px;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+      }
+
+      .workbench-heading-main {
+        min-width: 0;
+        flex: 1;
+      }
+
+      .workbench-kicker {
+        margin-bottom: 2px;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .workbench-heading h2 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 22px;
+      }
+
+      .workbench-count {
+        flex: 0 0 auto;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .account-strip {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 0 12px;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+      }
+
+      .account-copy {
+        min-width: 0;
+      }
+
+      .account-name {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .account-meta {
+        margin-top: 2px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .icon-button {
+        display: inline-grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .icon-button:hover {
+        background: var(--hover);
+        color: var(--foreground);
+      }
+
+      .icon-button svg {
+        width: 15px;
+        height: 15px;
+      }
+
+      .connection-section {
+        padding-top: 14px;
+      }
+
+      .connection-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 4px;
+      }
+
+      .connection-section-head h3 {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .connection-section-head span {
+        color: var(--muted);
+        font-size: 10px;
+      }
+
+      .connection-timeline {
+        position: relative;
+        margin: 0;
+        padding: 0 0 0 19px;
+        list-style: none;
+      }
+
+      .connection-timeline::before {
+        position: absolute;
+        top: 15px;
+        bottom: 15px;
+        left: 6px;
+        width: 1px;
+        background: var(--border);
+        content: "";
+      }
+
+      .connection-item {
+        position: relative;
+        border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+      }
+
+      .connection-item:last-child {
+        border-bottom: 0;
+      }
+
+      .connection-dot {
+        position: absolute;
+        z-index: 1;
+        top: 16px;
+        left: -16px;
+        width: 8px;
+        height: 8px;
+        border: 2px solid var(--editor-bg);
+        border-radius: 999px;
+        background: var(--success);
+        box-sizing: content-box;
+      }
+
+      .connection-dot.raccoon-dot {
+        background: var(--raccoon);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--raccoon) 12%, transparent);
+      }
+
+      .connection-summary {
+        display: grid;
+        width: 100%;
+        min-width: 0;
+        grid-template-columns: 30px minmax(0, 1fr) auto 18px;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 5px 9px 7px;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        text-align: left;
+      }
+
+      .connection-summary:hover {
+        background: var(--hover);
+      }
+
+      .connection-summary .provider-mark {
+        width: 28px;
+        height: 28px;
+      }
+
+      .connection-name {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .connection-name strong {
+        overflow: hidden;
+        font-size: 13px;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .connection-description {
+        margin-top: 1px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .connection-health {
+        color: var(--success);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .connection-chevron {
+        width: 14px;
+        height: 14px;
+        color: var(--muted);
+        transition: transform 140ms ease;
+      }
+
+      .connection-summary[aria-expanded="true"] .connection-chevron {
+        transform: rotate(180deg);
+      }
+
+      .connection-details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+        align-items: center;
+        gap: 8px;
+        margin: -2px 5px 8px 7px;
+        padding: 8px 9px;
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--secondary-bg) 62%, var(--editor-bg));
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .connection-details[hidden] {
+        display: none;
+      }
+
+      .connection-details strong {
+        display: block;
+        margin-bottom: 1px;
+        color: var(--foreground);
+        font-size: 11px;
+        font-weight: 500;
+      }
+
+      .provider-composer-shell {
+        position: sticky;
+        bottom: 0;
+        margin-top: auto;
+        padding-top: 14px;
+        background: var(--editor-bg);
+      }
+
+      .provider-composer {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 8px 8px 11px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--editor-bg);
+      }
+
+      .composer-copy {
+        min-width: 0;
+      }
+
+      .composer-title {
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .composer-description {
+        margin-top: 1px;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 10px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .composer-add {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 6px;
+        background: var(--raccoon);
+        color: #ffffff;
+      }
+
+      .composer-add:hover {
+        background: color-mix(in srgb, var(--raccoon) 88%, black);
+      }
+
+      .composer-add svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      @keyframes savebar-enter {
+        from {
+          opacity: 0;
+          transform: translateY(3px);
+        }
+      }
+
+      @media (max-width: 720px) {
+        .settings-shell {
+          grid-template-columns: 132px minmax(0, 1fr);
+        }
+
+        .settings-toc {
+          padding-inline: 7px;
+        }
+
+        .content-inner {
+          padding-inline: 14px;
+        }
+
+        .section-heading span {
+          display: none;
+        }
+
+        .savebar {
+          margin-left: 140px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .settings-app {
+          grid-template-rows: 42px minmax(0, 1fr) auto;
+        }
+
+        .settings-header {
+          padding-inline: 12px;
+        }
+
+        .settings-header h1 {
+          font-size: 15px;
+        }
+
+        .settings-shell {
+          grid-template-columns: 48px minmax(0, 1fr);
+        }
+
+        .settings-toc {
+          display: block;
+          padding: 7px 4px 16px;
+        }
+
+        .settings-content {
+          height: 100%;
+        }
+
+        .content-inner {
+          width: 100%;
+          padding: 12px 8px 34px;
+        }
+
+        .narrow-section-picker {
+          display: none;
+        }
+
+        .narrow-section-picker .select {
+          width: 100%;
+        }
+
+        .page-heading {
+          margin-bottom: 20px;
+        }
+
+        .page-heading h2 {
+          font-size: 18px;
+        }
+
+        .toc-item {
+          width: 38px;
+          height: 32px;
+          min-height: 32px;
+          grid-template-columns: 16px;
+          justify-content: center;
+          gap: 0;
+          margin: 0 auto 2px;
+          padding: 0;
+        }
+
+        .toc-item span {
+          display: none;
+        }
+
+        .settings-section + .settings-section {
+          margin-top: 23px;
+        }
+
+        .workbench-count {
+          display: none;
+        }
+
+        .connection-summary {
+          grid-template-columns: 28px minmax(0, 1fr) 16px;
+          gap: 8px;
+          padding-inline: 5px 2px;
+        }
+
+        .connection-health {
+          display: none;
+        }
+
+        .connection-details {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .connection-details .row-actions {
+          grid-column: auto;
+        }
+
+        .settings-row {
+          grid-template-columns: 30px minmax(0, 1fr);
+          gap: 9px;
+          padding-inline: 5px;
+        }
+
+        .row-actions {
+          grid-column: 2;
+          justify-content: flex-start;
+        }
+
+        .row-description {
+          white-space: normal;
+        }
+
+        .setting-row {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 8px;
+          padding-inline: 5px;
+        }
+
+        .setting-control {
+          justify-content: flex-start;
+        }
+
+        .setting-control .select {
+          width: 100%;
+        }
+
+        .savebar {
+          margin: 0 6px 6px 54px;
+          padding-inline: 10px;
+        }
+
+        .save-status {
+          max-width: 104px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" aria-hidden="true" style="position: absolute">
+      <symbol id="i-raccoon" viewBox="0 0 24 24">
+        <path d="M5.1 8.6 3.8 4.7l4 2.1A9.6 9.6 0 0 1 12 5.9c1.5 0 2.9.3 4.2.9l4-2.1-1.3 3.9c1.2 1.3 2 3 2 4.8 0 3.9-4 6.7-8.9 6.7s-8.9-2.8-8.9-6.7c0-1.8.8-3.5 2-4.8Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+        <path d="M6.7 12c1.1-1.5 3.1-2.2 5.3-2.2s4.2.7 5.3 2.2c-1.4 1.9-3.2 2.6-5.3.8-2.1 1.8-3.9 1.1-5.3-.8Z" fill="currentColor" opacity=".22" />
+        <circle cx="8.7" cy="12.2" r="1" fill="currentColor" /><circle cx="15.3" cy="12.2" r="1" fill="currentColor" />
+        <path d="m10.8 15.3 1.2.9 1.2-.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="m7 7 10 10M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7.2 18.2h10.5a4.3 4.3 0 0 0 .5-8.6A6.4 6.4 0 0 0 6 8.5a4.9 4.9 0 0 0 1.2 9.7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h5m4 0h7M4 17h9m4 0h3M9 4v6m4 4v6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /><circle cx="11" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.7" /><circle cx="15" cy="17" r="2" fill="none" stroke="currentColor" stroke-width="1.7" /></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M12 4v3M8.5 12h.01m6.99 0h.01M9 16h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></symbol>
+      <symbol id="i-plug" viewBox="0 0 24 24"><path d="m14.7 5.3 4 4M16.7 3.3l-3 3m5 1 2-2M9.8 10.2l4 4m-6.7-1.3 4 4m-6-2-1.4 1.4a2.8 2.8 0 0 0 4 4l1.4-1.4m5-9 1.4-1.4a2.8 2.8 0 0 0-4-4l-1.4 1.4M3.5 20.5l3-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3.8h8l4 4V20H6zM14 3.8V8h4M9 12h6m-6 3h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="m7 9 3 3-3 3m5 0h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M7 4h10v14a3 3 0 0 1-3 3H7a3 3 0 0 0 3-3V6a2 2 0 0 0-2-2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" /><path d="M4 6a2 2 0 0 1 4 0v12H4a2 2 0 0 0 2 2m6-11h3m-3 4h3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></symbol>
+      <symbol id="i-language" viewBox="0 0 24 24"><path d="M4 6h10M9 4v2m3 0c-1 4-4 7-8 8m3-5c1.5 2 3.2 3.3 5 4M14 19l3.5-9 3.5 9m-5.8-3h4.6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4.5 19.5 10-10 3 3-10 10zM15 4v3m-1.5-1.5h3M6 5v4M4 7h4m10 8v4m-2 2h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+    </svg>
+
+    <div class="settings-app">
+      <div class="settings-header">
+        <h1><svg aria-hidden="true"><use href="#i-raccoon" /></svg>Raccoon 设置</h1>
+      </div>
+
+      <div class="settings-shell">
+        <nav class="settings-toc" aria-label="设置分区" id="settings-toc"></nav>
+        <main class="settings-content">
+          <div class="content-inner">
+            <div class="narrow-section-picker">
+              <label>
+                设置分区
+                <select class="select" id="section-select" aria-label="设置分区"></select>
+              </label>
+            </div>
+            <div id="panel-content"></div>
+          </div>
+        </main>
+      </div>
+
+      <div class="savebar" id="savebar" hidden>
+        <div class="save-status" id="save-status" role="status" aria-live="polite">有未保存的更改</div>
+        <div class="save-actions">
+          <button class="button" id="discard" type="button">放弃</button>
+          <button class="button primary" id="save" type="button">保存更改</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dialog-layer" id="provider-dialog" hidden>
+      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+        <div class="dialog-titlebar">
+          <strong id="dialog-title">添加自定义提供商</strong>
+          <button class="button ghost" type="button" data-close-dialog aria-label="关闭">
+            <svg aria-hidden="true"><use href="#i-close" /></svg>
+          </button>
+        </div>
+        <div class="dialog-body">
+          <label>名称<input class="input" placeholder="公司模型服务" /></label>
+          <label>API 地址<input class="input" placeholder="https://api.example.com/v1" /></label>
+          <label>API Key<input class="input" type="password" placeholder="sk-••••••••" /></label>
+        </div>
+        <div class="dialog-footer">
+          <button class="button" type="button" data-close-dialog>取消</button>
+          <button class="button primary" id="dialog-save" type="button">保存并连接</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      const sections = [
+        ["providers", "提供商", "i-cloud"],
+        ["models", "模型", "i-sliders"],
+        ["agents", "智能体", "i-bot"],
+        ["mcp", "MCP", "i-plug"],
+        ["skills", "技能", "i-file"],
+        ["commands", "命令", "i-terminal"],
+        ["rules", "规则", "i-scroll"],
+        ["language", "语言", "i-language"],
+        ["autocomplete", "自动补全", "i-wand"],
+      ]
+
+      const sectionLabels = Object.fromEntries(sections.map(([id, label]) => [id, label]))
+      let activeSection = "providers"
+      let originalModel = "gpt-5"
+      let toastTimer
+
+      const providerPanel = `
+        <div class="provider-workbench">
+          <div class="workbench-heading">
+            <div class="workbench-heading-main">
+              <div class="workbench-kicker">模型服务</div>
+              <h2>提供商</h2>
+            </div>
+            <span class="workbench-count">3 个连接 · 17 个模型</span>
+          </div>
+
+          <section class="account-strip" aria-label="Raccoon 账户">
+            <span class="provider-mark raccoon-mark" aria-hidden="true"><svg><use href="#i-raccoon" /></svg></span>
+            <div class="account-copy">
+              <div class="account-name">Raccoon <span class="status raccoon-status">已连接</span></div>
+              <div class="account-meta">配置同步已开启 · 凭据保存在 VS Code 安全存储</div>
+            </div>
+            <button class="icon-button" type="button" data-toast="已打开账户管理" aria-label="管理 Raccoon 账户" title="管理账户"><svg aria-hidden="true"><use href="#i-sliders" /></svg></button>
+          </section>
+
+          <section class="connection-section" aria-labelledby="connection-title">
+            <div class="connection-section-head">
+              <h3 id="connection-title">连接活动</h3>
+              <span>点击查看配置</span>
+            </div>
+            <div class="connection-timeline" role="list" aria-label="提供商连接状态">
+              <article class="connection-item" role="listitem">
+                <span class="connection-dot raccoon-dot" aria-hidden="true"></span>
+                <button class="connection-summary" type="button" data-provider-toggle="comp" aria-expanded="false" aria-controls="provider-details-comp" aria-label="展开 comp 连接详情">
+                  <span class="provider-mark">CO</span>
+                  <span class="row-main"><span class="connection-name"><strong>comp</strong><span class="tag">自定义</span></span><span class="connection-description">OpenAI 兼容接口 · 1 个模型</span></span>
+                  <span class="connection-health">连接正常</span>
+                  <svg class="connection-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+                </button>
+                <div class="connection-details" id="provider-details-comp" hidden>
+                  <span><strong>1 个可用模型</strong>code-model</span><span><strong>认证方式</strong>自定义密钥</span><span class="row-actions"><button class="button" type="button" data-toast="正在编辑 comp">编辑</button><button class="button ghost" type="button" data-toast="删除前会再次确认">删除</button></span>
+                </div>
+              </article>
+
+              <article class="connection-item" role="listitem">
+                <span class="connection-dot" aria-hidden="true"></span>
+                <button class="connection-summary" type="button" data-provider-toggle="deepseek" aria-expanded="false" aria-controls="provider-details-deepseek" aria-label="展开 deepseek 连接详情">
+                  <span class="provider-mark">DE</span>
+                  <span class="row-main"><span class="connection-name"><strong>deepseek</strong><span class="tag">自定义</span></span><span class="connection-description">最近验证成功 · 3 个模型</span></span>
+                  <span class="connection-health">连接正常</span>
+                  <svg class="connection-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+                </button>
+                <div class="connection-details" id="provider-details-deepseek" hidden>
+                  <span><strong>3 个可用模型</strong>V3、R1 等</span><span><strong>认证方式</strong>自定义密钥</span><span class="row-actions"><button class="button" type="button" data-toast="正在编辑 deepseek">编辑</button><button class="button ghost" type="button" data-toast="删除前会再次确认">删除</button></span>
+                </div>
+              </article>
+
+              <article class="connection-item" role="listitem">
+                <span class="connection-dot" aria-hidden="true"></span>
+                <button class="connection-summary" type="button" data-provider-toggle="openai" aria-expanded="false" aria-controls="provider-details-openai" aria-label="展开 OpenAI 连接详情">
+                  <span class="provider-mark">AI</span>
+                  <span class="row-main"><span class="connection-name"><strong>OpenAI</strong><span class="tag">API Key</span></span><span class="connection-description">凭据已保存 · 13 个模型</span></span>
+                  <span class="connection-health">连接正常</span>
+                  <svg class="connection-chevron" aria-hidden="true"><use href="#i-chevron" /></svg>
+                </button>
+                <div class="connection-details" id="provider-details-openai" hidden>
+                  <span><strong>13 个可用模型</strong>GPT-5、o3 等</span><span><strong>认证方式</strong>API Key</span><span class="row-actions"><button class="button danger" type="button" data-toast="断开前会再次确认">断开连接</button></span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <div class="provider-composer-shell">
+            <section class="provider-composer" aria-label="提供商操作区">
+              <div class="composer-copy"><div class="composer-title">连接新的模型服务</div><div class="composer-description">OpenAI、Anthropic 或 OpenAI 兼容端点</div></div>
+              <button class="icon-button composer-add" type="button" data-open-dialog aria-label="添加自定义提供商" title="添加自定义提供商"><svg aria-hidden="true"><use href="#i-plus" /></svg></button>
+            </section>
+          </div>
+        </div>`
+
+      const modelsPanel = `
+        <div class="page-heading">
+          <h2>模型</h2>
+          <p>为默认会话和不同智能体模式选择模型。</p>
+        </div>
+        <section class="settings-section">
+          <div class="section-heading"><h3>默认模型</h3></div>
+          <div class="settings-group">
+            <div class="setting-row">
+              <div class="row-main"><span class="row-title">默认模型</span><div class="row-description">未单独设置模型时使用。</div></div>
+              <div class="setting-control">
+                <select class="select" id="default-model" aria-label="默认模型">
+                  <option value="gpt-5">OpenAI · GPT-5</option>
+                  <option value="deepseek-v3">DeepSeek · V3</option>
+                  <option value="comp-model">comp · code-model</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="settings-section">
+          <div class="section-heading"><h3>各模式模型</h3></div>
+          <div class="settings-group">
+            <div class="setting-row"><div class="row-main"><span class="row-title">构建模型</span><div class="row-description">写代码、修改文件和运行命令。</div></div><div class="setting-control"><select class="select"><option>使用默认模型</option></select></div></div>
+            <div class="setting-row"><div class="row-main"><span class="row-title">规划模型</span><div class="row-description">分析需求并制定实现步骤。</div></div><div class="setting-control"><select class="select"><option>DeepSeek · R1</option></select></div></div>
+          </div>
+        </section>`
+
+      function placeholderPanel(id) {
+        const label = sectionLabels[id]
+        return `<div class="page-heading"><h2>${label}</h2><p>此分区沿用与代码中现有设置组件一致的紧凑设置行结构。</p></div><div class="empty-state"><strong>${label}设置</strong>原型重点展示提供商与模型页面，其余分区保留实际页面的信息架构。</div>`
+      }
+
+      function renderNavigation() {
+        document.querySelector("#settings-toc").innerHTML = sections
+          .map(([id, label, icon]) => `<button class="toc-item ${id === activeSection ? "active" : ""}" type="button" data-section="${id}" aria-label="${label}" title="${label}"><svg aria-hidden="true"><use href="#${icon}" /></svg><span>${label}</span></button>`)
+          .join("")
+
+        const selector = document.querySelector("#section-select")
+        selector.innerHTML = sections
+          .map(([id, label]) => `<option value="${id}">${label}</option>`)
+          .join("")
+        selector.value = activeSection
+      }
+
+      function renderPanel() {
+        document.querySelector("#panel-content").innerHTML = activeSection === "providers" ? providerPanel : activeSection === "models" ? modelsPanel : placeholderPanel(activeSection)
+      }
+
+      function selectSection(id) {
+        activeSection = id
+        renderNavigation()
+        renderPanel()
+      }
+
+      function setDirty(dirty) {
+        const savebar = document.querySelector("#savebar")
+        savebar.hidden = !dirty
+        document.querySelector("#save-status").textContent = dirty ? "有未保存的更改" : "设置已保存"
+      }
+
+      function showToast(message) {
+        const toast = document.querySelector("#toast")
+        toast.textContent = message
+        toast.classList.add("show")
+        window.clearTimeout(toastTimer)
+        toastTimer = window.setTimeout(() => toast.classList.remove("show"), 1600)
+      }
+
+      document.addEventListener("click", (event) => {
+        const section = event.target.closest("[data-section]")
+        if (section) selectSection(section.dataset.section)
+        const providerToggle = event.target.closest("[data-provider-toggle]")
+        if (providerToggle) {
+          const details = document.querySelector(`#provider-details-${providerToggle.dataset.providerToggle}`)
+          const expanded = providerToggle.getAttribute("aria-expanded") === "true"
+          const providerName = providerToggle.querySelector("strong").textContent
+          providerToggle.setAttribute("aria-expanded", String(!expanded))
+          providerToggle.setAttribute("aria-label", `${expanded ? "展开" : "收起"} ${providerName} 连接详情`)
+          details.hidden = expanded
+        }
+        if (event.target.closest("[data-open-dialog]")) {
+          document.querySelector("#provider-dialog").hidden = false
+          document.querySelector("#provider-dialog input").focus()
+        }
+        if (event.target.closest("[data-close-dialog]")) document.querySelector("#provider-dialog").hidden = true
+        const toastAction = event.target.closest("[data-toast]")
+        if (toastAction) showToast(toastAction.dataset.toast)
+      })
+
+      document.addEventListener("change", (event) => {
+        if (event.target.id === "section-select") selectSection(event.target.value)
+        if (event.target.id === "default-model") setDirty(event.target.value !== originalModel)
+      })
+
+      document.querySelector("#discard").addEventListener("click", () => {
+        const model = document.querySelector("#default-model")
+        if (model) model.value = originalModel
+        setDirty(false)
+      })
+
+      document.querySelector("#save").addEventListener("click", () => {
+        const model = document.querySelector("#default-model")
+        if (model) originalModel = model.value
+        document.querySelector("#save-status").textContent = "设置已保存"
+        window.setTimeout(() => setDirty(false), 700)
+      })
+
+      document.querySelector("#provider-dialog").addEventListener("click", (event) => {
+        if (event.target.id === "provider-dialog") event.currentTarget.hidden = true
+      })
+
+      document.querySelector("#dialog-save").addEventListener("click", () => {
+        document.querySelector("#provider-dialog").hidden = true
+        showToast("提供商配置已保存")
+      })
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") document.querySelector("#provider-dialog").hidden = true
+      })
+
+      renderNavigation()
+      renderPanel()
+    </script>
+  </body>
+</html>

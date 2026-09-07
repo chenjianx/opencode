@@ -1,6 +1,12 @@
 import type { ExtensionToWebview, RaccoonFileAttachment, RaccoonSlashCommand, WebviewToExtension } from "../../../protocol"
 import type { I18nKey } from "../../../i18n/en"
 
+export function promptSendState(input: { busy: boolean; canSend: boolean; submitting: boolean }) {
+  if (input.busy || input.submitting) return "busy"
+  if (input.canSend) return "ready"
+  return "disabled"
+}
+
 export function slashQuery(value: string, selectionStart: number | null) {
   const cursor = selectionStart ?? value.length
   if (!value.startsWith("/") || cursor === 0) return

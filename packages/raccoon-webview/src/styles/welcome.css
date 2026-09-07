@@ -33,7 +33,7 @@
   width: 70px;
   height: 70px;
   border-radius: 50%;
-  background: color-mix(in srgb, #9a7bff 9%, transparent);
+  background: color-mix(in srgb, var(--color-brand) 9%, transparent);
   content: "";
 }
 

@@ -8,7 +8,7 @@ export function Popover(props: {
   className: string
   menuClassName: string
   portal?: boolean
-  placement?: "top" | "bottom"
+  placement?: "top" | "bottom" | "auto"
   width?: number
   trigger: (api: { open: boolean; toggle: () => void }) => ReactNode
   children: (api: { close: () => void }) => ReactNode
@@ -42,12 +42,23 @@ export function Popover(props: {
       const rect = rootRef.current?.getBoundingClientRect()
       if (!rect) return
       const width = Math.min(props.width ?? rect.width, window.innerWidth - 16)
+      const menu = menuRef.current
+      const border = menu ? getComputedStyle(menu) : undefined
+      const menuHeight = menu
+        ? menu.scrollHeight + Number.parseFloat(border?.borderTopWidth ?? "0") + Number.parseFloat(border?.borderBottomWidth ?? "0")
+        : 0
+      const spaceAbove = rect.top - 12
+      const spaceBelow = window.innerHeight - rect.bottom - 12
+      const placeAbove = props.placement === "top" || (props.placement === "auto" && spaceBelow < menuHeight && spaceAbove > spaceBelow)
+      const maxHeight = Math.max(0, placeAbove ? spaceAbove : spaceBelow)
       setMenuStyle({
         position: "fixed",
-        top: props.placement === "top" ? undefined : rect.bottom + 4,
-        bottom: props.placement === "top" ? window.innerHeight - rect.top + 4 : undefined,
+        top: placeAbove ? undefined : rect.bottom + 4,
+        bottom: placeAbove ? window.innerHeight - rect.top + 4 : undefined,
         left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)),
         width,
+        maxHeight: props.placement === "auto" ? maxHeight : undefined,
+        overflowY: props.placement === "auto" && menuHeight > maxHeight ? "auto" : undefined,
         zIndex: 30,
       })
     }

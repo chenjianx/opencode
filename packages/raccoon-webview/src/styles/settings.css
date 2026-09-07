@@ -47,11 +47,11 @@
   }
 
   .settings-view {
-    @apply h-full flex-col bg-[var(--color-background)] px-[5px];
+    @apply h-full flex-col bg-[var(--color-background)];
   }
 
   .settings-header {
-    @apply flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-[5px] pb-[10px] pt-3;
+    @apply flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--color-border)] px-3 py-2.5;
   }
 
   .settings-title {
@@ -63,7 +63,7 @@
   }
 
   .settings-nav {
-    @apply w-[136px] shrink-0 border-r border-[var(--color-border)] px-1.5 py-2;
+    @apply w-[136px] shrink-0 border-r border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_94%,var(--color-hover))] px-1.5 py-2;
   }
 
   .settings-nav-item {
@@ -91,7 +91,8 @@
   }
 
   .settings-nav-item.active {
-    @apply bg-[var(--color-hover)];
+    @apply bg-[var(--color-brand-soft)];
+    box-shadow: inset 2px 0 0 var(--color-brand);
   }
 
   .settings-nav-icon {
@@ -99,16 +100,32 @@
   }
 
   .settings-nav-item.active .settings-nav-icon {
-    @apply text-[var(--color-foreground)];
+    @apply text-[var(--color-brand)];
   }
 
   .settings-content {
-    @apply min-w-0 flex-1 overflow-auto px-3 pb-[18px] pt-3;
+    @apply min-w-0 flex-1 overflow-auto;
     /* Drive the inner grid breakpoints off the actual content width (which is
        the pane width minus the nav) rather than the whole webview viewport, so
        the two-column layouts fold on real available space and never deform. */
     container-type: inline-size;
     container-name: settings-content;
+  }
+
+  .settings-content-inner {
+    @apply w-full max-w-[960px] px-7 pb-10 pt-6;
+  }
+
+  @container settings-shell (min-width: 900px) {
+    .settings-nav {
+      @apply w-[152px] px-2;
+    }
+  }
+
+  @container settings-content (max-width: 600px) {
+    .settings-content-inner {
+      @apply px-4 pb-8 pt-5;
+    }
   }
 
   .settings-content h3 {
@@ -117,6 +134,18 @@
 
   .settings-content h4 {
     @apply mb-[10px] mt-[18px] text-[13px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-page-heading {
+    @apply mb-5;
+  }
+
+  .settings-page-heading h3 {
+    @apply mb-1;
+  }
+
+  .settings-page-heading p {
+    @apply m-0 text-[12px] leading-5 text-[var(--color-muted)];
   }
 
   .settings-card {
@@ -180,12 +209,12 @@
   }
 
   .settings-agent-list-item.active {
-    @apply bg-[var(--color-selection)] text-[var(--color-selection-foreground)];
-    box-shadow: inset 3px 0 0 var(--color-focus);
+    @apply bg-[var(--color-brand-soft)] text-[var(--color-foreground)];
+    box-shadow: inset 3px 0 0 var(--color-brand);
   }
 
   .settings-agent-list-item.active .settings-agent-list-name {
-    @apply text-[var(--color-selection-foreground)];
+    @apply text-[var(--color-foreground)];
   }
 
   .settings-agent-list-main {
@@ -250,11 +279,11 @@
   }
 
   .settings-agent-tab.active {
-    @apply text-[var(--color-foreground)];
+    @apply text-[var(--color-brand)];
   }
 
   .settings-agent-tab.active::after {
-    @apply absolute inset-x-2 bottom-0 h-0.5 bg-[var(--color-focus)] content-[''];
+    @apply absolute inset-x-2 bottom-0 h-0.5 bg-[var(--color-brand)] content-[''];
   }
 
   .settings-agent-tab:focus-visible {
@@ -360,8 +389,52 @@
     @apply min-h-[56px] w-full resize-y rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 py-1.5 text-[12px] leading-5 text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
   }
 
-  .settings-provider-feature {
-    @apply mb-2;
+  .settings-provider-account {
+    @apply border-b border-[var(--color-border)] pb-4;
+  }
+
+  .settings-provider-account > .settings-provider-row {
+    @apply min-h-[56px] px-0 py-2;
+  }
+
+  .settings-provider-raccoon-mark {
+    @apply bg-[var(--color-brand-soft)] text-[var(--color-brand)];
+  }
+
+  .settings-provider-raccoon-logo {
+    @apply block h-6 w-6;
+  }
+
+  .settings-provider-raccoon-logo img {
+    @apply h-full w-full;
+  }
+
+  .settings-provider-raccoon-logo-dark,
+  body.vscode-dark .settings-provider-raccoon-logo-light,
+  body.vscode-high-contrast .settings-provider-raccoon-logo-light {
+    @apply hidden;
+  }
+
+  body.vscode-dark .settings-provider-raccoon-logo-dark,
+  body.vscode-high-contrast .settings-provider-raccoon-logo-dark {
+    @apply block;
+  }
+
+  .settings-provider-section {
+    @apply mt-6;
+  }
+
+  .settings-provider-section > h4,
+  .settings-provider-section-heading h4 {
+    @apply m-0 mb-2;
+  }
+
+  .settings-provider-section-heading {
+    @apply flex items-center gap-2;
+  }
+
+  .settings-provider-section-heading > span {
+    @apply mb-2 rounded-[999px] bg-[var(--color-button)] px-1.5 py-0.5 text-[10px] leading-none text-[var(--color-muted)];
   }
 
   .settings-provider-block {
@@ -369,7 +442,7 @@
   }
 
   .settings-provider-row {
-    @apply flex min-h-[52px] items-center gap-3 px-3 py-[11px];
+    @apply flex min-h-[56px] items-center gap-3 px-3.5 py-3;
   }
 
   .settings-provider-actions {
@@ -381,7 +454,7 @@
   }
 
   .settings-provider-mark {
-    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-button)] text-[12px] font-semibold text-[var(--color-muted)];
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] bg-[var(--color-button)] text-[12px] font-semibold text-[var(--color-muted)];
   }
 
   .settings-provider-logo {
@@ -414,15 +487,55 @@
   }
 
   .settings-provider-status.connected {
-    @apply text-[var(--color-focus)];
+    @apply text-[var(--color-success,#3fb950)];
   }
 
   .settings-provider-status.connected::before {
-    @apply bg-[var(--color-focus)];
+    @apply bg-[var(--color-success,#3fb950)];
   }
 
   .settings-provider-tag {
     @apply rounded-[999px] border border-[var(--color-border)] px-2 py-0.5 text-[11px] text-[var(--color-muted)];
+  }
+
+  .settings-provider-danger-button:hover:not(:disabled) {
+    @apply text-[var(--color-error)];
+    border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
+  }
+
+  .settings-provider-add {
+    @apply mt-6 flex items-center justify-between gap-5 border-t border-[var(--color-border)] pt-5;
+  }
+
+  .settings-provider-add h4 {
+    @apply m-0 text-[13px] font-semibold text-[var(--color-foreground)];
+  }
+
+  .settings-provider-add p {
+    @apply mb-0 mt-1 text-[12px] leading-5 text-[var(--color-muted)];
+  }
+
+  .settings-provider-add-button {
+    @apply shrink-0;
+  }
+
+  @container settings-content (max-width: 420px) {
+    .settings-content-inner {
+      @apply px-3;
+    }
+
+    .settings-provider-row {
+      @apply flex-wrap;
+    }
+
+    .settings-provider-actions {
+      @apply ml-12;
+    }
+
+    .settings-provider-add {
+      @apply items-start;
+      flex-direction: column;
+    }
   }
 
   .settings-provider-from-env {
@@ -456,7 +569,7 @@
   }
 
   .settings-toggle:checked {
-    @apply border-[var(--color-focus)] bg-[var(--color-focus)];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand)];
   }
 
   .settings-toggle:checked::before {
@@ -494,7 +607,7 @@
   }
 
   .settings-browser-category-chip.active {
-    @apply border-[var(--color-focus)] bg-[var(--color-button)] text-[var(--color-foreground)];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)] text-[var(--color-foreground)];
   }
 
   .settings-browser-category-chip span:last-child {
@@ -548,8 +661,8 @@
   }
 
   .settings-browser-item.active {
-    @apply bg-[var(--color-button)];
-    box-shadow: inset 3px 0 0 var(--color-focus);
+    @apply bg-[var(--color-brand-soft)];
+    box-shadow: inset 3px 0 0 var(--color-brand);
   }
 
   .settings-browser-grid {
@@ -567,7 +680,7 @@
   }
 
   .settings-browser-card {
-    @apply flex min-w-0 flex-col gap-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3 transition-colors hover:border-[var(--color-focus)];
+    @apply flex min-w-0 flex-col gap-2 rounded-[8px] border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3 transition-colors hover:border-[var(--color-brand-border)];
   }
 
   .settings-browser-card-head {
@@ -746,7 +859,7 @@
   }
 
   .settings-browser-links a {
-    @apply text-[var(--color-focus)] underline-offset-2 hover:underline;
+    @apply text-[var(--color-brand)] underline-offset-2 hover:underline;
   }
 
   .settings-browser-transport {
@@ -836,7 +949,7 @@
   }
 
   .settings-browser-tab.active {
-    @apply border-[var(--color-focus)] text-[var(--color-foreground)];
+    @apply border-[var(--color-brand)] text-[var(--color-brand)];
   }
 
   .settings-mcp-modes {
@@ -848,7 +961,7 @@
   }
 
   .settings-mcp-mode.active {
-    @apply border-[var(--color-focus)] bg-[var(--color-button)] text-[var(--color-foreground)];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)] text-[var(--color-foreground)];
   }
 
   .settings-mcp-json {
@@ -959,8 +1072,8 @@
   }
 
   .settings-rules-node.active {
-    @apply bg-[var(--color-button)];
-    box-shadow: inset 1px 0 0 var(--color-focus);
+    @apply bg-[var(--color-brand-soft)];
+    box-shadow: inset 1px 0 0 var(--color-brand);
   }
 
   .settings-rules-node.disabled .settings-rules-card-name {
@@ -1084,8 +1197,8 @@
   }
 
   .settings-commands-node.active {
-    @apply border-[var(--color-border)] bg-[var(--color-button)];
-    box-shadow: inset 2px 0 0 var(--color-focus);
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)];
+    box-shadow: inset 2px 0 0 var(--color-brand);
   }
 
   .settings-commands-node-main {
@@ -1114,7 +1227,7 @@
   }
 
   .settings-commands-scope.project {
-    @apply text-[var(--color-focus)];
+    @apply text-[var(--color-brand)];
   }
 
   .settings-commands-scope.user {
@@ -1210,7 +1323,7 @@
   }
 
   .settings-rules-save:not(:disabled) {
-    @apply bg-[var(--color-focus)] text-[var(--color-background)] hover:opacity-90;
+    @apply bg-[var(--color-brand-solid)] text-[var(--color-brand-foreground)] hover:bg-[var(--color-brand-solid-hover)];
   }
 
   .settings-rules-danger {

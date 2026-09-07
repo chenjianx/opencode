@@ -27,6 +27,13 @@
   --color-selection-foreground: var(--vscode-list-activeSelectionForeground, var(--vscode-foreground, light-dark(#333333, #cccccc)));
   --color-focus: var(--vscode-focusBorder, #007fd4);
   --color-error: var(--vscode-errorForeground, #f85149);
+  --color-brand: light-dark(#7556dc, #9a7bff);
+  --color-brand-hover: light-dark(#6847d1, #aa91ff);
+  --color-brand-solid: #7556dc;
+  --color-brand-solid-hover: #6847d1;
+  --color-brand-foreground: var(--vscode-button-foreground, #ffffff);
+  --color-brand-soft: color-mix(in srgb, var(--color-brand) 9%, var(--color-background));
+  --color-brand-border: color-mix(in srgb, var(--color-brand) 55%, var(--color-border));
   --radius-sm: 0.25rem;
   --radius-md: 0.375rem;
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.16);
@@ -69,6 +76,17 @@
     color-scheme: dark;
   }
 
+  body.vscode-high-contrast,
+  body.vscode-high-contrast-light {
+    --color-brand: var(--vscode-focusBorder, #007fd4);
+    --color-brand-hover: var(--vscode-focusBorder, #007fd4);
+    --color-brand-solid: var(--vscode-button-background, var(--vscode-focusBorder, #007fd4));
+    --color-brand-solid-hover: var(--vscode-button-hoverBackground, var(--color-brand-solid));
+    --color-brand-foreground: var(--vscode-button-foreground, #ffffff);
+    --color-brand-soft: transparent;
+    --color-brand-border: var(--vscode-contrastBorder, var(--vscode-focusBorder, #007fd4));
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -84,4 +102,3 @@
     cursor: pointer;
   }
 }
-

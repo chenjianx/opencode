@@ -1,6 +1,6 @@
 .login-view {
-  --login-accent: #7556dc;
-  --login-accent-hover: #6847d1;
+  --login-accent: var(--color-brand);
+  --login-accent-hover: var(--color-brand-hover);
   display: flex;
   flex: 1;
   align-items: flex-start;
@@ -190,14 +190,14 @@
 }
 
 .login-primary {
-  border: 1px solid var(--login-accent);
-  background: var(--login-accent);
-  color: #fff;
+  border: 1px solid var(--color-brand-border);
+  background: var(--color-brand-solid);
+  color: var(--color-brand-foreground);
 }
 
 .login-primary:hover:not(:disabled) {
-  border-color: var(--login-accent-hover);
-  background: var(--login-accent-hover);
+  border-color: var(--color-brand-solid-hover);
+  background: var(--color-brand-solid-hover);
 }
 
 .login-primary:focus-visible,

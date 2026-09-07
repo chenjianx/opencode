@@ -1,3 +1,6 @@
+import raccoonDarkIcon from "../../../../raccoon-vscode/images/raccoon-dark.svg?inline"
+import raccoonIcon from "../../../../raccoon-vscode/images/raccoon.svg?inline"
+
 // Inline brand SVG logos for known providers, keyed by opencode provider ID.
 // Bundled (not loaded from a CDN) so they render offline and need no extra CSP
 // allowance. Paths are single-path marks from simple-icons, normalized to a
@@ -17,15 +20,30 @@ const PROVIDER_ICON_PATHS: Record<string, string> = {
 }
 
 export function hasProviderIcon(id: string) {
-  return id in PROVIDER_ICON_PATHS
+  return id === "raccoon" || id in PROVIDER_ICON_PATHS
 }
 
 export function ProviderIcon(props: { id: string; name: string }) {
+  if (props.id === "raccoon") return <RaccoonProviderIcon name={props.name} />
   const path = PROVIDER_ICON_PATHS[props.id]
   if (!path) return <span>{props.name.slice(0, 2).toUpperCase()}</span>
   return (
     <svg className="settings-provider-logo" viewBox="0 0 24 24" role="img" aria-label={props.name}>
       <path d={path} fill="currentColor" />
     </svg>
+  )
+}
+
+function RaccoonProviderIcon(props: { name: string }) {
+  return (
+    <span
+      className="settings-provider-logo settings-provider-raccoon-logo"
+      data-provider-icon="raccoon"
+      role="img"
+      aria-label={props.name}
+    >
+      <img className="settings-provider-raccoon-logo-light" src={raccoonIcon} alt="" aria-hidden="true" />
+      <img className="settings-provider-raccoon-logo-dark" src={raccoonDarkIcon} alt="" aria-hidden="true" />
+    </span>
   )
 }

@@ -363,12 +363,17 @@ export function SettingsProviders() {
 
   return (
     <>
-      <h3>{language.t("settings.providers.title")}</h3>
+      <div className="settings-page-heading">
+        <h3>{language.t("settings.providers.title")}</h3>
+        <p>{language.t("settings.providers.subtitle")}</p>
+      </div>
 
       {/* Raccoon — the default service the plugin must be logged into. Pinned. */}
-      <div className="settings-card settings-provider-feature">
+      <section className="settings-provider-account" aria-label={language.t("settings.providers.raccoon.accountLabel")}>
         <div className="settings-provider-row">
-          <div className="settings-provider-mark">RC</div>
+          <div className="settings-provider-mark settings-provider-raccoon-mark">
+            <ProviderIcon id="raccoon" name="Raccoon" />
+          </div>
           <div className="settings-provider-main">
             <div className="settings-provider-name-row">
               <span className="settings-provider-name">Raccoon</span>
@@ -380,11 +385,16 @@ export function SettingsProviders() {
           </div>
           <div className="settings-provider-actions">
             {raccoonConnected ? (
-              <Button disabled={raccoonLoggingIn} onClick={() => setRaccoonLogoutConfirm(true)}>
+              <Button
+                className="settings-provider-danger-button"
+                disabled={raccoonLoggingIn}
+                onClick={() => setRaccoonLogoutConfirm(true)}
+              >
                 {language.t("settings.providers.raccoon.logout")}
               </Button>
             ) : (
               <Button
+                variant="primary"
                 disabled={raccoonLoggingIn}
                 onClick={() => {
                   setRaccoonLoginError(undefined)
@@ -397,14 +407,72 @@ export function SettingsProviders() {
           </div>
         </div>
         {raccoonLoginError ? <div className="settings-provider-error">{raccoonLoginError}</div> : null}
-      </div>
+      </section>
 
-      <h4>{language.t("settings.providers.section.connected")}</h4>
-      <div className="settings-card">
-        {connectedProviders.length > 0 ? (
-          connectedProviders.map((item) => {
-            const custom = isCustomProvider(item.id)
-            return (
+      <section className="settings-provider-section" aria-label={language.t("settings.providers.connected.label")}>
+        <div className="settings-provider-section-heading">
+          <h4>{language.t("settings.providers.section.connected")}</h4>
+          <span>{connectedProviders.length}</span>
+        </div>
+        <div className="settings-card">
+          {connectedProviders.length > 0 ? (
+            connectedProviders.map((item) => {
+              const custom = isCustomProvider(item.id)
+              return (
+                <div className="settings-provider-block" key={item.id}>
+                  <div className="settings-provider-row">
+                    <div className="settings-provider-mark">
+                      <ProviderIcon id={item.id} name={item.name} />
+                    </div>
+                    <div className="settings-provider-main">
+                      <div className="settings-provider-name-row">
+                        <span className="settings-provider-name">{item.name}</span>
+                        <span className="settings-provider-tag">{sourceTag(item.id, item.source)}</span>
+                      </div>
+                      <div className="settings-provider-meta">
+                        {language.t("settings.providers.customProvider.models", { count: item.modelCount })}
+                      </div>
+                    </div>
+                    <div className="settings-provider-actions">
+                      {custom ? (
+                        <>
+                          <Button onClick={() => editCustomProvider(item.id)}>
+                            {language.t("settings.providers.edit")}
+                          </Button>
+                          <Button
+                            className="settings-provider-danger-button"
+                            onClick={() => setPendingAction({ kind: "delete", providerID: item.id, name: item.name })}
+                          >
+                            {language.t("common.delete")}
+                          </Button>
+                        </>
+                      ) : item.source === "env" ? (
+                        <span className="settings-provider-from-env">{language.t("settings.providers.fromEnv")}</span>
+                      ) : (
+                        <Button
+                          className="settings-provider-danger-button"
+                          disabled={connectingProviderID === item.id}
+                          onClick={() => setPendingAction({ kind: "disconnect", providerID: item.id, name: item.name })}
+                        >
+                          {language.t("settings.providers.disconnect")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          ) : (
+            <div className="settings-provider-empty">{language.t("settings.providers.connected.empty")}</div>
+          )}
+        </div>
+      </section>
+
+      {unconnectedPopular.length > 0 ? (
+        <section className="settings-provider-section">
+          <h4>{language.t("settings.providers.section.popular")}</h4>
+          <div className="settings-card">
+            {unconnectedPopular.map((item) => (
               <div className="settings-provider-block" key={item.id}>
                 <div className="settings-provider-row">
                   <div className="settings-provider-mark">
@@ -413,89 +481,35 @@ export function SettingsProviders() {
                   <div className="settings-provider-main">
                     <div className="settings-provider-name-row">
                       <span className="settings-provider-name">{item.name}</span>
-                      <span className="settings-provider-tag">{sourceTag(item.id, item.source)}</span>
                     </div>
-                    <div className="settings-provider-meta">
-                      {language.t("settings.providers.customProvider.models", { count: item.modelCount })}
-                    </div>
+                    <div className="settings-provider-meta">{language.t(item.noteKey)}</div>
                   </div>
                   <div className="settings-provider-actions">
-                    {custom ? (
-                      <>
-                        <Button onClick={() => editCustomProvider(item.id)}>
-                          {language.t("settings.providers.edit")}
-                        </Button>
-                        <Button
-                          onClick={() => setPendingAction({ kind: "delete", providerID: item.id, name: item.name })}
-                        >
-                          {language.t("common.delete")}
-                        </Button>
-                      </>
-                    ) : item.source === "env" ? (
-                      <span className="settings-provider-from-env">{language.t("settings.providers.fromEnv")}</span>
-                    ) : (
-                      <Button
-                        disabled={connectingProviderID === item.id}
-                        onClick={() => setPendingAction({ kind: "disconnect", providerID: item.id, name: item.name })}
-                      >
-                        {language.t("settings.providers.disconnect")}
-                      </Button>
-                    )}
+                    <Button
+                      onClick={() => {
+                        setProviderError(undefined)
+                        setActiveProvider(item.id)
+                      }}
+                    >
+                      {language.t("settings.providers.connect")}
+                    </Button>
                   </div>
                 </div>
               </div>
-            )
-          })
-        ) : (
-          <div className="settings-provider-empty">{language.t("settings.providers.connected.empty")}</div>
-        )}
-      </div>
-
-      <h4>{language.t(HIDE_FOREIGN_PROVIDERS ? "settings.providers.custom.title" : "settings.providers.section.popular")}</h4>
-      <div className="settings-card">
-        {unconnectedPopular.map((item) => (
-          <div className="settings-provider-block" key={item.id}>
-            <div className="settings-provider-row">
-              <div className="settings-provider-mark">
-                <ProviderIcon id={item.id} name={item.name} />
-              </div>
-              <div className="settings-provider-main">
-                <div className="settings-provider-name-row">
-                  <span className="settings-provider-name">{item.name}</span>
-                </div>
-                <div className="settings-provider-meta">{language.t(item.noteKey)}</div>
-              </div>
-              <div className="settings-provider-actions">
-                <Button
-                  onClick={() => {
-                    setProviderError(undefined)
-                    setActiveProvider(item.id)
-                  }}
-                >
-                  {language.t("settings.providers.connect")}
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
+        </section>
+      ) : null}
 
-        {/* Custom provider entry lives at the bottom of the popular list. */}
-        <div className="settings-provider-block">
-          <div className="settings-provider-row">
-            <div className="settings-provider-mark">+</div>
-            <div className="settings-provider-main">
-              <div className="settings-provider-name-row">
-                <span className="settings-provider-name">{language.t("settings.providers.customProvider")}</span>
-                <span className="settings-provider-tag">{language.t("settings.providers.custom")}</span>
-              </div>
-              <div className="settings-provider-meta">{language.t("settings.providers.customProvider.note")}</div>
-            </div>
-            <div className="settings-provider-actions">
-              <Button onClick={openNewCustomProvider}>{language.t("settings.providers.customProvider.add")}</Button>
-            </div>
-          </div>
+      <section className="settings-provider-add" aria-label={language.t("settings.providers.custom.addLabel")}>
+        <div>
+          <h4>{language.t("settings.providers.customProvider")}</h4>
+          <p>{language.t("settings.providers.customProvider.note")}</p>
         </div>
-      </div>
+        <Button variant="primary" className="settings-provider-add-button" onClick={openNewCustomProvider}>
+          {language.t("settings.providers.customProvider.add")}
+        </Button>
+      </section>
       {customOpen ? (
         <SettingsCustomProviderDialog
           custom={custom}

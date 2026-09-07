@@ -23,7 +23,7 @@ import {
   textAttachment,
   useFileMention,
 } from "./file-mention"
-import { modeLabel, requestContext, slashQuery } from "./prompt-input-utils"
+import { modeLabel, promptSendState, requestContext, slashQuery } from "./prompt-input-utils"
 import { usePromptAttachments } from "./use-prompt-attachments"
 import { PromptCommandList, PromptMentionList, PromptModePicker } from "./prompt-popovers"
 import { ReasoningPicker } from "../../ui/reasoning-picker"
@@ -113,6 +113,7 @@ export function PromptInput() {
   const selectedModel = session.conversationModel
   const canSend = session.canSend(draft, attachments)
   const busy = session.state.busy ?? false
+  const sendState = promptSendState({ busy, canSend, submitting: submittingCurrentSession })
   const commandQuery = slashQuery(draft, textareaRef.current?.selectionStart ?? draft.length)
   const atQuery = mentionQuery(draft, textareaRef.current?.selectionStart ?? draft.length)
   const mention = useFileMention(commandQuery === undefined ? atQuery : undefined)
@@ -400,7 +401,10 @@ export function PromptInput() {
             send()
           }}
         />
-        <div className={`relative px-1.5 pb-1.5 ${session.state.activeSessionID ? "pr-[76px]" : "pr-[40px]"}`}>
+        <div
+          className="flex min-h-[38px] items-center justify-between gap-2 px-1.5 pb-2"
+          data-prompt-footer-layout="flow"
+        >
           <div className="flex min-w-0 flex-wrap items-center gap-1">
             <PromptModePicker
               options={modeOptions}
@@ -434,47 +438,51 @@ export function PromptInput() {
               />
             ) : null}
           </div>
-          {session.state.activeSessionID ? (
+          <div className="flex shrink-0 items-center gap-1.5" data-prompt-actions="compact">
+            {session.state.activeSessionID ? (
+              <button
+                type="button"
+                className="ui-tip prompt-action-button prompt-auto-approve-button flex h-[30px] w-[30px] items-center justify-center border border-transparent p-0 transition-colors"
+                aria-pressed={session.autoApprovePermissions}
+                onClick={() => session.toggleAutoApprovePermissions()}
+                aria-label={t("prompt.autoApprove")}
+                data-tip={session.autoApprovePermissions ? t("prompt.autoApproveOn") : t("prompt.autoApproveOff")}
+                data-prompt-auto-approve-state={session.autoApprovePermissions ? "on" : "off"}
+              >
+                {session.autoApprovePermissions ? (
+                  <ShieldSlashIcon data-prompt-permission-icon="bypass" size={18} weight="regular" />
+                ) : (
+                  <ShieldCheckIcon data-prompt-permission-icon="guarded" size={18} weight="regular" />
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
-              className={`ui-tip prompt-action-button prompt-auto-approve-button absolute right-[40px] top-0 flex h-[30px] w-[30px] items-center justify-center border-0 p-0 transition-colors ${
-                session.autoApprovePermissions
-                  ? "bg-[var(--chat-accent-soft)] text-[var(--chat-accent)]"
-                  : "bg-transparent text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] hover:text-[var(--color-foreground)]"
-              }`}
-              aria-pressed={session.autoApprovePermissions}
-              onClick={() => session.toggleAutoApprovePermissions()}
-              aria-label={t("prompt.autoApprove")}
-              data-tip={session.autoApprovePermissions ? t("prompt.autoApproveOn") : t("prompt.autoApproveOff")}
+              className="ui-tip prompt-action-button prompt-send-button flex h-[30px] w-[30px] items-center justify-center border border-transparent p-0 transition-colors"
+              disabled={!busy && (!canSend || submittingCurrentSession)}
+              onClick={send}
+              aria-label={busy ? t("prompt.stop") : canSend ? t("prompt.send") : t("prompt.cannotSend")}
+              data-tip={busy ? t("prompt.stop") : t("prompt.send")}
+              data-prompt-send-state={sendState}
             >
-              {session.autoApprovePermissions ? (
-                <ShieldCheckIcon size={18} weight="fill" />
+              {busy ? (
+                <SquareIcon data-prompt-action-icon="stop" size={12} weight="fill" />
+              ) : submittingCurrentSession ? (
+                <ArrowClockwiseIcon
+                  data-prompt-action-icon="loading"
+                  className="animate-spin"
+                  size={18}
+                  weight="bold"
+                />
               ) : (
-                <ShieldSlashIcon size={18} weight="regular" />
+                <PaperPlaneRightIcon
+                  data-prompt-action-icon="send"
+                  size={18}
+                  weight={canSend ? "fill" : "regular"}
+                />
               )}
             </button>
-          ) : null}
-          <button
-            type="button"
-            className="ui-tip prompt-action-button prompt-send-button absolute right-1.5 top-0 flex h-[30px] w-[30px] items-center justify-center border-0 bg-[var(--chat-accent)] p-0 text-white transition-colors hover:bg-[var(--chat-accent-hover)] disabled:cursor-default disabled:bg-transparent disabled:text-[var(--color-muted)]"
-            disabled={!busy && (!canSend || submittingCurrentSession)}
-            onClick={send}
-            aria-label={busy ? t("prompt.stop") : canSend ? t("prompt.send") : t("prompt.cannotSend")}
-            data-tip={busy ? t("prompt.stop") : t("prompt.send")}
-          >
-            {busy ? (
-              <SquareIcon data-prompt-action-icon="stop" size={14} weight="fill" />
-            ) : submittingCurrentSession ? (
-              <ArrowClockwiseIcon data-prompt-action-icon="loading" className="animate-spin" size={20} weight="bold" />
-            ) : (
-              <PaperPlaneRightIcon
-                data-prompt-action-icon="send"
-                className={canSend ? undefined : "opacity-55"}
-                size={20}
-                weight={canSend ? "fill" : "regular"}
-              />
-            )}
-          </button>
+          </div>
         </div>
       </div>
     </div>

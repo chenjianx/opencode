@@ -378,11 +378,11 @@
   }
 
   .question-dock-next {
-    @apply border-[color-mix(in_srgb,var(--color-focus)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-focus)_8%,var(--color-background))] font-medium text-[var(--color-foreground)];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)] font-medium text-[var(--color-foreground)];
   }
 
   .question-dock-submit {
-    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[var(--vscode-button-foreground,#ffffff)] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,light-dark(black,white))];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-solid)] font-medium text-[var(--color-brand-foreground)] hover:bg-[var(--color-brand-solid-hover)];
   }
 
   .question-dock-back {
@@ -410,19 +410,19 @@
   }
 
   .question-dock-option[data-picked="true"] {
-    @apply border-[color-mix(in_srgb,var(--color-focus)_50%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-focus)_8%,var(--color-background))];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)];
   }
 
   .question-dock-option-marker {
-    @apply mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-focus)];
+    @apply mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-brand)];
   }
 
   .question-dock-option-marker[data-picked="true"] {
-    @apply border-[var(--color-focus)] bg-[color-mix(in_srgb,var(--color-focus)_16%,var(--color-background))];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)];
   }
 
   .question-dock-option-dot {
-    @apply block h-1.5 w-1.5 rounded-full bg-[var(--color-focus)];
+    @apply block h-1.5 w-1.5 rounded-full bg-[var(--color-brand)];
   }
 
   .question-dock-option-main {
@@ -662,11 +662,11 @@
   }
 
   .permission-dock-always {
-    @apply border-[color-mix(in_srgb,var(--color-focus)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-focus)_8%,var(--color-background))] font-medium;
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)] font-medium;
   }
 
   .permission-dock-once {
-    @apply border-[var(--color-focus)] bg-[var(--color-focus)] font-medium text-[var(--vscode-button-foreground,#ffffff)] hover:bg-[color-mix(in_srgb,var(--color-focus)_88%,light-dark(black,white))];
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-solid)] font-medium text-[var(--color-brand-foreground)] hover:bg-[var(--color-brand-solid-hover)];
   }
 
   .session-turn {
@@ -1304,18 +1304,26 @@
   /* Message workbench: keep the familiar user message treatment while the
    * assistant response and tool activity read as one continuous working surface. */
   .chat-view {
-    --chat-accent: light-dark(#7556dc, #9a7bff);
-    --chat-accent-hover: light-dark(#6847d1, #aa91ff);
-    --chat-accent-soft: color-mix(in srgb, var(--chat-accent) 9%, var(--color-background));
+    --chat-accent: var(--color-brand);
+    --chat-accent-hover: var(--color-brand-hover);
+    --chat-accent-soft: var(--color-brand-soft);
   }
 
   .chat-view .chat-header {
     @apply min-h-10 px-2 pb-1.5 pt-2;
-    background: color-mix(in srgb, var(--color-background) 98%, var(--chat-accent));
+    background: color-mix(in srgb, var(--color-background) 95%, var(--chat-accent));
   }
 
   .chat-view .session-usage-ring-fill {
     stroke: var(--chat-accent);
+  }
+
+  .chat-view .session-context-used {
+    background: var(--chat-accent);
+  }
+
+  .chat-view .session-context-used--hot {
+    background: color-mix(in srgb, var(--color-error, #e5484d) 70%, var(--chat-accent));
   }
 
   .chat-view .message-list {
@@ -1340,6 +1348,11 @@
 
   .chat-view .turn-user {
     @apply w-full;
+  }
+
+  .chat-view .user-message-content {
+    border-color: color-mix(in srgb, var(--chat-accent) 22%, var(--color-border));
+    background: color-mix(in srgb, var(--color-background) 94%, var(--chat-accent));
   }
 
   .chat-view .turn-role {
@@ -1524,13 +1537,37 @@
     @apply rounded-[6px];
   }
 
-  .chat-view .prompt-send-button:not(:disabled) {
-    box-shadow: none;
+  .chat-view .prompt-auto-approve-button {
+    @apply bg-[var(--color-button)] text-[var(--color-muted)] hover:bg-[var(--color-hover-strong)] hover:text-[var(--color-foreground)];
+  }
+
+  .chat-view .prompt-auto-approve-button[data-prompt-auto-approve-state="on"] {
+    @apply border-[color-mix(in_srgb,var(--vscode-editorWarning-foreground,var(--color-warning,#d29922))_48%,transparent)] bg-[var(--color-button)] text-[var(--vscode-editorWarning-foreground,var(--color-warning,#d29922))];
+  }
+
+  .chat-view .prompt-auto-approve-button[data-prompt-auto-approve-state="on"]:hover {
+    @apply bg-[var(--color-hover-strong)] text-[var(--vscode-editorWarning-foreground,var(--color-warning,#d29922))];
+  }
+
+  .chat-view .prompt-send-button {
+    @apply bg-[var(--color-button)] text-[var(--color-muted)];
+  }
+
+  .chat-view .prompt-send-button:disabled {
+    @apply cursor-default border-transparent bg-[var(--color-button)] text-[var(--color-muted)] opacity-70;
+  }
+
+  .chat-view .prompt-send-button[data-prompt-send-state="ready"] {
+    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-solid)] text-[var(--color-brand-foreground)] hover:bg-[var(--color-brand-solid-hover)];
+  }
+
+  .chat-view .prompt-send-button[data-prompt-send-state="busy"] {
+    @apply border-[var(--color-border)] bg-[var(--color-hover-strong)] text-[var(--color-foreground)];
   }
 
   .prompt-model-menu {
-    --chat-accent: light-dark(#7556dc, #9a7bff);
-    --chat-accent-soft: color-mix(in srgb, var(--chat-accent) 9%, var(--color-background));
+    --chat-accent: var(--color-brand);
+    --chat-accent-soft: var(--color-brand-soft);
   }
 
   .chat-view .user-mention,
@@ -1563,13 +1600,13 @@
 }
 
 @layer utilities {
-  body.vscode-dark .prompt-action-button,
-  body.vscode-high-contrast .prompt-action-button {
+  body.vscode-dark .prompt-send-button[data-prompt-send-state="ready"],
+  body.vscode-high-contrast .prompt-send-button[data-prompt-send-state="ready"] {
     color: #ffffff;
   }
 
-  body.vscode-dark .prompt-action-button:hover,
-  body.vscode-high-contrast .prompt-action-button:hover {
+  body.vscode-dark .prompt-send-button[data-prompt-send-state="ready"]:hover,
+  body.vscode-high-contrast .prompt-send-button[data-prompt-send-state="ready"]:hover {
     color: #ffffff;
   }
 }
