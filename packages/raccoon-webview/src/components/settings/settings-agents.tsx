@@ -499,6 +499,7 @@ export function SettingsAgents(props: {
                   <Select
                     className="settings-select"
                     value={draft.scope}
+                    ariaLabel={language.t("settings.agents.scope.title")}
                     onChange={(value) => updateDraft("scope", value as RaccoonAgentScope)}
                     options={[
                       { value: "project", label: language.t("settings.agents.scope.project") },
@@ -525,6 +526,7 @@ export function SettingsAgents(props: {
                   <Select
                     className="settings-select"
                     value={draft.mode}
+                    ariaLabel={language.t("settings.agents.mode.title")}
                     onChange={(value) => updateDraft("mode", value as RaccoonAgentMode)}
                     options={[
                       { value: "primary", label: language.t("settings.agents.mode.primary") },

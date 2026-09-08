@@ -959,7 +959,8 @@ export class RaccoonSessionController {
     this.deps.webviewHost.post("chat", { type: "showSubAgent", view } satisfies ExtensionToWebview)
     load.events.forEach((message) => this.deps.webviewHost.post("chat", message))
     const latestBusy = load.events.filter((message) => message.type === "subAgentBusyChanged").at(-1)
-    if ((latestBusy?.busy ?? view.busy) === false) this.subAgentEvents.delete(load.sessionID)
+    // The status snapshot can temporarily omit a running child; only an explicit idle event makes buffered deltas safe to drop.
+    if (latestBusy?.busy === false) this.subAgentEvents.delete(load.sessionID)
     this.reschedulePendingSubAgentRefresh(load.sessionID)
   }
 

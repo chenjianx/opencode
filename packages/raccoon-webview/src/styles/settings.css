@@ -1,7 +1,6 @@
 @layer components {
   /* Show a hand cursor on every interactive element in the settings UI. */
   .settings-view button:not(:disabled),
-  .settings-view select:not(:disabled),
   .settings-view input[type="checkbox"]:not(:disabled),
   .settings-view input[type="radio"]:not(:disabled),
   .settings-view label[for],
@@ -11,7 +10,6 @@
   }
 
   .settings-view button:disabled,
-  .settings-view select:disabled,
   .settings-view input:disabled {
     @apply cursor-default;
   }
@@ -557,6 +555,86 @@
 
   .settings-select {
     @apply h-[28px] min-w-[120px] rounded-[4px] border border-[var(--color-border)] bg-[var(--color-input)] px-2 text-[12px] text-[var(--color-input-foreground)] outline-none focus:border-[var(--color-focus)];
+  }
+
+  .settings-select-root {
+    @apply relative min-w-0 max-w-full;
+  }
+
+  .settings-select-content-width {
+    @apply inline-grid w-fit max-w-full shrink-0;
+  }
+
+  .settings-select-content-width > .settings-select-trigger,
+  .settings-select-content-width > .settings-select-sizer {
+    grid-area: 1 / 1;
+  }
+
+  .settings-select-content-width > .settings-select-trigger {
+    @apply w-full min-w-0;
+  }
+
+  .settings-select-sizer {
+    @apply invisible grid h-[28px] max-w-full pointer-events-none;
+  }
+
+  .settings-select-sizer-option {
+    @apply col-start-1 row-start-1 flex w-max max-w-full items-center justify-between gap-2 border border-transparent px-2.5 text-[12px];
+  }
+
+  .settings-select-sizer-caret {
+    @apply h-[13px] w-[13px] shrink-0;
+  }
+
+  .settings-dialog-field > .settings-select-root,
+  .settings-provider-field > .settings-select-root,
+  .settings-rules-field > .settings-select-root,
+  .settings-commands-field > .settings-select-root {
+    @apply w-full;
+  }
+
+  .settings-select-trigger {
+    @apply flex w-full max-w-full cursor-pointer items-center justify-between gap-2 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:border-[var(--color-focus)];
+  }
+
+  .settings-select-trigger.open {
+    @apply border-[var(--color-focus)];
+  }
+
+  .settings-select-trigger:disabled {
+    @apply cursor-default opacity-55;
+  }
+
+  .settings-select-value {
+    @apply min-w-0 flex-1 truncate;
+  }
+
+  .settings-select-caret {
+    @apply shrink-0 text-[var(--color-muted)] transition-transform duration-150;
+  }
+
+  .settings-select-trigger.open .settings-select-caret {
+    @apply rotate-180;
+  }
+
+  .settings-select-menu {
+    @apply max-h-[240px] overflow-y-auto rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-[var(--shadow-md)];
+  }
+
+  .settings-select-option {
+    @apply flex min-h-[32px] w-full cursor-pointer items-center gap-2 border-0 bg-transparent px-2.5 py-1.5 text-left text-[12px] text-[var(--color-foreground)] outline-none transition-colors hover:bg-[var(--color-hover)] focus-visible:bg-[var(--color-hover)];
+  }
+
+  .settings-select-option > span:first-child {
+    @apply min-w-0 flex-1 truncate;
+  }
+
+  .settings-select-option > svg {
+    @apply shrink-0 text-[var(--color-brand)];
+  }
+
+  .settings-select-option.selected {
+    @apply bg-[var(--color-brand-soft)];
   }
 
   .settings-toggle {
@@ -1276,7 +1354,7 @@
 
   .settings-commands-field .settings-provider-input,
   .settings-commands-field .settings-rules-textarea,
-  .settings-commands-field select {
+  .settings-commands-field .settings-select-trigger {
     @apply border-[var(--color-border)] bg-[var(--color-input)];
   }
 

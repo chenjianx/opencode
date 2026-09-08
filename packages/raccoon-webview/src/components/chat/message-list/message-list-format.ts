@@ -1,5 +1,11 @@
 import type { RaccoonMessage, RaccoonMessagePart, RaccoonMessageTokens } from "../../../protocol"
 
+const PATH_INPUT_KEYS = new Set(["filePath", "filepath", "file", "target_file", "path", "directory", "cwd"])
+
+export function isPathInputKey(key: string) {
+  return PATH_INPUT_KEYS.has(key)
+}
+
 export function filename(path: string) {
   return path.split(/[\\/]/).filter(Boolean).at(-1) ?? path
 }
@@ -32,7 +38,7 @@ export function inputLines(part: RaccoonMessagePart, omitDiffInputs = false) {
     .map(([key, value]) => {
       const text = shortValue(value)
       if (!text) return
-      return { key, value: preview(text, 180) }
+      return { key, value: isPathInputKey(key) ? text : preview(text, 180) }
     })
     .filter((item): item is { key: string; value: string } => !!item)
 }

@@ -281,6 +281,7 @@ export function SettingsCommands(props: {
                       <span>{language.t("settings.commands.scope.title")}</span>
                       <Select
                         value={draft.scope}
+                        ariaLabel={language.t("settings.commands.scope.title")}
                         disabled={!!savingRequestID}
                         options={[
                           { value: "project", label: language.t("settings.commands.scope.project") },
@@ -329,6 +330,7 @@ export function SettingsCommands(props: {
                     <span>{language.t("settings.commands.agent.title")}</span>
                     <Select
                       value={draft.agent}
+                      ariaLabel={language.t("settings.commands.agent.title")}
                       disabled={!!savingRequestID}
                       placeholder={language.t("settings.commands.agent.default")}
                       options={agents.map((agent) => ({ value: agent.name, label: agent.name }))}

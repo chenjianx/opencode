@@ -4,7 +4,7 @@ import { useSession } from "../../../context/session"
 import type { RaccoonMessagePart } from "../../../protocol"
 import { MarkdownLite } from "../../ui/markdown-lite"
 import { DiffPanel, diffFiles } from "./message-list-diff"
-import { filename, firstString, inputLines, stripAnsi } from "./message-list-format"
+import { filename, firstString, inputLines, isPathInputKey, stripAnsi } from "./message-list-format"
 import { QuestionDock } from "./question-dock"
 
 type TodoItem = {
@@ -385,7 +385,12 @@ export function ToolPart(props: { part: RaccoonMessagePart }) {
               {lines.map((line) => (
                 <div className="tool-kv" key={line.key}>
                   <span>{line.key}</span>
-                  <code>{line.value}</code>
+                  <code
+                    className={isPathInputKey(line.key) ? "tool-path-value" : undefined}
+                    title={isPathInputKey(line.key) ? line.value : undefined}
+                  >
+                    {line.value}
+                  </code>
                 </div>
               ))}
             </div>

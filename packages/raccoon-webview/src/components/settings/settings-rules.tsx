@@ -223,6 +223,7 @@ export function SettingsRules(props: {
                     <span>{language.t("settings.rules.scope.title")}</span>
                     <Select
                       value={draft.scope}
+                      ariaLabel={language.t("settings.rules.scope.title")}
                       disabled={!!savingRequestID}
                       options={[
                         { value: "project", label: language.t("settings.rules.scope.project") },

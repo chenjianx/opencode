@@ -395,6 +395,37 @@ describe("RaccoonSessionController subagent navigation", () => {
     })
   })
 
+  test("keeps unpersisted stream updates when reopening a subagent with an absent status", async () => {
+    const { controller, posts, resolveMessages } = makeSubAgentController()
+
+    controller.postSubAgentEvent("A", {
+      type: "partUpdated",
+      sessionID: "A",
+      messageID: "msg-a",
+      part: { id: "msg-a-p", type: "text", text: "live" },
+      delta: { type: "text-delta", textDelta: "live" },
+    })
+    const first = controller.openSubAgent("A", "A")
+    await tick()
+    resolveMessages(0, "A", "msg-a", "")
+    await first
+    controller.closeSubAgent()
+
+    const reopenedAt = posts.length
+    const reopened = controller.openSubAgent("A", "A")
+    await tick()
+    resolveMessages(1, "A", "msg-a", "")
+    await reopened
+
+    expect(posts.slice(reopenedAt).at(-1)).toEqual({
+      type: "partUpdated",
+      sessionID: "A",
+      messageID: "msg-a",
+      part: { id: "msg-a-p", type: "text", text: "live" },
+      delta: { type: "text-delta", textDelta: "live" },
+    })
+  })
+
   test("replays buffered events and permits retry after a refresh failure", async () => {
     const { controller, messagesQueue, posts, rejectMessages, resolveMessages } = makeSubAgentController()
 

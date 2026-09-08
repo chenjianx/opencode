@@ -37,6 +37,28 @@ afterAll(async () => {
 }, 20_000)
 
 describe("VS Code brand theme", () => {
+  test("keeps the chat header background transparent", async () => {
+    const page = await browser.newPage({ viewport: { width: 420, height: 760 } })
+    await page.goto(url)
+
+    const background = await page.evaluate(() => {
+      document.body.className = "vscode-light"
+      document.documentElement.style.setProperty("--vscode-editor-background", "#123456")
+
+      const chat = document.createElement("section")
+      chat.className = "chat-view"
+      const header = document.createElement("div")
+      header.className = "chat-header"
+      chat.append(header)
+      document.body.append(chat)
+
+      return getComputedStyle(header).backgroundColor
+    })
+
+    expect(background).toBe("rgba(0, 0, 0, 0)")
+    await page.close()
+  })
+
   test("uses purple for brand actions while preserving host colors and focus", async () => {
     const page = await browser.newPage({ viewport: { width: 420, height: 760 } })
     await page.goto(url)
@@ -135,6 +157,68 @@ describe("VS Code brand theme", () => {
       border: "rgb(255, 255, 0)",
     })
 
+    await page.close()
+  })
+
+  test("keeps content-width permission options fully visible", async () => {
+    const page = await browser.newPage({ viewport: { width: 420, height: 760 } })
+    await page.goto(url)
+
+    const clipped = await page.evaluate(() => {
+      return [
+        ["默认", "允许", "询问", "拒绝"],
+        ["Default", "Allow", "Ask", "Deny"],
+      ].flatMap((labels) => {
+        const root = document.createElement("div")
+        root.className = "settings-select-root settings-select-content-width"
+
+        const trigger = document.createElement("button")
+        trigger.className = "settings-select-trigger settings-select"
+        const triggerValue = document.createElement("span")
+        triggerValue.className = "settings-select-value"
+        triggerValue.textContent = labels[0]
+        const triggerCaret = document.createElement("span")
+        triggerCaret.className = "settings-select-caret"
+        trigger.append(triggerValue, triggerCaret)
+
+        const sizer = document.createElement("span")
+        sizer.className = "settings-select-sizer"
+        for (const label of labels) {
+          const option = document.createElement("span")
+          option.className = "settings-select-sizer-option"
+          const text = document.createElement("span")
+          text.textContent = label
+          const caret = document.createElement("span")
+          caret.className = "settings-select-sizer-caret"
+          option.append(text, caret)
+          sizer.append(option)
+        }
+        root.append(trigger, sizer)
+        document.body.append(root)
+
+        const menu = document.createElement("div")
+        menu.className = "settings-select-menu"
+        menu.style.width = `${root.getBoundingClientRect().width}px`
+        for (const label of labels) {
+          const option = document.createElement("button")
+          option.className = "settings-select-option"
+          const text = document.createElement("span")
+          text.textContent = label
+          const check = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+          check.setAttribute("width", "13")
+          check.setAttribute("height", "13")
+          option.append(text, check)
+          menu.append(option)
+        }
+        document.body.append(menu)
+
+        return Array.from(menu.querySelectorAll<HTMLElement>("button > span:first-child")).map(
+          (text) => text.scrollWidth > text.clientWidth,
+        )
+      })
+    })
+
+    expect(clipped).toEqual([false, false, false, false, false, false, false, false])
     await page.close()
   })
 })

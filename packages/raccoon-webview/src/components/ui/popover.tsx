@@ -18,8 +18,8 @@ export function Popover(props: {
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>()
 
   useEffect(() => {
+    if (!props.open) return
     const onPointerDown = (event: PointerEvent) => {
-      if (!props.open) return
       if (rootRef.current?.contains(event.target as Node)) return
       if (menuRef.current?.contains(event.target as Node)) return
       props.onOpenChange(false)
@@ -34,7 +34,7 @@ export function Popover(props: {
       document.removeEventListener("pointerdown", onPointerDown)
       document.removeEventListener("keydown", onKeyDown)
     }
-  }, [props])
+  }, [props.open, props.onOpenChange])
 
   useLayoutEffect(() => {
     if (!props.open || !props.portal) return
@@ -45,11 +45,14 @@ export function Popover(props: {
       const menu = menuRef.current
       const border = menu ? getComputedStyle(menu) : undefined
       const menuHeight = menu
-        ? menu.scrollHeight + Number.parseFloat(border?.borderTopWidth ?? "0") + Number.parseFloat(border?.borderBottomWidth ?? "0")
+        ? menu.scrollHeight +
+          Number.parseFloat(border?.borderTopWidth ?? "0") +
+          Number.parseFloat(border?.borderBottomWidth ?? "0")
         : 0
       const spaceAbove = rect.top - 12
       const spaceBelow = window.innerHeight - rect.bottom - 12
-      const placeAbove = props.placement === "top" || (props.placement === "auto" && spaceBelow < menuHeight && spaceAbove > spaceBelow)
+      const placeAbove =
+        props.placement === "top" || (props.placement === "auto" && spaceBelow < menuHeight && spaceAbove > spaceBelow)
       const maxHeight = Math.max(0, placeAbove ? spaceAbove : spaceBelow)
       setMenuStyle({
         position: "fixed",
@@ -76,11 +79,15 @@ export function Popover(props: {
       {props.children({ close: () => props.onOpenChange(false) })}
     </div>
   ) : null
+  const portalTarget =
+    props.portal && typeof document !== "undefined"
+      ? (rootRef.current?.closest<HTMLElement>('[role="dialog"][aria-modal="true"]') ?? document.body)
+      : undefined
 
   return (
     <div className={props.className} ref={rootRef}>
       {props.trigger({ open: props.open, toggle: () => props.onOpenChange(!props.open) })}
-      {props.portal && menu ? createPortal(menu, document.body) : menu}
+      {props.portal && menu && portalTarget ? createPortal(menu, portalTarget) : menu}
     </div>
   )
 }

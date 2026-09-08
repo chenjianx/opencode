@@ -155,6 +155,68 @@ test("renders an icon expand arrow instead of a text glyph", () => {
   expect(html).not.toContain("⌄")
 })
 
+test("shows a complete path parameter without an extra action", () => {
+  const filePath = `/Users/example/${"a-very-long-directory-name/".repeat(8)}src/main/application.yml`
+  const html = renderToStaticMarkup(
+    <VSCodeProvider>
+      <LanguageProvider>
+        <SessionProvider>
+          <ToolPart
+            part={{
+              id: "prt_read",
+              type: "tool",
+              tool: "read",
+              status: "completed",
+              input: { filePath },
+            }}
+          />
+        </SessionProvider>
+      </LanguageProvider>
+    </VSCodeProvider>,
+  )
+
+  expect(html).toContain(`class="tool-path-value" title="${filePath}"`)
+  expect(html).toContain(`>${filePath}</code>`)
+  expect(html).not.toContain('aria-label="复制路径"')
+})
+
+test("renders directory read output as raw text even when display metadata is available", () => {
+  const directory = "/Users/example/workspace/a-very-long-project-name/src"
+  const html = renderToStaticMarkup(
+    <VSCodeProvider>
+      <LanguageProvider>
+        <SessionProvider>
+          <ToolPart
+            part={{
+              id: "prt_read_directory",
+              type: "tool",
+              tool: "read",
+              status: "completed",
+              input: { filePath: directory },
+              output: `<path>${directory}</path>\n<type>directory</type>\n<entries>\nmain/\n\n(1 entries)\n</entries>`,
+              metadata: {
+                display: {
+                  type: "directory",
+                  path: directory,
+                  entries: ["main/"],
+                  offset: 1,
+                  totalEntries: 1,
+                  truncated: false,
+                },
+              },
+            }}
+          />
+        </SessionProvider>
+      </LanguageProvider>
+    </VSCodeProvider>,
+  )
+
+  expect(html).not.toContain('data-component="tool-directory-output"')
+  expect(html).toContain(`&lt;path&gt;${directory}&lt;/path&gt;`)
+  expect(html).toContain("&lt;type&gt;directory&lt;/type&gt;")
+  expect(html).toContain("main/")
+})
+
 test("hides pending status text and keeps failed status text", () => {
   const pending = renderToStaticMarkup(
     <VSCodeProvider>

@@ -960,6 +960,10 @@
     @apply overflow-hidden text-ellipsis whitespace-nowrap rounded-[4px] bg-[var(--color-button)] px-1 py-0.5 font-mono text-[11px];
   }
 
+  .tool-kv .tool-path-value {
+    @apply min-w-0 overflow-visible text-clip whitespace-pre-wrap break-all text-[var(--color-foreground)] select-text;
+  }
+
   .tool-diff-panel {
     @apply flex min-w-0 flex-col gap-2;
   }
@@ -1311,7 +1315,6 @@
 
   .chat-view .chat-header {
     @apply min-h-10 px-2 pb-1.5 pt-2;
-    background: color-mix(in srgb, var(--color-background) 95%, var(--chat-accent));
   }
 
   .chat-view .session-usage-ring-fill {

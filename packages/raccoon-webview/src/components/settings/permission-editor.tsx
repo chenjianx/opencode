@@ -4,7 +4,7 @@ import { useLanguage } from "../../context/language"
 import type { I18nKey } from "../../i18n/en"
 import type { RaccoonPermissionAction, RaccoonPermissionConfig, RaccoonPermissionRule } from "../../protocol"
 import { SettingsRow } from "./settings-common"
-import { Button } from "../ui"
+import { Button, Select } from "../ui"
 import { titleCase } from "./utils"
 import {
   addExceptionPatch,
@@ -156,6 +156,7 @@ export function PermissionEditor(props: {
 
 function ActionSelect(props: {
   level: RaccoonPermissionAction
+  ariaLabel: string
   inherited?: boolean
   onChange: (level: RaccoonPermissionAction) => void
   onInherit?: () => void
@@ -163,22 +164,21 @@ function ActionSelect(props: {
   const language = useLanguage()
   const value: LevelValue = props.inherited ? "inherit" : props.level
   return (
-    <select
-      className="settings-select min-w-0"
+    <Select
+      className="settings-select"
+      contentWidth
       value={value}
-      onChange={(event) => {
-        const next = event.currentTarget.value as LevelValue
+      ariaLabel={props.ariaLabel}
+      options={[
+        ...(props.onInherit ? [{ value: "inherit", label: language.t("common.default") }] : []),
+        ...LEVEL_OPTIONS.map((option) => ({ value: option.value, label: language.t(option.labelKey) })),
+      ]}
+      onChange={(value) => {
+        const next = value as LevelValue
         if (next === "inherit") props.onInherit?.()
         else props.onChange(next)
       }}
-    >
-      {props.onInherit ? <option value="inherit">{language.t("common.default")}</option> : null}
-      {LEVEL_OPTIONS.map((option) => (
-        <option key={option.value} value={option.value}>
-          {language.t(option.labelKey)}
-        </option>
-      ))}
-    </select>
+    />
   )
 }
 
@@ -193,7 +193,13 @@ function SimpleToolRow(props: {
   const language = useLanguage()
   return (
     <SettingsRow title={toolTitle(props.id)} description={language.t(props.descriptionKey)}>
-      <ActionSelect level={props.level} inherited={props.inherited} onChange={props.onChange} onInherit={props.onInherit} />
+      <ActionSelect
+        level={props.level}
+        ariaLabel={`${toolTitle(props.id)}: ${language.t("settings.agents.permissions.title")}`}
+        inherited={props.inherited}
+        onChange={props.onChange}
+        onInherit={props.onInherit}
+      />
     </SettingsRow>
   )
 }
@@ -243,6 +249,7 @@ function GranularToolRow(props: {
         <div className="flex items-center gap-2">
           <ActionSelect
             level={level}
+            ariaLabel={`${toolTitle(props.tool.id)}: ${language.t(props.tool.granular.wildcardKey)}`}
             inherited={props.inherited}
             onChange={props.onWildcardChange}
             onInherit={props.allowInherit ? props.onWildcardInherit : undefined}
@@ -271,7 +278,11 @@ function GranularToolRow(props: {
                     <div className="min-w-0 flex-1 truncate font-mono text-[12px] text-[var(--color-foreground)]" title={exc.pattern}>
                       {exc.pattern}
                     </div>
-                    <ActionSelect level={exc.action} onChange={(lvl) => props.onExceptionChange(exc.pattern, lvl)} />
+                    <ActionSelect
+                      level={exc.action}
+                      ariaLabel={`${toolTitle(props.tool.id)}: ${exc.pattern}`}
+                      onChange={(lvl) => props.onExceptionChange(exc.pattern, lvl)}
+                    />
                     <Button variant="icon" title={language.t("settings.agents.permissions.remove")} onClick={() => props.onExceptionRemove(exc.pattern)}>
                       <X size={12} weight="bold" />
                     </Button>
