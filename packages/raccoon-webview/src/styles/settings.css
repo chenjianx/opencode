@@ -114,6 +114,10 @@
     @apply w-full max-w-[960px] px-7 pb-10 pt-6;
   }
 
+  .settings-content-inner-rules {
+    @apply max-w-[1200px];
+  }
+
   @container settings-shell (min-width: 900px) {
     .settings-nav {
       @apply w-[152px] px-2;
@@ -839,12 +843,16 @@
     @apply border-b border-[var(--color-border)] last:border-b-0;
   }
 
+  .settings-browser-installed-item.expanded {
+    @apply bg-[color-mix(in_srgb,var(--color-background)_94%,var(--color-hover))];
+  }
+
   .settings-browser-installed-row {
-    @apply flex items-center justify-between gap-2 px-3 py-2.5;
+    @apply flex items-center justify-between gap-2 px-3 py-2.5 transition-colors hover:bg-[var(--color-hover)];
   }
 
   .settings-browser-installed-main {
-    @apply flex min-w-0 flex-1 items-center gap-2 bg-transparent text-left;
+    @apply flex min-w-0 flex-1 appearance-none items-center gap-2 rounded-[4px] border-0 bg-transparent py-0.5 text-left outline-none focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)];
   }
 
   .settings-browser-installed-caret {
@@ -868,12 +876,28 @@
     @apply flex shrink-0 items-center gap-2;
   }
 
+  .settings-browser-installed-enabled {
+    @apply text-[11px] text-[var(--color-muted)];
+  }
+
   .settings-browser-installed-detail {
-    @apply flex flex-col gap-3 border-t border-[var(--color-border)] bg-[var(--color-background)] px-3 py-3;
+    @apply flex flex-col gap-2 border-t border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2.5;
+  }
+
+  .settings-browser-installed-detail .settings-browser-transport > div {
+    @apply rounded-none border-0 bg-transparent px-0 py-0;
+  }
+
+  .settings-browser-installed-detail .settings-browser-transport code {
+    @apply mb-0;
+  }
+
+  .settings-browser-installed-detail > .settings-browser-actions {
+    @apply border-t border-[var(--color-border)] pt-2;
   }
 
   .settings-mcp-status {
-    @apply inline-flex shrink-0 items-center justify-center;
+    @apply inline-flex shrink-0 items-center justify-center gap-1 whitespace-nowrap text-[11px];
   }
 
   .settings-mcp-status.connected {
@@ -1018,12 +1042,16 @@
     @apply flex h-full min-h-0 flex-col gap-3;
   }
 
+  .settings-browser-panel {
+    @apply min-h-0;
+  }
+
   .settings-browser-tabs {
-    @apply flex gap-1 border-b border-[var(--color-border)];
+    @apply flex gap-0 border-b border-[var(--color-border)];
   }
 
   .settings-browser-tab {
-    @apply -mb-px border-b-2 border-transparent px-3 py-2 text-[12px] font-medium text-[var(--color-muted)];
+    @apply relative -mb-px appearance-none border-0 border-b-2 border-transparent bg-transparent px-3 py-2 text-[12px] font-medium text-[var(--color-muted)] outline-none transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)] focus-visible:z-10 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-[-1px] focus-visible:outline-[var(--color-focus)];
   }
 
   .settings-browser-tab.active {
@@ -1044,6 +1072,10 @@
 
   .settings-mcp-json {
     @apply min-h-[180px] w-full resize-y font-mono text-[12px] leading-4;
+  }
+
+  .settings-mcp-field-error {
+    @apply text-[11px] leading-4 text-[var(--color-error)];
   }
 
   .settings-mcp-headers {
@@ -1080,65 +1112,66 @@
   }
 
   .settings-rules-scope-count {
-    @apply rounded-[999px] bg-[var(--color-background)] px-1.5 py-0.5 text-[10px] leading-none text-[var(--color-muted)];
+    @apply shrink-0 rounded-[999px] border border-[var(--color-border)] bg-[var(--color-button)] px-2 py-0.5 text-[10px] font-medium leading-none text-[var(--color-muted)];
+  }
+
+  .settings-rules-scope-count.project {
+    @apply text-[var(--color-brand)];
   }
 
   .settings-rules-root {
-    @apply flex h-full min-h-0 flex-col;
+    @apply flex h-full min-h-0 flex-col gap-1;
   }
 
   .settings-rules-intro {
-    @apply mb-2 shrink-0;
+    @apply mb-2 flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] pb-2;
+  }
+
+  .settings-rules-intro .settings-rules-hint {
+    @apply min-w-0 flex-1;
   }
 
   .settings-rules-shell {
-    @apply flex min-h-0 flex-1 gap-3;
+    @apply flex min-h-0 flex-1 gap-4;
   }
 
   .settings-rules-pane {
-    @apply min-h-0 w-[180px] shrink-0 overflow-auto rounded-[8px] p-1;
+    @apply flex h-fit max-h-full min-h-0 w-[260px] shrink-0 self-start overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)];
+    @apply flex-col;
   }
 
-  @container settings-content (max-width: 560px) {
+  @container settings-content (max-width: 720px) {
     .settings-rules-shell {
       @apply flex-col;
     }
 
     .settings-rules-pane {
-      @apply max-h-[40vh] w-full;
+      @apply max-h-[220px] w-full;
     }
   }
 
   .settings-rules-tree {
-    @apply flex flex-col gap-1;
+    @apply flex min-h-0 flex-1 flex-col gap-2 overflow-auto p-1.5;
   }
 
   .settings-rules-group {
-    @apply flex flex-col;
+    @apply flex flex-col gap-0.5;
   }
 
   .settings-rules-group-header {
-    @apply flex items-center gap-0.5;
-  }
-
-  .settings-rules-group-toggle {
-    @apply flex min-w-0 flex-1 items-center gap-1.5 rounded-[6px] bg-transparent px-1.5 py-1.5 text-left;
+    @apply flex items-center justify-between gap-2 px-2 py-1.5;
   }
 
   .settings-rules-group-label {
-    @apply min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-muted)];
+    @apply min-w-0 flex-1 truncate text-[11px] font-semibold tracking-[0.04em] text-[var(--color-muted)];
   }
 
   .settings-rules-count {
     @apply shrink-0 text-[11px] tabular-nums text-[var(--color-muted)];
   }
 
-  .settings-rules-add {
-    @apply h-6 w-6 shrink-0 text-[var(--color-muted)] hover:text-[var(--color-foreground)];
-  }
-
   .settings-rules-children {
-    @apply mb-0.5 flex flex-col pl-1.5;
+    @apply mb-0.5 flex flex-col gap-0.5;
   }
 
   .settings-rules-group-empty {
@@ -1146,12 +1179,12 @@
   }
 
   .settings-rules-node {
-    @apply flex items-center gap-1.5 rounded-[6px] py-1 pl-1.5 pr-1 hover:bg-[var(--color-hover)];
+    @apply relative flex min-h-[38px] w-full items-center gap-2 rounded-[6px] border-0 bg-transparent px-2.5 py-2 text-left transition-colors hover:bg-[var(--color-hover)];
   }
 
   .settings-rules-node.active {
-    @apply bg-[var(--color-brand-soft)];
-    box-shadow: inset 1px 0 0 var(--color-brand);
+    @apply bg-[var(--color-hover)];
+    box-shadow: inset 2px 0 0 var(--color-brand);
   }
 
   .settings-rules-node.disabled .settings-rules-card-name {
@@ -1159,11 +1192,19 @@
   }
 
   .settings-rules-node-main {
-    @apply flex min-w-0 flex-1 cursor-pointer items-center border-0 bg-transparent p-0 text-left outline-none;
+    @apply flex min-w-0 flex-1 cursor-pointer items-center overflow-hidden border-0 bg-transparent p-0 text-left outline-none;
+  }
+
+  .settings-rules-node:not(.settings-commands-node) > .settings-rules-node-main {
+    @apply after:absolute after:inset-0 after:content-[''];
   }
 
   .settings-rules-card-name {
-    @apply block truncate text-[12px] text-[var(--color-foreground)];
+    @apply block truncate font-mono text-[12px] font-medium text-[var(--color-foreground)];
+  }
+
+  .settings-rules-node-meta {
+    @apply relative z-[1] flex shrink-0 items-center gap-1.5;
   }
 
   .settings-rules-node-toggle {
@@ -1171,33 +1212,54 @@
   }
 
   .settings-rules-node-delete {
-    @apply h-5 w-5 shrink-0 text-[var(--color-muted)] hover:text-[var(--color-error)];
+    @apply h-5 w-5 shrink-0 text-[var(--color-muted)] opacity-55 transition-opacity hover:text-[var(--color-error)];
+  }
+
+  .settings-rules-node:hover .settings-rules-node-delete,
+  .settings-rules-node:focus-within .settings-rules-node-delete {
+    @apply opacity-100;
   }
 
   .settings-rules-editor {
-    @apply flex min-h-0 flex-1 flex-col overflow-hidden rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)];
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-background)];
+    container-type: inline-size;
+    container-name: settings-rules-editor;
   }
 
-  @container settings-content (max-width: 560px) {
+  @container settings-content (max-width: 720px) {
     .settings-rules-editor {
       @apply min-h-[320px];
     }
   }
 
   .settings-rules-editor-header {
-    @apply flex items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2.5;
+    @apply flex min-w-0 items-center justify-between gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2.5;
   }
 
   .settings-rules-editor-title {
-    @apply truncate text-[13px] font-semibold text-[var(--color-foreground)];
+    @apply min-w-0 flex-1 truncate text-[13px] font-semibold text-[var(--color-foreground)];
   }
 
   .settings-rules-editor-actions {
-    @apply flex shrink-0 items-center gap-2;
+    @apply flex shrink-0 items-center gap-1.5;
+  }
+
+  @container settings-rules-editor (max-width: 420px) {
+    .settings-rules-editor-header {
+      @apply flex-wrap;
+    }
+
+    .settings-rules-editor-title {
+      @apply w-full flex-none;
+    }
+
+    .settings-rules-editor-actions {
+      @apply w-full justify-end;
+    }
   }
 
   .settings-rules-editor-body {
-    @apply flex min-h-0 flex-1 flex-col gap-3 px-3 py-3;
+    @apply flex min-h-0 flex-1 flex-col gap-3 p-4;
   }
 
   .settings-rules-field {
@@ -1209,7 +1271,7 @@
   }
 
   .settings-rules-tab {
-    @apply rounded-[5px] bg-transparent px-2.5 py-1 text-[12px] text-[var(--color-muted)] hover:bg-[var(--color-hover)];
+    @apply appearance-none rounded-[5px] border-0 bg-transparent px-2.5 py-1 text-[12px] text-[var(--color-muted)] outline-none hover:bg-[var(--color-hover)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-focus)];
   }
 
   .settings-rules-tab.active {
@@ -1229,7 +1291,11 @@
   }
 
   .settings-rules-editor-footer {
-    @apply flex shrink-0 items-center justify-end gap-2 border-t border-[var(--color-border)] px-3 py-2.5;
+    @apply flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[var(--color-border)] px-3 py-2.5;
+  }
+
+  .settings-rules-editor-footer .settings-rules-error {
+    @apply w-full min-w-0 flex-none break-words text-left;
   }
 
   .settings-rules-empty-pane {
@@ -1249,7 +1315,7 @@
   }
 
   .settings-commands-header {
-    @apply flex items-start justify-between gap-4 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] px-3 py-2.5;
+    @apply flex items-start justify-between gap-4 border-b border-[var(--color-border)] pb-2;
   }
 
   .settings-commands-header .settings-rules-hint {
@@ -1261,7 +1327,7 @@
   }
 
   .settings-commands-pane {
-    @apply w-[260px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-1.5;
+    @apply w-[220px] rounded-[6px] border border-[var(--color-border)] bg-[var(--color-background)] p-1.5;
   }
 
   @container settings-content (max-width: 560px) {
@@ -1271,11 +1337,11 @@
   }
 
   .settings-commands-node {
-    @apply w-full min-h-[38px] gap-2 border border-transparent bg-transparent px-2.5 py-2 text-left transition-colors;
+    @apply w-full min-h-[38px] gap-2 border-0 bg-transparent px-2.5 py-2 text-left transition-colors;
   }
 
   .settings-commands-node.active {
-    @apply border-[var(--color-brand-border)] bg-[var(--color-brand-soft)];
+    @apply bg-[var(--color-brand-soft)];
     box-shadow: inset 2px 0 0 var(--color-brand);
   }
 
@@ -1327,11 +1393,15 @@
   }
 
   .settings-commands-editor-header {
-    @apply min-w-0;
+    @apply min-w-0 bg-[var(--color-background)];
   }
 
   .settings-commands-editor-header .settings-rules-editor-title {
     @apply min-w-0 flex-1;
+  }
+
+  .settings-commands-readonly-title {
+    @apply font-mono;
   }
 
   .settings-commands-editor-body {
@@ -1372,11 +1442,7 @@
   }
 
   .settings-commands-readonly {
-    @apply flex flex-col gap-3 rounded-[6px] border border-[var(--color-border)] bg-[var(--color-button)] p-3;
-  }
-
-  .settings-commands-readonly-name {
-    @apply font-mono text-[13px] font-semibold text-[var(--color-foreground)];
+    @apply flex flex-col gap-3;
   }
 
   .settings-commands-readonly-description,

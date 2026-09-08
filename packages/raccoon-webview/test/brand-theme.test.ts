@@ -221,4 +221,101 @@ describe("VS Code brand theme", () => {
     expect(clipped).toEqual([false, false, false, false, false, false, false, false])
     await page.close()
   })
+
+  test("keeps installed MCP details compact without a nested card", async () => {
+    const page = await browser.newPage({ viewport: { width: 960, height: 760 } })
+    await page.goto(url)
+
+    const styles = await page.evaluate(() => {
+      document.body.className = "vscode-light"
+
+      const detail = document.createElement("div")
+      detail.className = "settings-browser-installed-detail"
+      const transport = document.createElement("div")
+      transport.className = "settings-browser-transport"
+      const section = document.createElement("div")
+      const title = document.createElement("div")
+      title.className = "settings-browser-transport-title"
+      title.textContent = "启动命令"
+      const code = document.createElement("code")
+      code.textContent = "uvx mcp-server-time"
+      section.append(title, code)
+      transport.append(section)
+      const actions = document.createElement("div")
+      actions.className = "settings-browser-actions"
+      actions.append(document.createElement("button"))
+      detail.append(transport, actions)
+      document.body.append(detail)
+
+      return {
+        detailGap: getComputedStyle(detail).gap,
+        detailPaddingTop: getComputedStyle(detail).paddingTop,
+        sectionBorderTop: getComputedStyle(section).borderTopWidth,
+        sectionBackground: getComputedStyle(section).backgroundColor,
+        codeMarginBottom: getComputedStyle(code).marginBottom,
+        actionsBorderTop: getComputedStyle(actions).borderTopWidth,
+        actionsPaddingTop: getComputedStyle(actions).paddingTop,
+      }
+    })
+
+    expect(styles).toEqual({
+      detailGap: "8px",
+      detailPaddingTop: "10px",
+      sectionBorderTop: "0px",
+      sectionBackground: "rgba(0, 0, 0, 0)",
+      codeMarginBottom: "0px",
+      actionsBorderTop: "1px",
+      actionsPaddingTop: "8px",
+    })
+    await page.close()
+  })
+
+  test("keeps command selection and details visually lightweight", async () => {
+    const page = await browser.newPage({ viewport: { width: 960, height: 760 } })
+    await page.goto(url)
+
+    const styles = await page.evaluate(() => {
+      document.body.className = "vscode-light"
+
+      const header = document.createElement("div")
+      header.className = "settings-rules-intro settings-commands-header"
+      const shell = document.createElement("div")
+      shell.className = "settings-rules-shell settings-commands-shell"
+      const pane = document.createElement("div")
+      pane.className = "settings-rules-pane settings-commands-pane"
+      const node = document.createElement("button")
+      node.className = "settings-rules-node settings-commands-node active"
+      pane.append(node)
+
+      const editorHeader = document.createElement("div")
+      editorHeader.className = "settings-rules-editor-header settings-commands-editor-header"
+      const readonly = document.createElement("div")
+      readonly.className = "settings-commands-readonly settings-commands-field-wide"
+      shell.append(pane, editorHeader, readonly)
+      document.body.append(header, shell)
+
+      return {
+        headerBackground: getComputedStyle(header).backgroundColor,
+        paneWidth: getComputedStyle(pane).width,
+        nodeBorder: getComputedStyle(node).borderTopWidth,
+        nodeSelection: getComputedStyle(node).boxShadow,
+        editorHeaderBackground: getComputedStyle(editorHeader).backgroundColor,
+        readonlyBackground: getComputedStyle(readonly).backgroundColor,
+        readonlyBorder: getComputedStyle(readonly).borderTopWidth,
+        readonlyPadding: getComputedStyle(readonly).paddingLeft,
+      }
+    })
+
+    expect(styles).toEqual({
+      headerBackground: "rgba(0, 0, 0, 0)",
+      paneWidth: "220px",
+      nodeBorder: "0px",
+      nodeSelection: "rgb(117, 86, 220) 2px 0px 0px 0px inset",
+      editorHeaderBackground: "rgb(255, 255, 255)",
+      readonlyBackground: "rgba(0, 0, 0, 0)",
+      readonlyBorder: "0px",
+      readonlyPadding: "0px",
+    })
+    await page.close()
+  })
 })

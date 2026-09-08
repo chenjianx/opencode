@@ -46,6 +46,8 @@ export function Textarea(props: {
   rows?: number
   className?: string
   ariaLabel?: string
+  ariaInvalid?: boolean
+  ariaDescribedBy?: string
 }) {
   return (
     <textarea
@@ -55,6 +57,8 @@ export function Textarea(props: {
       disabled={props.disabled}
       rows={props.rows}
       aria-label={props.ariaLabel}
+      aria-invalid={props.ariaInvalid}
+      aria-describedby={props.ariaDescribedBy}
       onChange={(event) => props.onChange(event.currentTarget.value)}
     />
   )

@@ -12,6 +12,12 @@ type HeaderRow = { name: string; value: string }
 
 type ParsedServer = { id: string; config: RaccoonMcpServerConfig }
 
+type ParsedJsonConfig =
+  | { status: "empty" }
+  | { status: "invalid-json" }
+  | { status: "invalid-config" }
+  | { status: "valid"; servers: ParsedServer[] }
+
 export function SettingsMcpManual() {
   const language = useLanguage()
   const vscode = useVSCode()
@@ -42,7 +48,7 @@ export function SettingsMcpManual() {
     })
   }, [vscode, language])
 
-  const jsonServers = useMemo(() => (mode === "json" ? parseJsonConfig(json) : undefined), [mode, json])
+  const jsonResult = useMemo(() => (mode === "json" ? parseMcpJsonConfig(json) : undefined), [mode, json])
 
   const remoteServer = useMemo<ParsedServer | undefined>(() => {
     if (mode !== "remote") return undefined
@@ -62,7 +68,15 @@ export function SettingsMcpManual() {
     }
   }, [mode, remoteName, remoteUrl, headers])
 
-  const servers = mode === "json" ? jsonServers : remoteServer ? [remoteServer] : undefined
+  const servers =
+    mode === "json"
+      ? jsonResult?.status === "valid"
+        ? jsonResult.servers
+        : undefined
+      : remoteServer
+        ? [remoteServer]
+        : undefined
+  const jsonInvalid = jsonResult?.status === "invalid-json" || jsonResult?.status === "invalid-config"
   const canAdd = !pending && !!servers && servers.length > 0
 
   const preview = useMemo(() => {
@@ -136,8 +150,23 @@ export function SettingsMcpManual() {
             rows={12}
             placeholder={language.t("settings.mcpManual.json.placeholder")}
             className="settings-mcp-json"
+            ariaInvalid={jsonInvalid}
+            ariaDescribedBy={
+              jsonInvalid
+                ? "settings-mcp-json-help settings-mcp-json-error"
+                : "settings-mcp-json-help"
+            }
           />
-          <small>{language.t("settings.mcpManual.json.help")}</small>
+          <small id="settings-mcp-json-help">{language.t("settings.mcpManual.json.help")}</small>
+          {jsonResult?.status === "invalid-json" ? (
+            <span id="settings-mcp-json-error" className="settings-mcp-field-error" role="alert">
+              {language.t("settings.mcpManual.invalidJson")}
+            </span>
+          ) : jsonResult?.status === "invalid-config" ? (
+            <span id="settings-mcp-json-error" className="settings-mcp-field-error" role="alert">
+              {language.t("settings.mcpManual.invalidConfig")}
+            </span>
+          ) : null}
         </label>
       ) : (
         <>
@@ -224,18 +253,18 @@ export function SettingsMcpManual() {
  *  - opencode native:   { "mcp": { name: { type, command/url, ... } } }
  *  - Claude/Cursor:     { "mcpServers": { name: { command, args, env } } }
  *  - a single server:   { type, command/url, ... }  (named "mcp-server")
- * Returns undefined when nothing parseable is found.
+ * Distinguishes empty input, invalid JSON, invalid MCP config, and recognized servers.
  */
-function parseJsonConfig(raw: string): ParsedServer[] | undefined {
+export function parseMcpJsonConfig(raw: string): ParsedJsonConfig {
   const text = raw.trim()
-  if (!text) return undefined
+  if (!text) return { status: "empty" }
   let parsed: unknown
   try {
     parsed = JSON.parse(text)
   } catch {
-    return undefined
+    return { status: "invalid-json" }
   }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return undefined
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { status: "invalid-config" }
   const root = parsed as Record<string, unknown>
   const container =
     isRecord(root.mcp) ? (root.mcp as Record<string, unknown>) : isRecord(root.mcpServers) ? (root.mcpServers as Record<string, unknown>) : undefined
@@ -243,15 +272,19 @@ function parseJsonConfig(raw: string): ParsedServer[] | undefined {
   if (container) {
     const servers = Object.entries(container)
       .map(([name, value]) => toServer(name, value))
-      .filter((server): server is ParsedServer => server !== undefined)
-    return servers.length > 0 ? servers : undefined
+    if (servers.length === 0 || servers.some((server) => server === undefined)) return { status: "invalid-config" }
+    return {
+      status: "valid",
+      servers: servers.filter((server): server is ParsedServer => server !== undefined),
+    }
   }
 
   const single = toServer("mcp-server", root)
-  return single ? [single] : undefined
+  return single ? { status: "valid", servers: [single] } : { status: "invalid-config" }
 }
 
 function toServer(name: string, value: unknown): ParsedServer | undefined {
+  if (!name.trim()) return undefined
   if (!isRecord(value)) return undefined
   const config = toConfig(value)
   if (!config) return undefined
@@ -260,9 +293,19 @@ function toServer(name: string, value: unknown): ParsedServer | undefined {
 
 function toConfig(value: Record<string, unknown>): RaccoonMcpServerConfig | undefined {
   // Remote: explicit type "remote"/"sse"/"http", or presence of a url.
-  const type = typeof value.type === "string" ? value.type.toLowerCase() : undefined
+  if (value.type !== undefined && (typeof value.type !== "string" || !value.type.trim())) return undefined
+  if (value.command !== undefined && typeof value.command !== "string" && !isStringArray(value.command)) return undefined
+  if (value.args !== undefined && !isStringArray(value.args)) return undefined
+  if (value.url !== undefined && typeof value.url !== "string") return undefined
+  if (value.cwd !== undefined && typeof value.cwd !== "string") return undefined
+  if (value.environment !== undefined && !isStringRecord(value.environment)) return undefined
+  if (value.env !== undefined && !isStringRecord(value.env)) return undefined
+  if (value.headers !== undefined && !isStringRecord(value.headers)) return undefined
+
+  const type = typeof value.type === "string" ? value.type.trim().toLowerCase() : undefined
+  if (type && type !== "local" && type !== "remote" && type !== "sse" && type !== "http") return undefined
   const url = typeof value.url === "string" ? value.url.trim() : undefined
-  if (type === "remote" || type === "sse" || type === "http" || (url && !value.command)) {
+  if (type === "remote" || type === "sse" || type === "http" || (!type && url && !value.command)) {
     if (!url) return undefined
     const headers = toStringRecord(value.headers)
     return {
@@ -286,19 +329,26 @@ function toConfig(value: Record<string, unknown>): RaccoonMcpServerConfig | unde
 }
 
 function toCommand(command: unknown, args: unknown): string[] {
-  const parts: string[] = []
-  if (typeof command === "string") parts.push(command)
-  else if (Array.isArray(command)) parts.push(...command.filter((part): part is string => typeof part === "string"))
+  const executable = typeof command === "string" ? [command] : isStringArray(command) ? command : []
+  if (!executable.some((part) => part.trim())) return []
+  const parts = [...executable]
   if (Array.isArray(args)) parts.push(...args.filter((part): part is string => typeof part === "string"))
   return parts.filter((part) => part.trim().length > 0)
 }
 
 function toStringRecord(value: unknown): Record<string, string> | undefined {
-  if (!isRecord(value)) return undefined
-  const entries = Object.entries(value)
-    .map(([key, val]) => [key, typeof val === "string" ? val : String(val)] as const)
-    .filter(([key]) => key.trim().length > 0)
+  if (!isStringRecord(value)) return undefined
+  const entries = Object.entries(value).filter(([key]) => key.trim().length > 0)
   return entries.length > 0 ? Object.fromEntries(entries) : undefined
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string")
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  if (!isRecord(value)) return false
+  return Object.entries(value).every(([key, entry]) => !!key.trim() && typeof entry === "string")
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

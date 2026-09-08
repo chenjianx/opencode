@@ -220,7 +220,7 @@ export const SettingsView = memo(function SettingsView(props: { onClose?: () => 
         </nav>
 
         <div className="settings-content">
-          <div className="settings-content-inner h-full">
+          <div className={`settings-content-inner h-full${tab === "rules" ? " settings-content-inner-rules" : ""}`}>
             {tab === "models" ? (
               <SettingsModels
                 agents={modeAgents}

@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowClockwise, CheckCircle, Circle, PencilSimple, Plug, Plugs, Plus, Trash, Warning, X } from "@phosphor-icons/react"
+import {
+  ArrowClockwise,
+  CaretDown,
+  CheckCircle,
+  Circle,
+  PencilSimple,
+  Plug,
+  Plus,
+  Trash,
+  Warning,
+  X,
+} from "@phosphor-icons/react"
 import { useLanguage } from "../../context/language"
 import { useSessionConfig } from "../../context/session"
 import { useVSCode } from "../../context/vscode"
@@ -46,16 +57,10 @@ export function SettingsMcpInstalled() {
     vscode.postMessage({ type: "setMcpServerEnabled", id: server.id, scope: server.scope, enabled })
   }
 
-  const connect = (server: RaccoonInstalledMcp) => {
+  const reconnect = (server: RaccoonInstalledMcp) => {
     setPendingID(server.id)
     setActionError(undefined)
     vscode.postMessage({ type: "connectMcpServer", id: server.id })
-  }
-
-  const disconnect = (server: RaccoonInstalledMcp) => {
-    setPendingID(server.id)
-    setActionError(undefined)
-    vscode.postMessage({ type: "disconnectMcpServer", id: server.id })
   }
 
   const remove = (server: RaccoonInstalledMcp) => {
@@ -93,14 +98,25 @@ export function SettingsMcpInstalled() {
             const isExpanded = expanded === serverKey(server)
             const enabled = server.config.enabled !== false
             const pending = pendingID === server.id
+            const connectionAction = mcpConnectionAction(server.status?.status, enabled)
             return (
-              <div className="settings-browser-installed-item" key={serverKey(server)}>
+              <div
+                className={`settings-browser-installed-item ${isExpanded ? "expanded" : ""}`.trim()}
+                key={serverKey(server)}
+              >
                 <div className="settings-browser-installed-row">
                   <button
                     type="button"
                     className="settings-browser-installed-main"
+                    aria-expanded={isExpanded}
                     onClick={() => setExpanded(isExpanded ? undefined : serverKey(server))}
                   >
+                    <CaretDown
+                      className={`settings-browser-installed-caret ${isExpanded ? "open" : ""}`.trim()}
+                      size={13}
+                      weight="bold"
+                      aria-hidden="true"
+                    />
                     <StatusBadge status={server.status} enabled={enabled} />
                     <span className="settings-browser-installed-name">{server.id}</span>
                     <span className="settings-browser-installed-scope">
@@ -109,6 +125,9 @@ export function SettingsMcpInstalled() {
                     <span className="settings-browser-installed-type">{server.config.type}</span>
                   </button>
                   <div className="settings-browser-installed-actions">
+                    <span className="settings-browser-installed-enabled">
+                      {language.t(enabled ? "settings.mcpInstalled.enabled" : "settings.mcpInstalled.disabled")}
+                    </span>
                     <input
                       type="checkbox"
                       role="switch"
@@ -125,15 +144,11 @@ export function SettingsMcpInstalled() {
                   <div className="settings-browser-installed-detail">
                     <ServerDetail server={server} />
                     <div className="settings-browser-actions">
-                      {server.status?.status === "connected" ? (
-                        <Button disabled={pending} onClick={() => disconnect(server)} icon={<Plugs size={14} weight="bold" />}>
-                          {language.t("settings.mcpInstalled.disconnect")}
+                      {connectionAction === "reconnect" ? (
+                        <Button disabled={pending} onClick={() => reconnect(server)} icon={<Plug size={14} weight="bold" />}>
+                          {language.t("settings.mcpInstalled.reconnect")}
                         </Button>
-                      ) : (
-                        <Button disabled={pending || !enabled} onClick={() => connect(server)} icon={<Plug size={14} weight="bold" />}>
-                          {language.t("settings.mcpInstalled.connect")}
-                        </Button>
-                      )}
+                      ) : null}
                       <Button disabled={pending} onClick={() => setEditing(server)} icon={<PencilSimple size={14} weight="bold" />}>
                         {language.t("settings.mcpInstalled.edit")}
                       </Button>
@@ -162,6 +177,11 @@ export function SettingsMcpInstalled() {
   )
 }
 
+export function mcpConnectionAction(status: RaccoonMcpStatus["status"] | undefined, enabled: boolean) {
+  if (!enabled) return
+  if (status === undefined || status === "disabled" || status === "failed") return "reconnect" as const
+}
+
 function StatusBadge(props: { status?: RaccoonMcpStatus; enabled: boolean }) {
   const language = useLanguage()
   const status = props.status?.status ?? (props.enabled ? undefined : "disabled")
@@ -169,6 +189,7 @@ function StatusBadge(props: { status?: RaccoonMcpStatus; enabled: boolean }) {
     return (
       <span className="settings-mcp-status connected" title={language.t("settings.mcpInstalled.status.connected")}>
         <CheckCircle size={13} weight="fill" />
+        <span>{language.t("settings.mcpInstalled.status.connected")}</span>
       </span>
     )
   }
@@ -177,6 +198,7 @@ function StatusBadge(props: { status?: RaccoonMcpStatus; enabled: boolean }) {
     return (
       <span className="settings-mcp-status failed" title={error ?? language.t("settings.mcpInstalled.status.failed")}>
         <Warning size={13} weight="fill" />
+        <span>{language.t("settings.mcpInstalled.status.failed")}</span>
       </span>
     )
   }
@@ -184,12 +206,17 @@ function StatusBadge(props: { status?: RaccoonMcpStatus; enabled: boolean }) {
     return (
       <span className="settings-mcp-status needs-auth" title={language.t("settings.mcpInstalled.status.needsAuth")}>
         <Warning size={13} weight="fill" />
+        <span>{language.t("settings.mcpInstalled.status.needsAuth")}</span>
       </span>
     )
   }
+  const label = language.t(
+    props.enabled ? "settings.mcpInstalled.status.disconnected" : "settings.mcpInstalled.status.disabled",
+  )
   return (
-    <span className="settings-mcp-status disabled" title={language.t("settings.mcpInstalled.status.disabled")}>
+    <span className="settings-mcp-status disabled" title={label}>
       <Circle size={13} weight="fill" />
+      <span>{label}</span>
     </span>
   )
 }

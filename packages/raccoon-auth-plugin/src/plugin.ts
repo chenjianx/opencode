@@ -393,6 +393,7 @@ function modelTemplate(input: {
   name: string
   baseUrl: string
   contextLength: number
+  inputLength?: number
   toolcall?: boolean
   orgScopeId?: string
 }): Model {
@@ -433,7 +434,7 @@ function modelTemplate(input: {
     },
     limit: {
       context: input.contextLength,
-      input: Math.max(0, Math.min(input.contextLength - 4096, DEFAULT_INPUT_LENGTH)),
+      input: Math.max(0, Math.min(input.contextLength - 4096, input.inputLength ?? DEFAULT_INPUT_LENGTH)),
       output: 4096,
     },
     status: "active",
@@ -460,6 +461,7 @@ function fromProfileModel(baseUrl: string, model: ProfileModel): Model | undefin
     name: model.name ?? model.model,
     baseUrl: model.apiBase ? normalizeUrl(model.apiBase) : baseUrl,
     contextLength: model.defaultCompletionOptions?.contextLength ?? DEFAULT_CONTEXT_LENGTH,
+    inputLength: model.defaultCompletionOptions?.contextLength,
     toolcall: model.capabilities?.includes("tool_use") || model.roles?.some((role) => role !== "autocomplete"),
     orgScopeId: model.orgScopeId,
   })
